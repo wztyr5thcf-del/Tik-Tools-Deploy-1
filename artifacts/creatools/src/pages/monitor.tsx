@@ -91,6 +91,57 @@ interface TopGifter { userId: string; nickname: string; diamonds: number; giftCo
 interface GiftTally { name: string; icon: string; count: number; totalDiamonds: number; }
 type ConnStatus = "idle" | "connecting" | "connected" | "disconnected" | "error";
 
+// ─── Gift overlay types & constants ──────────────────────────────────────────
+interface ComboOverlay {
+  key: string;
+  giftName: string;
+  giftIcon?: string;
+  count: number;
+  totalDiamonds: number;
+  isEnigma: boolean;
+  isLuva: boolean;
+  isFamous: boolean;
+}
+interface TapHeart { id: string; x: number; }
+
+const ENIGMA_GIFTS = new Set([
+  "enigma", "anonymous", "mystery box", "mystery", "question mark", "unknown",
+]);
+const LUVA_GIFTS = new Set([
+  "boxing glove", "luva", "glove", "guante", "handschuh", "gant", "punch",
+]);
+const FAMOUS_GIFTS = new Set([
+  "lion", "universe", "tiktok universe", "rose", "sunglasses", "interstellar",
+  "tiger", "diamond", "gimme", "planet", "boxing glove", "luva", "glove",
+  "enigma", "anonymous", "dj on stage", "concert", "sports car", "private jet",
+  "castle", "crown", "galaxy", "perfume", "go go", "gamer", "space explorer",
+  "drama queen", "vip entrance", "butterfly", "hearts", "magic wand",
+]);
+
+// Diamond threshold for "famous" flash (≥ 500 diamonds per repeat unit)
+const FAMOUS_DIAMOND_THRESHOLD = 500;
+
+// Emoji map for special gifts
+function getGiftEmoji(name: string): string {
+  const n = name.toLowerCase();
+  if (ENIGMA_GIFTS.has(n)) return "🎭";
+  if (LUVA_GIFTS.has(n)) return "🥊";
+  if (n.includes("lion")) return "🦁";
+  if (n.includes("rose")) return "🌹";
+  if (n.includes("universe") || n.includes("galaxy") || n.includes("planet") || n.includes("interstellar")) return "🌌";
+  if (n.includes("crown") || n.includes("queen") || n.includes("king")) return "👑";
+  if (n.includes("diamond")) return "💎";
+  if (n.includes("tiger")) return "🐯";
+  if (n.includes("butterfly")) return "🦋";
+  if (n.includes("dragon")) return "🐉";
+  if (n.includes("rocket") || n.includes("space")) return "🚀";
+  if (n.includes("car") || n.includes("sport")) return "🏎️";
+  if (n.includes("jet") || n.includes("plane")) return "✈️";
+  if (n.includes("castle")) return "🏰";
+  if (n.includes("concert") || n.includes("dj")) return "🎵";
+  return "🎁";
+}
+
 // ─── Event metadata ──────────────────────────────────────────────────────────
 const EVENT_META: Record<string, { color: string; bg: string; icon: React.ElementType; label: string }> = {
   // ── Core interactions ──────────────────────────────────────────────────────
@@ -303,6 +354,15 @@ export default function Monitor() {
   const [exportCopied, setExportCopied] = useState(false);
   const [giftTally, setGiftTally] = useState<Record<string, GiftTally>>({});
 
+  // Overlay state
+  const [activeCombo, setActiveCombo] = useState<ComboOverlay | null>(null);
+  const [tapHearts, setTapHearts] = useState<TapHeart[]>([]);
+  const [giftFlash, setGiftFlash] = useState<{ key: string; emoji: string; name: string; diamonds: number } | null>(null);
+  const [comboAnimKey, setComboAnimKey] = useState(0);
+  const comboTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const giftFlashTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const likeFloodRef = useRef<{ count: number; timer?: ReturnType<typeof setTimeout> }>({ count: 0 });
+
   // Filter state
   const [filterOpen, setFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
@@ -379,6 +439,9 @@ export default function Monitor() {
   const disconnect = useCallback(() => {
     if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
     if (wsRef.current) { wsRef.current.onclose = null; wsRef.current.close(); wsRef.current = null; }
+    clearTimeout(comboTimerRef.current);
+    clearTimeout(giftFlashTimerRef.current);
+    clearTimeout(likeFloodRef.current.timer);
     setConnStatus("disconnected");
   }, []);
 

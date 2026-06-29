@@ -19,6 +19,7 @@ import Admin from "./pages/admin";
 import Leaderboards from "./pages/leaderboards";
 import AppLayout from "./components/layout/app-layout";
 import { AuthProvider, useAuth } from "./context/auth-context";
+import { UIConfigProvider } from "./context/ui-config-context";
 import { useEffect } from "react";
 
 const queryClient = new QueryClient();
@@ -100,12 +101,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </AuthProvider>
+        <UIConfigProvider>
+          <AuthProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </AuthProvider>
+        </UIConfigProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

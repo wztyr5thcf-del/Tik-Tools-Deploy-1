@@ -83,6 +83,58 @@ router.get("/tiktok/live-status", requireAuth, async (req, res): Promise<void> =
   }
 });
 
+// ── Check Alive ───────────────────────────────────────────────────────────────
+router.get("/tiktok/check-alive", requireAuth, async (req, res): Promise<void> => {
+  const { unique_id, room_ids } = req.query as { unique_id?: string; room_ids?: string };
+  if (!unique_id && !room_ids) {
+    res.status(400).json({ error: "unique_id or room_ids query param required" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const params = new URLSearchParams({ apiKey });
+    if (unique_id) params.set("unique_id", unique_id);
+    if (room_ids) params.set("room_ids", room_ids);
+    const r = await fetch(`${TIKTOOLS_API}/webcast/check_alive?${params}`);
+    const json = await r.json() as {
+      status_code?: number;
+      data?: Array<{ room_id?: string; alive?: boolean; title?: string; userCount?: number }>;
+    };
+    res.json({
+      statusCode: json.status_code ?? 0,
+      data: (json.data ?? []).map((d) => ({
+        roomId: d.room_id ?? null,
+        alive: d.alive ?? false,
+        title: d.title ?? null,
+        userCount: d.userCount ?? null,
+      })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to check alive");
+    res.status(500).json({ error: "Failed to check alive" });
+  }
+});
+
+// ── Live Connect (JWT + stream URLs bundled) ──────────────────────────────────
+router.get("/tiktok/live-connect", requireAuth, async (req, res): Promise<void> => {
+  const { uniqueId } = req.query as { uniqueId?: string };
+  if (!uniqueId) {
+    res.status(400).json({ error: "uniqueId query param required" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(
+      `${TIKTOOLS_API}/api/live/connect?uniqueId=${encodeURIComponent(uniqueId)}&apiKey=${apiKey}`
+    );
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to live connect");
+    res.status(500).json({ error: "Failed to live connect" });
+  }
+});
+
 // ── JWT Mint ──────────────────────────────────────────────────────────────────
 router.post("/tiktok/jwt", requireAuth, async (req, res): Promise<void> => {
   const parsed = MintJwtBody.safeParse(req.body);
@@ -183,6 +235,28 @@ router.post("/tiktok/room-info", requireAuth, async (req, res): Promise<void> =>
   } catch (err) {
     req.log.error({ err }, "Failed to fetch room info");
     res.status(500).json({ error: "Failed to fetch room info" });
+  }
+});
+
+// ── Webcast Fetch (HTTP long-polling alternative to WebSocket) ────────────────
+router.post("/tiktok/webcast-fetch", requireAuth, async (req, res): Promise<void> => {
+  const { unique_id, room_id, cursor } = req.body as { unique_id?: string; room_id?: string; cursor?: string };
+  if (!unique_id && !room_id) {
+    res.status(400).json({ error: "unique_id or room_id required in body" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(`${TIKTOOLS_API}/webcast/fetch?apiKey=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ unique_id, room_id, cursor }),
+    });
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to webcast fetch");
+    res.status(500).json({ error: "Failed to webcast fetch" });
   }
 });
 
@@ -389,7 +463,6 @@ router.get("/tiktok/user-profile", requireAuth, async (req, res): Promise<void> 
 });
 
 // ── Sign URL ──────────────────────────────────────────────────────────────────
-// Signs any TikTok webcast URL with required X-Bogus / X-Gnarly parameters
 router.post("/tiktok/sign-url", requireAuth, async (req, res): Promise<void> => {
   const { url: rawUrl } = req.body as { url?: string };
   if (!rawUrl || typeof rawUrl !== "string") {
@@ -438,7 +511,141 @@ router.post("/tiktok/sign-url", requireAuth, async (req, res): Promise<void> => 
   }
 });
 
-// ── Leaderboards: League List ─────────────────────────────────────────────────
+// ── Gaming Ranklist (Global Agency unmasked, others masked preview) ────────────
+router.get("/tiktok/ranklist/gaming", requireAuth, async (req, res): Promise<void> => {
+  const { region } = req.query as { region?: string };
+  try {
+    const apiKey = getApiKey();
+    const params = new URLSearchParams({ apiKey });
+    if (region) params.set("region", region);
+    const r = await fetch(`${TIKTOOLS_API}/webcast/ranklist/gaming?${params}`);
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch gaming ranklist");
+    res.status(500).json({ error: "Failed to fetch gaming ranklist" });
+  }
+});
+
+// ── Gaming Movers (Global Agency — who entered/left the Top 99) ────────────────
+router.get("/tiktok/ranklist/gaming-movers", requireAuth, async (req, res): Promise<void> => {
+  const { region } = req.query as { region?: string };
+  try {
+    const apiKey = getApiKey();
+    const params = new URLSearchParams({ apiKey });
+    if (region) params.set("region", region);
+    const r = await fetch(`${TIKTOOLS_API}/webcast/ranklist/gaming_movers?${params}`);
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch gaming movers");
+    res.status(500).json({ error: "Failed to fetch gaming movers" });
+  }
+});
+
+// ── Region Movers (Global Agency) ─────────────────────────────────────────────
+router.get("/tiktok/ranklist/region-movers", requireAuth, async (req, res): Promise<void> => {
+  const { region } = req.query as { region?: string };
+  try {
+    const apiKey = getApiKey();
+    const params = new URLSearchParams({ apiKey });
+    if (region) params.set("region", region);
+    const r = await fetch(`${TIKTOOLS_API}/webcast/ranklist/region_movers?${params}`);
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch region movers");
+    res.status(500).json({ error: "Failed to fetch region movers" });
+  }
+});
+
+// ── Regional Ranklist (PRO+ — sign-and-return pattern) ────────────────────────
+router.post("/tiktok/ranklist/regional", requireAuth, async (req, res): Promise<void> => {
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(`${TIKTOOLS_API}/webcast/ranklist/regional?apiKey=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch regional ranklist");
+    res.status(500).json({ error: "Failed to fetch regional ranklist" });
+  }
+});
+
+// ── All 18 League Brackets for a Region ──────────────────────────────────────
+router.get("/tiktok/leaderboard/leagues", requireAuth, async (req, res): Promise<void> => {
+  const { region } = req.query as { region?: string };
+  if (!region) {
+    res.status(400).json({ error: "region query param required" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(
+      `${TIKTOOLS_API}/webcast/leaderboard/leagues?region=${encodeURIComponent(region)}&apiKey=${apiKey}`
+    );
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch league brackets");
+    res.status(500).json({ error: "Failed to fetch league brackets" });
+  }
+});
+
+// ── Single League Bracket ─────────────────────────────────────────────────────
+router.get("/tiktok/leaderboard/league", requireAuth, async (req, res): Promise<void> => {
+  const { region, class: classType } = req.query as { region?: string; class?: string };
+  if (!region || !classType) {
+    res.status(400).json({ error: "region and class query params required" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(
+      `${TIKTOOLS_API}/webcast/leaderboard/league?region=${encodeURIComponent(region)}&class=${encodeURIComponent(classType)}&apiKey=${apiKey}`
+    );
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch league bracket");
+    res.status(500).json({ error: "Failed to fetch league bracket" });
+  }
+});
+
+// ── Live Counts (global + per-region live creator counts) ─────────────────────
+router.get("/tiktok/live-counts", requireAuth, async (req, res): Promise<void> => {
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(`${TIKTOOLS_API}/webcast/live-counts?apiKey=${apiKey}`);
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch live counts");
+    res.status(500).json({ error: "Failed to fetch live counts" });
+  }
+});
+
+// ── Country Leaderboard ───────────────────────────────────────────────────────
+router.get("/tiktok/leaderboards/country/:slug", requireAuth, async (req, res): Promise<void> => {
+  const { slug } = req.params;
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(
+      `${TIKTOOLS_API}/api/leaderboards/country/${encodeURIComponent(slug)}?apiKey=${apiKey}`
+    );
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch country leaderboard");
+    res.status(500).json({ error: "Failed to fetch country leaderboard" });
+  }
+});
+
+// ── Leaderboards: Legacy League List ─────────────────────────────────────────
 router.get("/tiktok/leaderboards/leagues/:region", requireAuth, async (req, res): Promise<void> => {
   const { region } = req.params;
   if (!region) {
@@ -481,7 +688,7 @@ router.get("/tiktok/leaderboards/leagues/:region", requireAuth, async (req, res)
   }
 });
 
-// ── Leaderboards: League Entries ──────────────────────────────────────────────
+// ── Leaderboards: Legacy League Entries ───────────────────────────────────────
 router.get("/tiktok/leaderboards/league/:region/:classType", requireAuth, async (req, res): Promise<void> => {
   const { region, classType } = req.params;
   const classTypeNum = parseInt(classType, 10);
@@ -539,6 +746,198 @@ router.get("/tiktok/leaderboards/league/:region/:classType", requireAuth, async 
   } catch (err) {
     req.log.error({ err }, "Failed to fetch leaderboard league");
     res.status(500).json({ error: "Failed to fetch leaderboard league" });
+  }
+});
+
+// ── Gifters Leaderboard (cross-creator whale leaderboard) ─────────────────────
+router.get("/tiktok/gifters/leaderboard", requireAuth, async (req, res): Promise<void> => {
+  const { region, period, limit } = req.query as { region?: string; period?: string; limit?: string };
+  try {
+    const apiKey = getApiKey();
+    const params = new URLSearchParams({ apiKey });
+    if (region) params.set("region", region);
+    if (period) params.set("period", period);
+    if (limit) params.set("limit", limit);
+    const r = await fetch(`${TIKTOOLS_API}/api/gifters/leaderboard?${params}`);
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch gifters leaderboard");
+    res.status(500).json({ error: "Failed to fetch gifters leaderboard" });
+  }
+});
+
+// ── Top Gifters for a Creator ─────────────────────────────────────────────────
+router.get("/tiktok/gifters/top", requireAuth, async (req, res): Promise<void> => {
+  const { creator, limit } = req.query as { creator?: string; limit?: string };
+  if (!creator) {
+    res.status(400).json({ error: "creator query param required" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const params = new URLSearchParams({ apiKey, creator });
+    if (limit) params.set("limit", limit);
+    const r = await fetch(`${TIKTOOLS_API}/api/gifters/top?${params}`);
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch top gifters");
+    res.status(500).json({ error: "Failed to fetch top gifters" });
+  }
+});
+
+// ── Gifter Profile ────────────────────────────────────────────────────────────
+router.get("/tiktok/gifters/profile", requireAuth, async (req, res): Promise<void> => {
+  const { username } = req.query as { username?: string };
+  if (!username) {
+    res.status(400).json({ error: "username query param required" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(
+      `${TIKTOOLS_API}/api/gifters/profile?apiKey=${apiKey}&username=${encodeURIComponent(username)}`
+    );
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch gifter profile");
+    res.status(500).json({ error: "Failed to fetch gifter profile" });
+  }
+});
+
+// ── Live Analytics: Video List ────────────────────────────────────────────────
+router.get("/tiktok/live-analytics/video-list", requireAuth, async (req, res): Promise<void> => {
+  const { unique_id, count } = req.query as { unique_id?: string; count?: string };
+  const cookieHeader = req.headers["x-tiktok-cookie"] as string | undefined;
+  if (!unique_id) {
+    res.status(400).json({ error: "unique_id query param required" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const params = new URLSearchParams({ apiKey, unique_id });
+    if (count) params.set("count", count);
+    const headers: Record<string, string> = {};
+    if (cookieHeader) headers["x-cookie-header"] = cookieHeader;
+    const r = await fetch(`${TIKTOOLS_API}/webcast/live_analytics/video_list?${params}`, { headers });
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch video list");
+    res.status(500).json({ error: "Failed to fetch video list" });
+  }
+});
+
+// ── Live Analytics: Video Detail ──────────────────────────────────────────────
+router.get("/tiktok/live-analytics/video-detail", requireAuth, async (req, res): Promise<void> => {
+  const { video_id } = req.query as { video_id?: string };
+  const cookieHeader = req.headers["x-tiktok-cookie"] as string | undefined;
+  if (!video_id) {
+    res.status(400).json({ error: "video_id query param required" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const headers: Record<string, string> = {};
+    if (cookieHeader) headers["x-cookie-header"] = cookieHeader;
+    const r = await fetch(
+      `${TIKTOOLS_API}/webcast/live_analytics/video_detail?apiKey=${apiKey}&video_id=${encodeURIComponent(video_id)}`,
+      { headers }
+    );
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch video detail");
+    res.status(500).json({ error: "Failed to fetch video detail" });
+  }
+});
+
+// ── Live Analytics: User Interactions (top gifters in live session) ────────────
+router.get("/tiktok/live-analytics/user-interactions", requireAuth, async (req, res): Promise<void> => {
+  const { room_id, count } = req.query as { room_id?: string; count?: string };
+  const cookieHeader = req.headers["x-tiktok-cookie"] as string | undefined;
+  if (!room_id) {
+    res.status(400).json({ error: "room_id query param required" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const params = new URLSearchParams({ apiKey, room_id });
+    if (count) params.set("count", count);
+    const headers: Record<string, string> = {};
+    if (cookieHeader) headers["x-cookie-header"] = cookieHeader;
+    const r = await fetch(`${TIKTOOLS_API}/webcast/live_analytics/user_interactions?${params}`, { headers });
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch user interactions");
+    res.status(500).json({ error: "Failed to fetch user interactions" });
+  }
+});
+
+// ── Webhooks: List ────────────────────────────────────────────────────────────
+router.get("/tiktok/webhooks", requireAuth, async (req, res): Promise<void> => {
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(`${TIKTOOLS_API}/api/webhooks?apiKey=${apiKey}`);
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch webhooks");
+    res.status(500).json({ error: "Failed to fetch webhooks" });
+  }
+});
+
+// ── Webhooks: Create ──────────────────────────────────────────────────────────
+router.post("/tiktok/webhooks", requireAuth, async (req, res): Promise<void> => {
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(`${TIKTOOLS_API}/api/webhooks?apiKey=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to create webhook");
+    res.status(500).json({ error: "Failed to create webhook" });
+  }
+});
+
+// ── Webhooks: Delete ──────────────────────────────────────────────────────────
+router.delete("/tiktok/webhooks/:id", requireAuth, async (req, res): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(`${TIKTOOLS_API}/api/webhooks/${encodeURIComponent(id)}?apiKey=${apiKey}`, {
+      method: "DELETE",
+    });
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete webhook");
+    res.status(500).json({ error: "Failed to delete webhook" });
+  }
+});
+
+// ── Webhooks: Test delivery ───────────────────────────────────────────────────
+router.post("/tiktok/webhooks/:id/test", requireAuth, async (req, res): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(`${TIKTOOLS_API}/api/webhooks/${encodeURIComponent(id)}/test?apiKey=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body ?? {}),
+    });
+    const json = await r.json();
+    res.json(json);
+  } catch (err) {
+    req.log.error({ err }, "Failed to test webhook");
+    res.status(500).json({ error: "Failed to test webhook" });
   }
 });
 

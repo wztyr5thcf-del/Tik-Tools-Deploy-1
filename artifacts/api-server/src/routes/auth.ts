@@ -111,7 +111,42 @@ router.patch("/auth/profile", requireAuth, async (req, res): Promise<void> => {
   }
   if (name) store.users[idx].name = name.trim();
   if (tiktokUsername !== undefined) {
-    store.users[idx].tiktokUsername = tiktokUsername.trim().replace(/^@/, "") || undefined;
+    const newHandle = tiktokUsername.trim().replace(/^@/, "") || undefined;
+    const currentHandle = store.users[idx].tiktokUsername;
+
+    // Only rate-limit if actually changing the username
+    if (newHandle !== currentHandle) {
+      // Load plan config to check rate limit
+      try {
+        const { getPlanById } = await import("../lib/plans-store");
+        const plan = getPlanById(store.users[idx].plan);
+        if (plan) {
+          const limit = plan.tiktokUsernameChangesPerWeek;
+          if (limit === 0) {
+            res.status(403).json({ error: "Seu plano não permite alterar o username do TikTok." }); return;
+          }
+          if (limit > 0) {
+            const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            const log = store.users[idx].tiktokUsernameChangeLog ?? [];
+            const changesThisWeek = log.filter((ts) => new Date(ts).getTime() > weekAgo).length;
+            if (changesThisWeek >= limit) {
+              res.status(429).json({
+                error: `Limite de ${limit} alteração(ões) por semana atingido. Tente novamente após 7 dias.`,
+                changesThisWeek,
+                limit,
+              }); return;
+            }
+          }
+        }
+      } catch { /* if plans store fails, allow change */ }
+
+      // Log the change
+      const log = store.users[idx].tiktokUsernameChangeLog ?? [];
+      log.push(new Date().toISOString());
+      store.users[idx].tiktokUsernameChangeLog = log;
+    }
+
+    store.users[idx].tiktokUsername = newHandle;
   }
 
   saveUsers(store);

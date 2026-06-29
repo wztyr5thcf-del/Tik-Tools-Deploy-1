@@ -16,9 +16,11 @@ export interface StoredUser {
   createdAt: string;
   plan: "free" | "basic" | "pro";
   isAdmin: boolean;
+  roleId?: string;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   tiktokUsername?: string;
+  tiktokUsernameChangeLog?: string[]; // ISO timestamp of each change
 }
 
 export interface UsersStore {
@@ -44,14 +46,20 @@ export function makeId(): string {
 }
 
 export function publicUser(u: StoredUser) {
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const changesThisWeek = (u.tiktokUsernameChangeLog ?? [])
+    .filter((ts) => new Date(ts).getTime() > weekAgo).length;
+
   return {
     id: u.id,
     email: u.email,
     name: u.name,
     plan: u.plan,
     isAdmin: u.isAdmin,
+    roleId: u.roleId ?? null,
     createdAt: u.createdAt,
     hasStripe: !!u.stripeCustomerId,
     tiktokUsername: u.tiktokUsername ?? null,
+    tiktokUsernameChangesThisWeek: changesThisWeek,
   };
 }

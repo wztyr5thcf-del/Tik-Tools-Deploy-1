@@ -33,7 +33,7 @@ export const GetTopChannelsResponse = zod.array(GetTopChannelsResponseItem)
 
 
 /**
- * Calls tik.tools /webcast/live_status with unique_id (snake_case) param.
+ * Calls tik.tools /webcast/live_status with unique_id param.
  * @summary Check if user is live
  */
 export const GetLiveStatusQueryParams = zod.object({
@@ -46,6 +46,37 @@ export const GetLiveStatusResponse = zod.object({
   "roomId": zod.string().nullish(),
   "cached": zod.boolean()
 })
+
+
+/**
+ * Uses /webcast/check_alive. Pass unique_id for a single user or room_ids (comma-separated) for multiple rooms.
+ * @summary Check if one or more users/rooms are live
+ */
+export const CheckAliveQueryParams = zod.object({
+  "unique_id": zod.coerce.string().optional(),
+  "room_ids": zod.coerce.string().optional().describe('Comma-separated room IDs')
+})
+
+export const CheckAliveResponse = zod.object({
+  "statusCode": zod.number(),
+  "data": zod.array(zod.object({
+  "roomId": zod.string().nullish(),
+  "alive": zod.boolean(),
+  "title": zod.string().nullish(),
+  "userCount": zod.number().nullish()
+}))
+})
+
+
+/**
+ * Returns a scoped JWT and stream video URLs (HLS/FLV) in a single request. Ideal for frontend apps that open a WebSocket and play video simultaneously.
+ * @summary Bundled JWT + stream URLs in one call
+ */
+export const LiveConnectQueryParams = zod.object({
+  "uniqueId": zod.coerce.string()
+})
+
+export const LiveConnectResponse = zod.record(zod.string(), zod.unknown()).describe('Bundled JWT token and stream URLs')
 
 
 /**
@@ -84,6 +115,19 @@ export const GetRoomInfoResponse = zod.object({
   "profilePictureUrl": zod.string().nullish()
 }).optional()
 })
+
+
+/**
+ * Fetches live stream events via HTTP. Use when WebSocket is not possible (serverless, HTTP-only). Returns the same events as WebSocket with a cursor for pagination.
+ * @summary HTTP long-polling alternative to WebSocket
+ */
+export const WebcastFetchBody = zod.object({
+  "unique_id": zod.string().optional(),
+  "room_id": zod.string().optional(),
+  "cursor": zod.string().optional()
+})
+
+export const WebcastFetchResponse = zod.record(zod.string(), zod.unknown())
 
 
 /**
@@ -155,32 +199,6 @@ export const GetUserProfileResponse = zod.object({
 
 
 /**
- * Returns current app configuration (API key is masked)
- * @summary Get configuration
- */
-export const GetConfigResponse = zod.object({
-  "apiKeySet": zod.boolean(),
-  "apiKeyMasked": zod.string().nullish(),
-  "tier": zod.string().nullish()
-})
-
-
-/**
- * Save the tik.tools API key
- * @summary Save configuration
- */
-export const SaveConfigBody = zod.object({
-  "apiKey": zod.string()
-})
-
-export const SaveConfigResponse = zod.object({
-  "apiKeySet": zod.boolean(),
-  "apiKeyMasked": zod.string().nullish(),
-  "tier": zod.string().nullish()
-})
-
-
-/**
  * Adds X-Bogus and X-Gnarly anti-automation signatures required for direct TikTok API access.
  * @summary Sign a TikTok webcast URL
  */
@@ -195,6 +213,101 @@ export const SignUrlResponse = zod.object({
   "userAgent": zod.string().nullish(),
   "cookies": zod.string().nullish()
 })
+
+
+/**
+ * Top 99 gaming creators overall + 3 game-specific boards. Global Agency unmasked; others get a 3-entry preview.
+ * @summary TikTok LIVE Gaming leaderboard per region
+ */
+export const GetGamingRanklistQueryParams = zod.object({
+  "region": zod.coerce.string().optional().describe('Region code (e.g. US%2B, BR, JP). Defaults to US+.')
+})
+
+export const GetGamingRanklistResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Every creator who held a Top 99 spot during the current rank-day. Global Agency tier unmasked.
+ * @summary Gaming creators who moved in/out of Top 99
+ */
+export const GetGamingMoversQueryParams = zod.object({
+  "region": zod.coerce.string().optional()
+})
+
+export const GetGamingMoversResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Every creator who held a regional board spot during the current rank-day. Global Agency tier unmasked.
+ * @summary Creators who moved in/out of the regional leaderboard
+ */
+export const GetRegionMoversQueryParams = zod.object({
+  "region": zod.coerce.string().optional()
+})
+
+export const GetRegionMoversResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Sign-and-return pattern. Returns a signed_url you fetch with your session cookie from your IP. Pro+ tier required.
+ * @summary Regional LIVE leaderboard (daily, hourly, popular, league) — PRO+
+ */
+export const GetRegionalRanklistBody = zod.object({
+  "unique_id": zod.string().optional(),
+  "room_id": zod.string().optional(),
+  "anchor_id": zod.string().optional(),
+  "rank_type": zod.string().optional().describe('1=Hourly, 8=Daily (default), 15=Popular LIVE, 16=League'),
+  "type": zod.string().optional().describe('list | entrance'),
+  "gap_interval": zod.string().optional()
+})
+
+export const GetRegionalRanklistResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Returns every active class (Diamond 2000 down to Bronze 100) with up to 99 entries each.
+ * @summary All 18 league brackets for a region
+ */
+export const GetLeagueBracketsQueryParams = zod.object({
+  "region": zod.coerce.string().describe('Region code or country code (e.g. KR, IT, GB)')
+})
+
+export const GetLeagueBracketsResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Returns one bracket (class_type) within a region.
+ * @summary Single league bracket entries
+ */
+export const GetLeagueBracketQueryParams = zod.object({
+  "region": zod.coerce.string(),
+  "class": zod.coerce.string().describe('Class type: 100, 200, 300, ..., 2000')
+})
+
+export const GetLeagueBracketResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Aggregate counts of unique live creators per region. No per-creator identifiers. Refreshed every 30s.
+ * @summary Global + per-region live creator counts
+ */
+export const GetLiveCountsResponse = zod.object({
+  "status_code": zod.number().optional(),
+  "global_live": zod.number().optional(),
+  "global_live_verified": zod.number().optional(),
+  "regions": zod.record(zod.string(), zod.number()).optional()
+})
+
+
+/**
+ * Returns ranked entries with diamonds, live status, room IDs and 7-90 day rank history. Pro+ unmasks names.
+ * @summary Real-time creator leaderboard for a country or region
+ */
+export const GetCountryLeaderboardParams = zod.object({
+  "slug": zod.coerce.string().describe('Country slug (e.g. greece) or region slug (e.g. balkans)')
+})
+
+export const GetCountryLeaderboardResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
 
 
 /**
@@ -220,7 +333,7 @@ export const GetLeaderboardLeaguesResponse = zod.object({
  * @summary Get ranked creators in a league class (Ultra+ full, others teaser)
  */
 export const GetLeaderboardLeagueParams = zod.object({
-  "region": zod.coerce.string().describe('Region code'),
+  "region": zod.coerce.string(),
   "classType": zod.coerce.number().describe('Class type integer (2000=A1, 1900=A2, 1000=C1, etc.)')
 })
 
@@ -238,6 +351,145 @@ export const GetLeaderboardLeagueResponse = zod.object({
   "isLive": zod.boolean(),
   "roomId": zod.string().nullish()
 }))
+})
+
+
+/**
+ * Top spenders across TikTok LIVE in a region and time window. Global Agency exclusive for unmasked rows.
+ * @summary Cross-creator gifter whale leaderboard
+ */
+export const GetGiftersLeaderboardQueryParams = zod.object({
+  "region": zod.coerce.string().optional().describe('Region filter (e.g. BK, US+). Default GLOBAL.'),
+  "period": zod.coerce.string().optional().describe('daily | weekly | monthly | lifetime'),
+  "limit": zod.coerce.number().optional().describe('Rows to return (max 200, default 100)')
+})
+
+export const GetGiftersLeaderboardResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Per-period breakdowns + each gifter's share of the creator's total income. Global Agency exclusive for unmasked rows.
+ * @summary Top gifters for a single creator
+ */
+export const GetTopGiftersQueryParams = zod.object({
+  "creator": zod.coerce.string().describe('Creator username (without @)'),
+  "limit": zod.coerce.number().optional().describe('Rows to return (max 50, default 10)')
+})
+
+export const GetTopGiftersResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Lifetime diamonds, creators supported, loyalty score, latest big gifts and historical velocity. Global Agency exclusive for unmasked identifiers.
+ * @summary Deep gifter profile
+ */
+export const GetGifterProfileQueryParams = zod.object({
+  "username": zod.coerce.string().describe('Gifter username (without @)')
+})
+
+export const GetGifterProfileResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Past streams with metadata (title, duration, viewer count, date). Requires x-tiktok-cookie header with TikTok session cookies.
+ * @summary List historical live stream recordings
+ */
+export const GetLiveAnalyticsVideoListQueryParams = zod.object({
+  "unique_id": zod.coerce.string(),
+  "count": zod.coerce.number().optional()
+})
+
+export const GetLiveAnalyticsVideoListResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Total views, peak viewers, gifts, new followers, engagement rates. Requires x-tiktok-cookie header.
+ * @summary Granular analytics for a specific past live stream
+ */
+export const GetLiveAnalyticsVideoDetailQueryParams = zod.object({
+  "video_id": zod.coerce.string()
+})
+
+export const GetLiveAnalyticsVideoDetailResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Sign-and-return pattern. Returns signed_url to fetch with your session cookies. Requires x-tiktok-cookie header.
+ * @summary Real-time audience roster ranked by gift score
+ */
+export const GetLiveAnalyticsUserInteractionsQueryParams = zod.object({
+  "room_id": zod.coerce.string(),
+  "count": zod.coerce.number().optional()
+})
+
+export const GetLiveAnalyticsUserInteractionsResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * @summary List registered webhooks
+ */
+export const ListWebhooksResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Register a URL to receive live.start and live.end events for watched creators.
+ * @summary Create a webhook
+ */
+export const CreateWebhookBody = zod.object({
+  "url": zod.string().describe('HTTPS URL to receive webhook deliveries'),
+  "events": zod.array(zod.string()).describe('Events to subscribe to (e.g. live.start, live.end)'),
+  "creators": zod.array(zod.string()).optional().describe('TikTok usernames to watch (without @)'),
+  "secret": zod.string().optional().describe('Optional secret for HMAC signature verification')
+})
+
+export const CreateWebhookResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * @summary Delete a webhook
+ */
+export const DeleteWebhookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteWebhookResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * @summary Send a test delivery to a webhook
+ */
+export const TestWebhookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const TestWebhookBody = zod.record(zod.string(), zod.unknown()).describe('Optional payload for webhook test delivery')
+
+export const TestWebhookResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * Returns current app configuration (API key is masked)
+ * @summary Get configuration
+ */
+export const GetConfigResponse = zod.object({
+  "apiKeySet": zod.boolean(),
+  "apiKeyMasked": zod.string().nullish(),
+  "tier": zod.string().nullish()
+})
+
+
+/**
+ * Save the tik.tools API key
+ * @summary Save configuration
+ */
+export const SaveConfigBody = zod.object({
+  "apiKey": zod.string()
+})
+
+export const SaveConfigResponse = zod.object({
+  "apiKeySet": zod.boolean(),
+  "apiKeyMasked": zod.string().nullish(),
+  "tier": zod.string().nullish()
 })
 
 

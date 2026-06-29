@@ -10,6 +10,11 @@ export interface HealthStatus {
 }
 
 /**
+ * Raw passthrough response from tik.tools API
+ */
+export interface PassthroughResponse { [key: string]: unknown }
+
+/**
  * A currently live TikTok channel.
  */
 export interface LiveChannel {
@@ -41,6 +46,26 @@ export interface LiveStatus {
   roomId?: string | null;
   cached: boolean;
 }
+
+export interface CheckAliveItem {
+  /** @nullable */
+  roomId?: string | null;
+  alive: boolean;
+  /** @nullable */
+  title?: string | null;
+  /** @nullable */
+  userCount?: number | null;
+}
+
+export interface CheckAliveData {
+  statusCode: number;
+  data: CheckAliveItem[];
+}
+
+/**
+ * Bundled JWT token and stream URLs
+ */
+export interface LiveConnectData { [key: string]: unknown }
 
 export interface JwtRequest {
   uniqueId: string;
@@ -81,6 +106,14 @@ export interface RoomInfo {
   likeCount?: number | null;
   owner?: RoomOwner;
 }
+
+export interface WebcastFetchRequest {
+  unique_id?: string;
+  room_id?: string;
+  cursor?: string;
+}
+
+export interface WebcastFetchData { [key: string]: unknown }
 
 export interface BulkCheckRequest {
   uniqueIds: string[];
@@ -175,6 +208,37 @@ export interface SignedUrlData {
   cookies?: string | null;
 }
 
+export interface RegionalRanklistRequest {
+  unique_id?: string;
+  room_id?: string;
+  anchor_id?: string;
+  /** 1=Hourly, 8=Daily (default), 15=Popular LIVE, 16=League */
+  rank_type?: string;
+  /** list | entrance */
+  type?: string;
+  gap_interval?: string;
+}
+
+export type LiveCountsResponseRegions = {[key: string]: number};
+
+export interface LiveCountsResponse {
+  status_code?: number;
+  global_live?: number;
+  global_live_verified?: number;
+  regions?: LiveCountsResponseRegions;
+}
+
+export interface CreateWebhookRequest {
+  /** HTTPS URL to receive webhook deliveries */
+  url: string;
+  /** Events to subscribe to (e.g. live.start, live.end) */
+  events: string[];
+  /** TikTok usernames to watch (without @) */
+  creators?: string[];
+  /** Optional secret for HMAC signature verification */
+  secret?: string;
+}
+
 export interface LeagueInfo {
   classType: number;
   classLabel: string;
@@ -208,10 +272,27 @@ export interface LeaderboardLeague {
   entries: LeaderboardEntry[];
 }
 
+/**
+ * Optional payload for webhook test delivery
+ */
+export interface WebhookTestPayload { [key: string]: unknown }
+
 export type GetLiveStatusParams = {
 /**
  * TikTok username (without @)
  */
+uniqueId: string;
+};
+
+export type CheckAliveParams = {
+unique_id?: string;
+/**
+ * Comma-separated room IDs
+ */
+room_ids?: string;
+};
+
+export type LiveConnectParams = {
 uniqueId: string;
 };
 
@@ -220,5 +301,82 @@ export type GetUserProfileParams = {
  * TikTok username (without @)
  */
 uniqueId: string;
+};
+
+export type GetGamingRanklistParams = {
+/**
+ * Region code (e.g. US%2B, BR, JP). Defaults to US+.
+ */
+region?: string;
+};
+
+export type GetGamingMoversParams = {
+region?: string;
+};
+
+export type GetRegionMoversParams = {
+region?: string;
+};
+
+export type GetLeagueBracketsParams = {
+/**
+ * Region code or country code (e.g. KR, IT, GB)
+ */
+region: string;
+};
+
+export type GetLeagueBracketParams = {
+region: string;
+/**
+ * Class type: 100, 200, 300, ..., 2000
+ */
+class: string;
+};
+
+export type GetGiftersLeaderboardParams = {
+/**
+ * Region filter (e.g. BK, US+). Default GLOBAL.
+ */
+region?: string;
+/**
+ * daily | weekly | monthly | lifetime
+ */
+period?: string;
+/**
+ * Rows to return (max 200, default 100)
+ */
+limit?: number;
+};
+
+export type GetTopGiftersParams = {
+/**
+ * Creator username (without @)
+ */
+creator: string;
+/**
+ * Rows to return (max 50, default 10)
+ */
+limit?: number;
+};
+
+export type GetGifterProfileParams = {
+/**
+ * Gifter username (without @)
+ */
+username: string;
+};
+
+export type GetLiveAnalyticsVideoListParams = {
+unique_id: string;
+count?: number;
+};
+
+export type GetLiveAnalyticsVideoDetailParams = {
+video_id: string;
+};
+
+export type GetLiveAnalyticsUserInteractionsParams = {
+room_id: string;
+count?: number;
 };
 

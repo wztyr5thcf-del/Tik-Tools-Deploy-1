@@ -23,8 +23,22 @@ import type {
   AppConfig,
   BulkCheckRequest,
   BulkCheckResult,
+  CheckAliveData,
+  CheckAliveParams,
   ConfigInput,
+  CreateWebhookRequest,
+  GetGamingMoversParams,
+  GetGamingRanklistParams,
+  GetGifterProfileParams,
+  GetGiftersLeaderboardParams,
+  GetLeagueBracketParams,
+  GetLeagueBracketsParams,
+  GetLiveAnalyticsUserInteractionsParams,
+  GetLiveAnalyticsVideoDetailParams,
+  GetLiveAnalyticsVideoListParams,
   GetLiveStatusParams,
+  GetRegionMoversParams,
+  GetTopGiftersParams,
   GetUserProfileParams,
   GiftItem,
   HealthStatus,
@@ -33,13 +47,21 @@ import type {
   LeaderboardLeague,
   LeaderboardLeagues,
   LiveChannel,
+  LiveConnectData,
+  LiveConnectParams,
+  LiveCountsResponse,
   LiveStatus,
+  PassthroughResponse,
   RateLimits,
+  RegionalRanklistRequest,
   RoomInfo,
   RoomInfoRequest,
   SignUrlRequest,
   SignedUrlData,
-  UserProfile
+  UserProfile,
+  WebcastFetchData,
+  WebcastFetchRequest,
+  WebhookTestPayload
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -240,7 +262,7 @@ export const getGetLiveStatusUrl = (params: GetLiveStatusParams,) => {
 }
 
 /**
- * Calls tik.tools /webcast/live_status with unique_id (snake_case) param.
+ * Calls tik.tools /webcast/live_status with unique_id param.
  * @summary Check if user is live
  */
 export const getLiveStatus = async (params: GetLiveStatusParams, options?: RequestInit): Promise<LiveStatus> => {
@@ -297,6 +319,176 @@ export function useGetLiveStatus<TData = Awaited<ReturnType<typeof getLiveStatus
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetLiveStatusQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCheckAliveUrl = (params?: CheckAliveParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/check-alive?${stringifiedParams}` : `/api/tiktok/check-alive`
+}
+
+/**
+ * Uses /webcast/check_alive. Pass unique_id for a single user or room_ids (comma-separated) for multiple rooms.
+ * @summary Check if one or more users/rooms are live
+ */
+export const checkAlive = async (params?: CheckAliveParams, options?: RequestInit): Promise<CheckAliveData> => {
+
+  return customFetch<CheckAliveData>(getCheckAliveUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getCheckAliveQueryKey = (params?: CheckAliveParams,) => {
+    return [
+    `/api/tiktok/check-alive`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getCheckAliveQueryOptions = <TData = Awaited<ReturnType<typeof checkAlive>>, TError = ErrorType<unknown>>(params?: CheckAliveParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof checkAlive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCheckAliveQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof checkAlive>>> = ({ signal }) => checkAlive(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof checkAlive>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type CheckAliveQueryResult = NonNullable<Awaited<ReturnType<typeof checkAlive>>>
+export type CheckAliveQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Check if one or more users/rooms are live
+ */
+
+export function useCheckAlive<TData = Awaited<ReturnType<typeof checkAlive>>, TError = ErrorType<unknown>>(
+ params?: CheckAliveParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof checkAlive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getCheckAliveQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getLiveConnectUrl = (params: LiveConnectParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/live-connect?${stringifiedParams}` : `/api/tiktok/live-connect`
+}
+
+/**
+ * Returns a scoped JWT and stream video URLs (HLS/FLV) in a single request. Ideal for frontend apps that open a WebSocket and play video simultaneously.
+ * @summary Bundled JWT + stream URLs in one call
+ */
+export const liveConnect = async (params: LiveConnectParams, options?: RequestInit): Promise<LiveConnectData> => {
+
+  return customFetch<LiveConnectData>(getLiveConnectUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getLiveConnectQueryKey = (params?: LiveConnectParams,) => {
+    return [
+    `/api/tiktok/live-connect`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getLiveConnectQueryOptions = <TData = Awaited<ReturnType<typeof liveConnect>>, TError = ErrorType<unknown>>(params: LiveConnectParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof liveConnect>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getLiveConnectQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof liveConnect>>> = ({ signal }) => liveConnect(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof liveConnect>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type LiveConnectQueryResult = NonNullable<Awaited<ReturnType<typeof liveConnect>>>
+export type LiveConnectQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Bundled JWT + stream URLs in one call
+ */
+
+export function useLiveConnect<TData = Awaited<ReturnType<typeof liveConnect>>, TError = ErrorType<unknown>>(
+ params: LiveConnectParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof liveConnect>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getLiveConnectQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -449,6 +641,77 @@ export const useGetRoomInfo = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getGetRoomInfoMutationOptions(options));
+    }
+
+export const getWebcastFetchUrl = () => {
+
+
+
+
+  return `/api/tiktok/webcast-fetch`
+}
+
+/**
+ * Fetches live stream events via HTTP. Use when WebSocket is not possible (serverless, HTTP-only). Returns the same events as WebSocket with a cursor for pagination.
+ * @summary HTTP long-polling alternative to WebSocket
+ */
+export const webcastFetch = async (webcastFetchRequest: WebcastFetchRequest, options?: RequestInit): Promise<WebcastFetchData> => {
+
+  return customFetch<WebcastFetchData>(getWebcastFetchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(webcastFetchRequest)
+  }
+);}
+
+
+
+
+export const getWebcastFetchMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof webcastFetch>>, TError,{data: BodyType<WebcastFetchRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof webcastFetch>>, TError,{data: BodyType<WebcastFetchRequest>}, TContext> => {
+
+const mutationKey = ['webcastFetch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof webcastFetch>>, {data: BodyType<WebcastFetchRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  webcastFetch(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type WebcastFetchMutationResult = NonNullable<Awaited<ReturnType<typeof webcastFetch>>>
+    export type WebcastFetchMutationBody = BodyType<WebcastFetchRequest>
+    export type WebcastFetchMutationError = ErrorType<unknown>
+
+    /**
+ * @summary HTTP long-polling alternative to WebSocket
+ */
+export const useWebcastFetch = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof webcastFetch>>, TError,{data: BodyType<WebcastFetchRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof webcastFetch>>,
+        TError,
+        {data: BodyType<WebcastFetchRequest>},
+        TContext
+      > => {
+      return useMutation(getWebcastFetchMutationOptions(options));
     }
 
 export const getBulkLiveCheckUrl = () => {
@@ -762,155 +1025,6 @@ export function useGetUserProfile<TData = Awaited<ReturnType<typeof getUserProfi
 
 
 
-export const getGetConfigUrl = () => {
-
-
-
-
-  return `/api/config`
-}
-
-/**
- * Returns current app configuration (API key is masked)
- * @summary Get configuration
- */
-export const getConfig = async ( options?: RequestInit): Promise<AppConfig> => {
-
-  return customFetch<AppConfig>(getGetConfigUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetConfigQueryKey = () => {
-    return [
-    `/api/config`
-    ] as const;
-    }
-
-
-export const getGetConfigQueryOptions = <TData = Awaited<ReturnType<typeof getConfig>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetConfigQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConfig>>> = ({ signal }) => getConfig({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getConfig>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getConfig>>>
-export type GetConfigQueryError = ErrorType<unknown>
-
-
-/**
- * @summary Get configuration
- */
-
-export function useGetConfig<TData = Awaited<ReturnType<typeof getConfig>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetConfigQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getSaveConfigUrl = () => {
-
-
-
-
-  return `/api/config`
-}
-
-/**
- * Save the tik.tools API key
- * @summary Save configuration
- */
-export const saveConfig = async (configInput: ConfigInput, options?: RequestInit): Promise<AppConfig> => {
-
-  return customFetch<AppConfig>(getSaveConfigUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(configInput)
-  }
-);}
-
-
-
-
-export const getSaveConfigMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveConfig>>, TError,{data: BodyType<ConfigInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof saveConfig>>, TError,{data: BodyType<ConfigInput>}, TContext> => {
-
-const mutationKey = ['saveConfig'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveConfig>>, {data: BodyType<ConfigInput>}> = (props) => {
-          const {data} = props ?? {};
-
-          return  saveConfig(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type SaveConfigMutationResult = NonNullable<Awaited<ReturnType<typeof saveConfig>>>
-    export type SaveConfigMutationBody = BodyType<ConfigInput>
-    export type SaveConfigMutationError = ErrorType<unknown>
-
-    /**
- * @summary Save configuration
- */
-export const useSaveConfig = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveConfig>>, TError,{data: BodyType<ConfigInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof saveConfig>>,
-        TError,
-        {data: BodyType<ConfigInput>},
-        TContext
-      > => {
-      return useMutation(getSaveConfigMutationOptions(options));
-    }
-
 export const getSignUrlUrl = () => {
 
 
@@ -981,6 +1095,658 @@ export const useSignUrl = <TError = ErrorType<void>,
       > => {
       return useMutation(getSignUrlMutationOptions(options));
     }
+
+export const getGetGamingRanklistUrl = (params?: GetGamingRanklistParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/ranklist/gaming?${stringifiedParams}` : `/api/tiktok/ranklist/gaming`
+}
+
+/**
+ * Top 99 gaming creators overall + 3 game-specific boards. Global Agency unmasked; others get a 3-entry preview.
+ * @summary TikTok LIVE Gaming leaderboard per region
+ */
+export const getGamingRanklist = async (params?: GetGamingRanklistParams, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetGamingRanklistUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGamingRanklistQueryKey = (params?: GetGamingRanklistParams,) => {
+    return [
+    `/api/tiktok/ranklist/gaming`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGamingRanklistQueryOptions = <TData = Awaited<ReturnType<typeof getGamingRanklist>>, TError = ErrorType<unknown>>(params?: GetGamingRanklistParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGamingRanklist>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGamingRanklistQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGamingRanklist>>> = ({ signal }) => getGamingRanklist(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGamingRanklist>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGamingRanklistQueryResult = NonNullable<Awaited<ReturnType<typeof getGamingRanklist>>>
+export type GetGamingRanklistQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary TikTok LIVE Gaming leaderboard per region
+ */
+
+export function useGetGamingRanklist<TData = Awaited<ReturnType<typeof getGamingRanklist>>, TError = ErrorType<unknown>>(
+ params?: GetGamingRanklistParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGamingRanklist>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGamingRanklistQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetGamingMoversUrl = (params?: GetGamingMoversParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/ranklist/gaming-movers?${stringifiedParams}` : `/api/tiktok/ranklist/gaming-movers`
+}
+
+/**
+ * Every creator who held a Top 99 spot during the current rank-day. Global Agency tier unmasked.
+ * @summary Gaming creators who moved in/out of Top 99
+ */
+export const getGamingMovers = async (params?: GetGamingMoversParams, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetGamingMoversUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGamingMoversQueryKey = (params?: GetGamingMoversParams,) => {
+    return [
+    `/api/tiktok/ranklist/gaming-movers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGamingMoversQueryOptions = <TData = Awaited<ReturnType<typeof getGamingMovers>>, TError = ErrorType<unknown>>(params?: GetGamingMoversParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGamingMovers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGamingMoversQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGamingMovers>>> = ({ signal }) => getGamingMovers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGamingMovers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGamingMoversQueryResult = NonNullable<Awaited<ReturnType<typeof getGamingMovers>>>
+export type GetGamingMoversQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Gaming creators who moved in/out of Top 99
+ */
+
+export function useGetGamingMovers<TData = Awaited<ReturnType<typeof getGamingMovers>>, TError = ErrorType<unknown>>(
+ params?: GetGamingMoversParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGamingMovers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGamingMoversQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetRegionMoversUrl = (params?: GetRegionMoversParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/ranklist/region-movers?${stringifiedParams}` : `/api/tiktok/ranklist/region-movers`
+}
+
+/**
+ * Every creator who held a regional board spot during the current rank-day. Global Agency tier unmasked.
+ * @summary Creators who moved in/out of the regional leaderboard
+ */
+export const getRegionMovers = async (params?: GetRegionMoversParams, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetRegionMoversUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRegionMoversQueryKey = (params?: GetRegionMoversParams,) => {
+    return [
+    `/api/tiktok/ranklist/region-movers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetRegionMoversQueryOptions = <TData = Awaited<ReturnType<typeof getRegionMovers>>, TError = ErrorType<unknown>>(params?: GetRegionMoversParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRegionMovers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRegionMoversQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRegionMovers>>> = ({ signal }) => getRegionMovers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRegionMovers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRegionMoversQueryResult = NonNullable<Awaited<ReturnType<typeof getRegionMovers>>>
+export type GetRegionMoversQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Creators who moved in/out of the regional leaderboard
+ */
+
+export function useGetRegionMovers<TData = Awaited<ReturnType<typeof getRegionMovers>>, TError = ErrorType<unknown>>(
+ params?: GetRegionMoversParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRegionMovers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRegionMoversQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetRegionalRanklistUrl = () => {
+
+
+
+
+  return `/api/tiktok/ranklist/regional`
+}
+
+/**
+ * Sign-and-return pattern. Returns a signed_url you fetch with your session cookie from your IP. Pro+ tier required.
+ * @summary Regional LIVE leaderboard (daily, hourly, popular, league) — PRO+
+ */
+export const getRegionalRanklist = async (regionalRanklistRequest: RegionalRanklistRequest, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetRegionalRanklistUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(regionalRanklistRequest)
+  }
+);}
+
+
+
+
+export const getGetRegionalRanklistMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getRegionalRanklist>>, TError,{data: BodyType<RegionalRanklistRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof getRegionalRanklist>>, TError,{data: BodyType<RegionalRanklistRequest>}, TContext> => {
+
+const mutationKey = ['getRegionalRanklist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getRegionalRanklist>>, {data: BodyType<RegionalRanklistRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  getRegionalRanklist(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GetRegionalRanklistMutationResult = NonNullable<Awaited<ReturnType<typeof getRegionalRanklist>>>
+    export type GetRegionalRanklistMutationBody = BodyType<RegionalRanklistRequest>
+    export type GetRegionalRanklistMutationError = ErrorType<void>
+
+    /**
+ * @summary Regional LIVE leaderboard (daily, hourly, popular, league) — PRO+
+ */
+export const useGetRegionalRanklist = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getRegionalRanklist>>, TError,{data: BodyType<RegionalRanklistRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof getRegionalRanklist>>,
+        TError,
+        {data: BodyType<RegionalRanklistRequest>},
+        TContext
+      > => {
+      return useMutation(getGetRegionalRanklistMutationOptions(options));
+    }
+
+export const getGetLeagueBracketsUrl = (params: GetLeagueBracketsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/leaderboard/leagues?${stringifiedParams}` : `/api/tiktok/leaderboard/leagues`
+}
+
+/**
+ * Returns every active class (Diamond 2000 down to Bronze 100) with up to 99 entries each.
+ * @summary All 18 league brackets for a region
+ */
+export const getLeagueBrackets = async (params: GetLeagueBracketsParams, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetLeagueBracketsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLeagueBracketsQueryKey = (params?: GetLeagueBracketsParams,) => {
+    return [
+    `/api/tiktok/leaderboard/leagues`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLeagueBracketsQueryOptions = <TData = Awaited<ReturnType<typeof getLeagueBrackets>>, TError = ErrorType<unknown>>(params: GetLeagueBracketsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeagueBrackets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLeagueBracketsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeagueBrackets>>> = ({ signal }) => getLeagueBrackets(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLeagueBrackets>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLeagueBracketsQueryResult = NonNullable<Awaited<ReturnType<typeof getLeagueBrackets>>>
+export type GetLeagueBracketsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary All 18 league brackets for a region
+ */
+
+export function useGetLeagueBrackets<TData = Awaited<ReturnType<typeof getLeagueBrackets>>, TError = ErrorType<unknown>>(
+ params: GetLeagueBracketsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeagueBrackets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLeagueBracketsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetLeagueBracketUrl = (params: GetLeagueBracketParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/leaderboard/league?${stringifiedParams}` : `/api/tiktok/leaderboard/league`
+}
+
+/**
+ * Returns one bracket (class_type) within a region.
+ * @summary Single league bracket entries
+ */
+export const getLeagueBracket = async (params: GetLeagueBracketParams, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetLeagueBracketUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLeagueBracketQueryKey = (params?: GetLeagueBracketParams,) => {
+    return [
+    `/api/tiktok/leaderboard/league`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLeagueBracketQueryOptions = <TData = Awaited<ReturnType<typeof getLeagueBracket>>, TError = ErrorType<unknown>>(params: GetLeagueBracketParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeagueBracket>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLeagueBracketQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeagueBracket>>> = ({ signal }) => getLeagueBracket(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLeagueBracket>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLeagueBracketQueryResult = NonNullable<Awaited<ReturnType<typeof getLeagueBracket>>>
+export type GetLeagueBracketQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Single league bracket entries
+ */
+
+export function useGetLeagueBracket<TData = Awaited<ReturnType<typeof getLeagueBracket>>, TError = ErrorType<unknown>>(
+ params: GetLeagueBracketParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeagueBracket>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLeagueBracketQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetLiveCountsUrl = () => {
+
+
+
+
+  return `/api/tiktok/live-counts`
+}
+
+/**
+ * Aggregate counts of unique live creators per region. No per-creator identifiers. Refreshed every 30s.
+ * @summary Global + per-region live creator counts
+ */
+export const getLiveCounts = async ( options?: RequestInit): Promise<LiveCountsResponse> => {
+
+  return customFetch<LiveCountsResponse>(getGetLiveCountsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLiveCountsQueryKey = () => {
+    return [
+    `/api/tiktok/live-counts`
+    ] as const;
+    }
+
+
+export const getGetLiveCountsQueryOptions = <TData = Awaited<ReturnType<typeof getLiveCounts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveCounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLiveCountsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLiveCounts>>> = ({ signal }) => getLiveCounts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLiveCounts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLiveCountsQueryResult = NonNullable<Awaited<ReturnType<typeof getLiveCounts>>>
+export type GetLiveCountsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Global + per-region live creator counts
+ */
+
+export function useGetLiveCounts<TData = Awaited<ReturnType<typeof getLiveCounts>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveCounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLiveCountsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCountryLeaderboardUrl = (slug: string,) => {
+
+
+
+
+  return `/api/tiktok/leaderboards/country/${slug}`
+}
+
+/**
+ * Returns ranked entries with diamonds, live status, room IDs and 7-90 day rank history. Pro+ unmasks names.
+ * @summary Real-time creator leaderboard for a country or region
+ */
+export const getCountryLeaderboard = async (slug: string, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetCountryLeaderboardUrl(slug),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCountryLeaderboardQueryKey = (slug: string,) => {
+    return [
+    `/api/tiktok/leaderboards/country/${slug}`
+    ] as const;
+    }
+
+
+export const getGetCountryLeaderboardQueryOptions = <TData = Awaited<ReturnType<typeof getCountryLeaderboard>>, TError = ErrorType<unknown>>(slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCountryLeaderboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCountryLeaderboardQueryKey(slug);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCountryLeaderboard>>> = ({ signal }) => getCountryLeaderboard(slug, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: slug !== null && slug !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCountryLeaderboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCountryLeaderboardQueryResult = NonNullable<Awaited<ReturnType<typeof getCountryLeaderboard>>>
+export type GetCountryLeaderboardQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Real-time creator leaderboard for a country or region
+ */
+
+export function useGetCountryLeaderboard<TData = Awaited<ReturnType<typeof getCountryLeaderboard>>, TError = ErrorType<unknown>>(
+ slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCountryLeaderboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCountryLeaderboardQueryOptions(slug,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetLeaderboardLeaguesUrl = (region: string,) => {
 
@@ -1142,4 +1908,952 @@ export function useGetLeaderboardLeague<TData = Awaited<ReturnType<typeof getLea
 
 
 
+
+export const getGetGiftersLeaderboardUrl = (params?: GetGiftersLeaderboardParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/gifters/leaderboard?${stringifiedParams}` : `/api/tiktok/gifters/leaderboard`
+}
+
+/**
+ * Top spenders across TikTok LIVE in a region and time window. Global Agency exclusive for unmasked rows.
+ * @summary Cross-creator gifter whale leaderboard
+ */
+export const getGiftersLeaderboard = async (params?: GetGiftersLeaderboardParams, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetGiftersLeaderboardUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGiftersLeaderboardQueryKey = (params?: GetGiftersLeaderboardParams,) => {
+    return [
+    `/api/tiktok/gifters/leaderboard`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGiftersLeaderboardQueryOptions = <TData = Awaited<ReturnType<typeof getGiftersLeaderboard>>, TError = ErrorType<unknown>>(params?: GetGiftersLeaderboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGiftersLeaderboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGiftersLeaderboardQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGiftersLeaderboard>>> = ({ signal }) => getGiftersLeaderboard(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGiftersLeaderboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGiftersLeaderboardQueryResult = NonNullable<Awaited<ReturnType<typeof getGiftersLeaderboard>>>
+export type GetGiftersLeaderboardQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Cross-creator gifter whale leaderboard
+ */
+
+export function useGetGiftersLeaderboard<TData = Awaited<ReturnType<typeof getGiftersLeaderboard>>, TError = ErrorType<unknown>>(
+ params?: GetGiftersLeaderboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGiftersLeaderboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGiftersLeaderboardQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetTopGiftersUrl = (params: GetTopGiftersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/gifters/top?${stringifiedParams}` : `/api/tiktok/gifters/top`
+}
+
+/**
+ * Per-period breakdowns + each gifter's share of the creator's total income. Global Agency exclusive for unmasked rows.
+ * @summary Top gifters for a single creator
+ */
+export const getTopGifters = async (params: GetTopGiftersParams, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetTopGiftersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTopGiftersQueryKey = (params?: GetTopGiftersParams,) => {
+    return [
+    `/api/tiktok/gifters/top`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTopGiftersQueryOptions = <TData = Awaited<ReturnType<typeof getTopGifters>>, TError = ErrorType<unknown>>(params: GetTopGiftersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTopGifters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTopGiftersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTopGifters>>> = ({ signal }) => getTopGifters(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTopGifters>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTopGiftersQueryResult = NonNullable<Awaited<ReturnType<typeof getTopGifters>>>
+export type GetTopGiftersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Top gifters for a single creator
+ */
+
+export function useGetTopGifters<TData = Awaited<ReturnType<typeof getTopGifters>>, TError = ErrorType<unknown>>(
+ params: GetTopGiftersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTopGifters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTopGiftersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetGifterProfileUrl = (params: GetGifterProfileParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/gifters/profile?${stringifiedParams}` : `/api/tiktok/gifters/profile`
+}
+
+/**
+ * Lifetime diamonds, creators supported, loyalty score, latest big gifts and historical velocity. Global Agency exclusive for unmasked identifiers.
+ * @summary Deep gifter profile
+ */
+export const getGifterProfile = async (params: GetGifterProfileParams, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetGifterProfileUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGifterProfileQueryKey = (params?: GetGifterProfileParams,) => {
+    return [
+    `/api/tiktok/gifters/profile`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGifterProfileQueryOptions = <TData = Awaited<ReturnType<typeof getGifterProfile>>, TError = ErrorType<unknown>>(params: GetGifterProfileParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGifterProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGifterProfileQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGifterProfile>>> = ({ signal }) => getGifterProfile(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGifterProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGifterProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getGifterProfile>>>
+export type GetGifterProfileQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Deep gifter profile
+ */
+
+export function useGetGifterProfile<TData = Awaited<ReturnType<typeof getGifterProfile>>, TError = ErrorType<unknown>>(
+ params: GetGifterProfileParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGifterProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGifterProfileQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetLiveAnalyticsVideoListUrl = (params: GetLiveAnalyticsVideoListParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/live-analytics/video-list?${stringifiedParams}` : `/api/tiktok/live-analytics/video-list`
+}
+
+/**
+ * Past streams with metadata (title, duration, viewer count, date). Requires x-tiktok-cookie header with TikTok session cookies.
+ * @summary List historical live stream recordings
+ */
+export const getLiveAnalyticsVideoList = async (params: GetLiveAnalyticsVideoListParams, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetLiveAnalyticsVideoListUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLiveAnalyticsVideoListQueryKey = (params?: GetLiveAnalyticsVideoListParams,) => {
+    return [
+    `/api/tiktok/live-analytics/video-list`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLiveAnalyticsVideoListQueryOptions = <TData = Awaited<ReturnType<typeof getLiveAnalyticsVideoList>>, TError = ErrorType<unknown>>(params: GetLiveAnalyticsVideoListParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveAnalyticsVideoList>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLiveAnalyticsVideoListQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLiveAnalyticsVideoList>>> = ({ signal }) => getLiveAnalyticsVideoList(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLiveAnalyticsVideoList>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLiveAnalyticsVideoListQueryResult = NonNullable<Awaited<ReturnType<typeof getLiveAnalyticsVideoList>>>
+export type GetLiveAnalyticsVideoListQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List historical live stream recordings
+ */
+
+export function useGetLiveAnalyticsVideoList<TData = Awaited<ReturnType<typeof getLiveAnalyticsVideoList>>, TError = ErrorType<unknown>>(
+ params: GetLiveAnalyticsVideoListParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveAnalyticsVideoList>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLiveAnalyticsVideoListQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetLiveAnalyticsVideoDetailUrl = (params: GetLiveAnalyticsVideoDetailParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/live-analytics/video-detail?${stringifiedParams}` : `/api/tiktok/live-analytics/video-detail`
+}
+
+/**
+ * Total views, peak viewers, gifts, new followers, engagement rates. Requires x-tiktok-cookie header.
+ * @summary Granular analytics for a specific past live stream
+ */
+export const getLiveAnalyticsVideoDetail = async (params: GetLiveAnalyticsVideoDetailParams, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetLiveAnalyticsVideoDetailUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLiveAnalyticsVideoDetailQueryKey = (params?: GetLiveAnalyticsVideoDetailParams,) => {
+    return [
+    `/api/tiktok/live-analytics/video-detail`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLiveAnalyticsVideoDetailQueryOptions = <TData = Awaited<ReturnType<typeof getLiveAnalyticsVideoDetail>>, TError = ErrorType<unknown>>(params: GetLiveAnalyticsVideoDetailParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveAnalyticsVideoDetail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLiveAnalyticsVideoDetailQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLiveAnalyticsVideoDetail>>> = ({ signal }) => getLiveAnalyticsVideoDetail(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLiveAnalyticsVideoDetail>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLiveAnalyticsVideoDetailQueryResult = NonNullable<Awaited<ReturnType<typeof getLiveAnalyticsVideoDetail>>>
+export type GetLiveAnalyticsVideoDetailQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Granular analytics for a specific past live stream
+ */
+
+export function useGetLiveAnalyticsVideoDetail<TData = Awaited<ReturnType<typeof getLiveAnalyticsVideoDetail>>, TError = ErrorType<unknown>>(
+ params: GetLiveAnalyticsVideoDetailParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveAnalyticsVideoDetail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLiveAnalyticsVideoDetailQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetLiveAnalyticsUserInteractionsUrl = (params: GetLiveAnalyticsUserInteractionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/live-analytics/user-interactions?${stringifiedParams}` : `/api/tiktok/live-analytics/user-interactions`
+}
+
+/**
+ * Sign-and-return pattern. Returns signed_url to fetch with your session cookies. Requires x-tiktok-cookie header.
+ * @summary Real-time audience roster ranked by gift score
+ */
+export const getLiveAnalyticsUserInteractions = async (params: GetLiveAnalyticsUserInteractionsParams, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetLiveAnalyticsUserInteractionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLiveAnalyticsUserInteractionsQueryKey = (params?: GetLiveAnalyticsUserInteractionsParams,) => {
+    return [
+    `/api/tiktok/live-analytics/user-interactions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLiveAnalyticsUserInteractionsQueryOptions = <TData = Awaited<ReturnType<typeof getLiveAnalyticsUserInteractions>>, TError = ErrorType<unknown>>(params: GetLiveAnalyticsUserInteractionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveAnalyticsUserInteractions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLiveAnalyticsUserInteractionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLiveAnalyticsUserInteractions>>> = ({ signal }) => getLiveAnalyticsUserInteractions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLiveAnalyticsUserInteractions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLiveAnalyticsUserInteractionsQueryResult = NonNullable<Awaited<ReturnType<typeof getLiveAnalyticsUserInteractions>>>
+export type GetLiveAnalyticsUserInteractionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Real-time audience roster ranked by gift score
+ */
+
+export function useGetLiveAnalyticsUserInteractions<TData = Awaited<ReturnType<typeof getLiveAnalyticsUserInteractions>>, TError = ErrorType<unknown>>(
+ params: GetLiveAnalyticsUserInteractionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLiveAnalyticsUserInteractions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLiveAnalyticsUserInteractionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListWebhooksUrl = () => {
+
+
+
+
+  return `/api/tiktok/webhooks`
+}
+
+/**
+ * @summary List registered webhooks
+ */
+export const listWebhooks = async ( options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getListWebhooksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListWebhooksQueryKey = () => {
+    return [
+    `/api/tiktok/webhooks`
+    ] as const;
+    }
+
+
+export const getListWebhooksQueryOptions = <TData = Awaited<ReturnType<typeof listWebhooks>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listWebhooks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListWebhooksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listWebhooks>>> = ({ signal }) => listWebhooks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listWebhooks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListWebhooksQueryResult = NonNullable<Awaited<ReturnType<typeof listWebhooks>>>
+export type ListWebhooksQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List registered webhooks
+ */
+
+export function useListWebhooks<TData = Awaited<ReturnType<typeof listWebhooks>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listWebhooks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListWebhooksQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateWebhookUrl = () => {
+
+
+
+
+  return `/api/tiktok/webhooks`
+}
+
+/**
+ * Register a URL to receive live.start and live.end events for watched creators.
+ * @summary Create a webhook
+ */
+export const createWebhook = async (createWebhookRequest: CreateWebhookRequest, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getCreateWebhookUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createWebhookRequest)
+  }
+);}
+
+
+
+
+export const getCreateWebhookMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWebhook>>, TError,{data: BodyType<CreateWebhookRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createWebhook>>, TError,{data: BodyType<CreateWebhookRequest>}, TContext> => {
+
+const mutationKey = ['createWebhook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createWebhook>>, {data: BodyType<CreateWebhookRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createWebhook(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof createWebhook>>>
+    export type CreateWebhookMutationBody = BodyType<CreateWebhookRequest>
+    export type CreateWebhookMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a webhook
+ */
+export const useCreateWebhook = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWebhook>>, TError,{data: BodyType<CreateWebhookRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createWebhook>>,
+        TError,
+        {data: BodyType<CreateWebhookRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateWebhookMutationOptions(options));
+    }
+
+export const getDeleteWebhookUrl = (id: string,) => {
+
+
+
+
+  return `/api/tiktok/webhooks/${id}`
+}
+
+/**
+ * @summary Delete a webhook
+ */
+export const deleteWebhook = async (id: string, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getDeleteWebhookUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteWebhookMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWebhook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteWebhook>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteWebhook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteWebhook>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteWebhook(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof deleteWebhook>>>
+
+    export type DeleteWebhookMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a webhook
+ */
+export const useDeleteWebhook = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteWebhook>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteWebhook>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteWebhookMutationOptions(options));
+    }
+
+export const getTestWebhookUrl = (id: string,) => {
+
+
+
+
+  return `/api/tiktok/webhooks/${id}/test`
+}
+
+/**
+ * @summary Send a test delivery to a webhook
+ */
+export const testWebhook = async (id: string,
+    webhookTestPayload?: WebhookTestPayload, options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getTestWebhookUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(webhookTestPayload)
+  }
+);}
+
+
+
+
+export const getTestWebhookMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof testWebhook>>, TError,{id: string;data?: BodyType<WebhookTestPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof testWebhook>>, TError,{id: string;data?: BodyType<WebhookTestPayload>}, TContext> => {
+
+const mutationKey = ['testWebhook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof testWebhook>>, {id: string;data?: BodyType<WebhookTestPayload>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  testWebhook(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TestWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof testWebhook>>>
+    export type TestWebhookMutationBody = BodyType<WebhookTestPayload> | undefined
+    export type TestWebhookMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Send a test delivery to a webhook
+ */
+export const useTestWebhook = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof testWebhook>>, TError,{id: string;data?: BodyType<WebhookTestPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof testWebhook>>,
+        TError,
+        {id: string;data?: BodyType<WebhookTestPayload>},
+        TContext
+      > => {
+      return useMutation(getTestWebhookMutationOptions(options));
+    }
+
+export const getGetConfigUrl = () => {
+
+
+
+
+  return `/api/config`
+}
+
+/**
+ * Returns current app configuration (API key is masked)
+ * @summary Get configuration
+ */
+export const getConfig = async ( options?: RequestInit): Promise<AppConfig> => {
+
+  return customFetch<AppConfig>(getGetConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetConfigQueryKey = () => {
+    return [
+    `/api/config`
+    ] as const;
+    }
+
+
+export const getGetConfigQueryOptions = <TData = Awaited<ReturnType<typeof getConfig>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetConfigQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getConfig>>> = ({ signal }) => getConfig({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getConfig>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getConfig>>>
+export type GetConfigQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get configuration
+ */
+
+export function useGetConfig<TData = Awaited<ReturnType<typeof getConfig>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetConfigQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveConfigUrl = () => {
+
+
+
+
+  return `/api/config`
+}
+
+/**
+ * Save the tik.tools API key
+ * @summary Save configuration
+ */
+export const saveConfig = async (configInput: ConfigInput, options?: RequestInit): Promise<AppConfig> => {
+
+  return customFetch<AppConfig>(getSaveConfigUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(configInput)
+  }
+);}
+
+
+
+
+export const getSaveConfigMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveConfig>>, TError,{data: BodyType<ConfigInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveConfig>>, TError,{data: BodyType<ConfigInput>}, TContext> => {
+
+const mutationKey = ['saveConfig'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveConfig>>, {data: BodyType<ConfigInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveConfig(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveConfigMutationResult = NonNullable<Awaited<ReturnType<typeof saveConfig>>>
+    export type SaveConfigMutationBody = BodyType<ConfigInput>
+    export type SaveConfigMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Save configuration
+ */
+export const useSaveConfig = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveConfig>>, TError,{data: BodyType<ConfigInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveConfig>>,
+        TError,
+        {data: BodyType<ConfigInput>},
+        TContext
+      > => {
+      return useMutation(getSaveConfigMutationOptions(options));
+    }
 

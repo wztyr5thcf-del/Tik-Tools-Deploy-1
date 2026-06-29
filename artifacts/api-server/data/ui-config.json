@@ -1,0 +1,130 @@
+{
+  "navType": "topbar",
+  "primaryColor": "0 84% 60%",
+  "secondaryColor": "180 100% 50%",
+  "logoText": "Creatools",
+  "logoUrl": "",
+  "sidebarSections": [
+    {
+      "id": "main",
+      "items": [
+        {
+          "id": "dashboard",
+          "label": "Dashboard",
+          "href": "/",
+          "icon": "LayoutDashboard",
+          "visible": true
+        },
+        {
+          "id": "monitor",
+          "label": "Monitor",
+          "href": "/monitor/example",
+          "icon": "Activity",
+          "matchPrefix": "/monitor",
+          "visible": true
+        },
+        {
+          "id": "gift-gallery",
+          "label": "Gift Gallery",
+          "href": "/gift-gallery",
+          "icon": "Diamond",
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": "streamer",
+      "label": "Streamer Tools",
+      "items": [
+        {
+          "id": "lookup",
+          "label": "Lookup",
+          "href": "/streamer/lookup",
+          "icon": "Search",
+          "matchPrefix": "/streamer/lookup",
+          "visible": true
+        },
+        {
+          "id": "bulk-check",
+          "label": "Bulk Check",
+          "href": "/streamer/bulk-check",
+          "icon": "Users",
+          "matchPrefix": "/streamer/bulk-check",
+          "requiresPlan": "basic",
+          "visible": true
+        },
+        {
+          "id": "watchlist",
+          "label": "Watchlist",
+          "href": "/streamer/watchlist",
+          "icon": "Star",
+          "matchPrefix": "/streamer/watchlist",
+          "visible": true
+        },
+        {
+          "id": "jwt",
+          "label": "JWT / WebSocket",
+          "href": "/streamer/jwt",
+          "icon": "Key",
+          "matchPrefix": "/streamer/jwt",
+          "visible": true
+        },
+        {
+          "id": "rate-limits",
+          "label": "Rate Limits",
+          "href": "/streamer/rate-limits",
+          "icon": "BarChart2",
+          "matchPrefix": "/streamer/rate-limits",
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": "analytics",
+      "label": "Analytics",
+      "items": [
+        {
+          "id": "leaderboards",
+          "label": "Leaderboards",
+          "href": "/leaderboards",
+          "icon": "Crown",
+          "matchPrefix": "/leaderboards",
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": "account",
+      "items": [
+        {
+          "id": "pricing",
+          "label": "Planos",
+          "href": "/pricing",
+          "icon": "Tag",
+          "visible": true
+        },
+        {
+          "id": "settings",
+          "label": "Ajustes",
+          "href": "/settings",
+          "icon": "Settings",
+          "visible": true
+        }
+      ]
+    },
+    {
+      "id": "admin",
+      "items": [
+        {
+          "id": "admin",
+          "label": "Admin Panel",
+          "href": "/admin",
+          "icon": "Shield",
+          "adminOnly": true,
+          "visible": true
+        }
+      ]
+    }
+  ],
+  "updatedAt": "2026-06-29T18:44:52.436Z"
+}
