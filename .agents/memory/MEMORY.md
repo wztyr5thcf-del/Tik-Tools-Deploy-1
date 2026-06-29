@@ -1,0 +1,1 @@
+- [Tailwind v4 dark mode](tailwind-v4-dark.md) — custom variant and html.dark class placement; @apply dark fails in v4
