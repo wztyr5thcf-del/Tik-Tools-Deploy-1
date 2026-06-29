@@ -1,0 +1,13 @@
+{
+  "users": [
+    {
+      "id": "4hamdasde6bmqzcu8lc",
+      "email": "admin@creatools.co",
+      "name": "Admin",
+      "passwordHash": "$2b$10$SCVAC5U1ON.m/QmfFbO5eurg0hSIdrvpUMcmX5/ovJXaVigDsMS6y",
+      "createdAt": "2026-06-29T15:10:33.216Z",
+      "plan": "free",
+      "isAdmin": true
+    }
+  ]
+}

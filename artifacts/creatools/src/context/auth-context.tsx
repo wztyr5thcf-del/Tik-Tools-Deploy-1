@@ -5,6 +5,7 @@ export interface AuthUser {
   email: string;
   name: string;
   plan: "free" | "basic" | "pro";
+  isAdmin: boolean;
   createdAt: string;
 }
 
@@ -18,6 +19,7 @@ interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -25,10 +27,14 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const TOKEN_KEY = "creatools_token";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-async function apiFetch(path: string, opts?: RequestInit) {
+export async function authFetch(path: string, token: string | null, opts?: RequestInit) {
   const res = await fetch(`${BASE}/api${path}`, {
     ...opts,
-    headers: { "Content-Type": "application/json", ...(opts?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(opts?.headers ?? {}),
+    },
   });
   const json = await res.json();
   if (!res.ok) throw new Error((json as { error?: string }).error ?? "Request failed");
@@ -40,9 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchMe = useCallback(async (token: string) => {
     try {
-      const data = await apiFetch("/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      }) as { user: AuthUser };
+      const data = await authFetch("/auth/me", token) as { user: AuthUser };
       setState({ user: data.user, token, loading: false });
     } catch {
       localStorage.removeItem(TOKEN_KEY);
@@ -52,15 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem(TOKEN_KEY);
-    if (saved) {
-      void fetchMe(saved);
-    } else {
-      setState((s) => ({ ...s, loading: false }));
-    }
+    if (saved) void fetchMe(saved);
+    else setState((s) => ({ ...s, loading: false }));
   }, [fetchMe]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const data = await apiFetch("/auth/login", {
+    const data = await authFetch("/auth/login", null, {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }) as { token: string; user: AuthUser };
@@ -69,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(async (email: string, password: string, name: string) => {
-    const data = await apiFetch("/auth/register", {
+    const data = await authFetch("/auth/register", null, {
       method: "POST",
       body: JSON.stringify({ email, password, name }),
     }) as { token: string; user: AuthUser };
@@ -82,8 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user: null, token: null, loading: false });
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) await fetchMe(token);
+  }, [fetchMe]);
+
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

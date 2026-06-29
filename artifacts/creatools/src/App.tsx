@@ -10,6 +10,8 @@ import Settings from "./pages/settings";
 import GiftGallery from "./pages/gift-gallery";
 import Pricing from "./pages/pricing";
 import Login from "./pages/login";
+import Profile from "./pages/profile";
+import Admin from "./pages/admin";
 import AppLayout from "./components/layout/app-layout";
 import { AuthProvider, useAuth } from "./context/auth-context";
 import { useEffect } from "react";
@@ -28,6 +30,14 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
   if (!user) return <Redirect to="/login" />;
+  return <Component />;
+}
+
+function AdminRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user, loading } = useAuth();
+  if (loading) return <Spinner />;
+  if (!user) return <Redirect to="/login" />;
+  if (!user.isAdmin) return <Redirect to="/" />;
   return <Component />;
 }
 
@@ -50,6 +60,8 @@ function Router() {
             <Route path="/bulk-check" component={() => <ProtectedRoute component={BulkCheck} />} />
             <Route path="/gift-gallery" component={() => <ProtectedRoute component={GiftGallery} />} />
             <Route path="/pricing" component={() => <ProtectedRoute component={Pricing} />} />
+            <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
+            <Route path="/admin" component={() => <AdminRoute component={Admin} />} />
             <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
             <Route component={NotFound} />
           </Switch>

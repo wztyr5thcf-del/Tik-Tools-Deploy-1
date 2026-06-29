@@ -1,1 +1,2 @@
 - [Tailwind v4 dark mode](tailwind-v4-dark.md) — custom variant and html.dark class placement; @apply dark fails in v4
+- [Creatools auth system](creatools-auth.md) — custom JWT auth (bcryptjs + jsonwebtoken), no Replit Auth, self-hostable, first user = admin
