@@ -75,7 +75,7 @@ router.patch("/admin/stripe-config", requireAdmin, (req, res): void => {
 router.post("/admin/test-tiktools", requireAdmin, async (req, res): Promise<void> => {
   const apiKey = process.env.TIKTOOLS_API_KEY;
   if (!apiKey) {
-    res.json({ ok: false, message: "TIKTOOLS_API_KEY não configurada nas variáveis de ambiente." });
+    res.json({ ok: false, message: "TIKTOOLS_API_KEY is not set in environment variables." });
     return;
   }
   try {
@@ -84,13 +84,13 @@ router.post("/admin/test-tiktools", requireAdmin, async (req, res): Promise<void
     });
     if (r.ok) {
       const json = await r.json() as { channels?: unknown[] };
-      res.json({ ok: true, message: `Conectado! ${json.channels?.length ?? 0} canais ao vivo encontrados.` });
+      res.json({ ok: true, message: `Connected! Found ${json.channels?.length ?? 0} live channels.` });
     } else {
-      res.json({ ok: false, message: `API respondeu com status ${r.status}` });
+      res.json({ ok: false, message: `API responded with status ${r.status}` });
     }
   } catch (err) {
     req.log.error({ err }, "tik.tools test failed");
-    res.json({ ok: false, message: err instanceof Error ? err.message : "Erro de conexão" });
+    res.json({ ok: false, message: err instanceof Error ? err.message : "Connection error" });
   }
 });
 
@@ -98,7 +98,7 @@ router.post("/admin/test-tiktools", requireAdmin, async (req, res): Promise<void
 router.post("/admin/test-stripe", requireAdmin, async (req, res): Promise<void> => {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
-    res.json({ ok: false, message: "STRIPE_SECRET_KEY não configurada nas variáveis de ambiente." });
+    res.json({ ok: false, message: "STRIPE_SECRET_KEY is not set in environment variables." });
     return;
   }
   try {
@@ -107,11 +107,11 @@ router.post("/admin/test-stripe", requireAdmin, async (req, res): Promise<void> 
     const balance = await stripe.balance.retrieve();
     res.json({
       ok: true,
-      message: `Stripe conectado com sucesso! Modo: ${balance.livemode ? "🔴 Produção" : "🟡 Teste (sandbox)"}`,
+      message: `Stripe connected! Mode: ${balance.livemode ? "🔴 Live (production)" : "🟡 Test (sandbox)"}`,
     });
   } catch (err) {
     req.log.error({ err }, "Stripe test failed");
-    res.json({ ok: false, message: err instanceof Error ? err.message : "Erro ao conectar ao Stripe" });
+    res.json({ ok: false, message: err instanceof Error ? err.message : "Failed to connect to Stripe" });
   }
 });
 

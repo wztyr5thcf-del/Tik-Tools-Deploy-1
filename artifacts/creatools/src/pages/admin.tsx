@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
-import { Shield, Trash2, RefreshCw, UserCog, Crown, Zap, Users2, Search } from "lucide-react";
+import {
+  Shield, Trash2, RefreshCw, UserCog, Crown, Zap, Users2, Search,
+  Settings2, CreditCard, Radio, CheckCircle2, XCircle, Loader2, KeyRound, Eye, EyeOff,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -45,14 +49,46 @@ const PLAN_LABEL: Record<string, string> = {
   pro: "Pro",
 };
 
+interface StripeConfig {
+  secretKeySet: boolean;
+  webhookSecretSet: boolean;
+  publishableKey: string | null;
+  priceIdBasic: string | null;
+  priceIdPro: string | null;
+  tiktoolsKeySet: boolean;
+}
+
+interface TestResult {
+  ok: boolean;
+  message: string;
+}
+
 export default function Admin() {
   const { user: me, token } = useAuth();
   const { toast } = useToast();
+
+  // ── Users state ──────────────────────────────────────────────
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  // ── Stripe config state ───────────────────────────────────────
+  const [stripeConfig, setStripeConfig] = useState<StripeConfig | null>(null);
+  const [stripeLoading, setStripeLoading] = useState(true);
+  const [stripeSaving, setStripeSaving] = useState(false);
+  const [publishableKey, setPublishableKey] = useState("");
+  const [priceIdBasic, setPriceIdBasic] = useState("");
+  const [priceIdPro, setPriceIdPro] = useState("");
+  const [showPubKey, setShowPubKey] = useState(false);
+
+  // ── Test states ───────────────────────────────────────────────
+  const [testingStripe, setTestingStripe] = useState(false);
+  const [testingTiktools, setTestingTiktools] = useState(false);
+  const [stripeTestResult, setStripeTestResult] = useState<TestResult | null>(null);
+  const [tiktoolsTestResult, setTiktoolsTestResult] = useState<TestResult | null>(null);
+
+  // ── Fetch users ───────────────────────────────────────────────
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
@@ -65,8 +101,26 @@ export default function Admin() {
     }
   }, [token, toast]);
 
-  useEffect(() => { void fetchUsers(); }, [fetchUsers]);
+  // ── Fetch stripe config ───────────────────────────────────────
+  const fetchStripeConfig = useCallback(async () => {
+    setStripeLoading(true);
+    try {
+      const data = await authFetch("/admin/stripe-config", token) as StripeConfig;
+      setStripeConfig(data);
+      setPublishableKey(data.publishableKey ?? "");
+      setPriceIdBasic(data.priceIdBasic ?? "");
+      setPriceIdPro(data.priceIdPro ?? "");
+    } catch {
+      // silently fail
+    } finally {
+      setStripeLoading(false);
+    }
+  }, [token]);
 
+  useEffect(() => { void fetchUsers(); }, [fetchUsers]);
+  useEffect(() => { void fetchStripeConfig(); }, [fetchStripeConfig]);
+
+  // ── User management ───────────────────────────────────────────
   async function updateUser(id: string, patch: Partial<{ plan: string; isAdmin: boolean }>) {
     setUpdatingId(id);
     try {
@@ -93,6 +147,54 @@ export default function Admin() {
     }
   }
 
+  // ── Stripe config save ────────────────────────────────────────
+  async function saveStripeConfig() {
+    setStripeSaving(true);
+    try {
+      await authFetch("/admin/stripe-config", token, {
+        method: "PATCH",
+        body: JSON.stringify({
+          publishableKey: publishableKey.trim() || null,
+          priceIdBasic: priceIdBasic.trim() || null,
+          priceIdPro: priceIdPro.trim() || null,
+        }),
+      });
+      await fetchStripeConfig();
+      toast({ title: "Stripe configuration saved" });
+    } catch (err) {
+      toast({ title: "Save failed", description: err instanceof Error ? err.message : "Error", variant: "destructive" });
+    } finally {
+      setStripeSaving(false);
+    }
+  }
+
+  // ── Connection tests ──────────────────────────────────────────
+  async function testStripe() {
+    setTestingStripe(true);
+    setStripeTestResult(null);
+    try {
+      const result = await authFetch("/admin/test-stripe", token, { method: "POST" }) as TestResult;
+      setStripeTestResult(result);
+    } catch (err) {
+      setStripeTestResult({ ok: false, message: err instanceof Error ? err.message : "Connection error" });
+    } finally {
+      setTestingStripe(false);
+    }
+  }
+
+  async function testTiktools() {
+    setTestingTiktools(true);
+    setTiktoolsTestResult(null);
+    try {
+      const result = await authFetch("/admin/test-tiktools", token, { method: "POST" }) as TestResult;
+      setTiktoolsTestResult(result);
+    } catch (err) {
+      setTiktoolsTestResult({ ok: false, message: err instanceof Error ? err.message : "Connection error" });
+    } finally {
+      setTestingTiktools(false);
+    }
+  }
+
   const filtered = users.filter(
     (u) =>
       u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -110,7 +212,7 @@ export default function Admin() {
             <Shield className="w-5 h-5 text-primary" />
             <h1 className="text-3xl font-bold tracking-tight">Admin Panel</h1>
           </div>
-          <p className="text-muted-foreground">Manage all Creatools users and plans</p>
+          <p className="text-muted-foreground">Manage users, plans, and system configuration</p>
         </div>
         <Button size="sm" variant="outline" onClick={fetchUsers} disabled={loading}>
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
@@ -204,9 +306,9 @@ export default function Admin() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="free" className="text-xs">Sandbox</SelectItem>
-                          <SelectItem value="basic" className="text-xs">Basic+</SelectItem>
-                          <SelectItem value="pro" className="text-xs">Pro</SelectItem>
+                          <SelectItem value="free" className="text-xs">{PLAN_LABEL.free}</SelectItem>
+                          <SelectItem value="basic" className="text-xs">{PLAN_LABEL.basic}</SelectItem>
+                          <SelectItem value="pro" className="text-xs">{PLAN_LABEL.pro}</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -263,6 +365,206 @@ export default function Admin() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── System Configuration ───────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Stripe Configuration */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-primary" /> Stripe Configuration
+            </CardTitle>
+            <CardDescription>
+              Publishable key and price IDs are stored in <code className="text-xs text-primary">data/stripe-config.json</code>.
+              Secret key and webhook secret must be set as environment variables.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {stripeLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+              </div>
+            ) : (
+              <>
+                {/* Env var status */}
+                <div className="grid grid-cols-1 gap-2">
+                  {[
+                    { label: "STRIPE_SECRET_KEY", set: stripeConfig?.secretKeySet },
+                    { label: "STRIPE_WEBHOOK_SECRET", set: stripeConfig?.webhookSecretSet },
+                    { label: "TIKTOOLS_API_KEY", set: stripeConfig?.tiktoolsKeySet },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center gap-2 text-xs">
+                      {item.set ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-chart-3 shrink-0" />
+                      ) : (
+                        <XCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+                      )}
+                      <code className="text-muted-foreground">{item.label}</code>
+                      <span className={item.set ? "text-chart-3" : "text-destructive"}>
+                        {item.set ? "set" : "not set"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t border-border pt-4 space-y-3">
+                  {/* Publishable key */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                      <KeyRound className="w-3 h-3" /> Publishable Key
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type={showPubKey ? "text" : "password"}
+                        value={publishableKey}
+                        onChange={(e) => setPublishableKey(e.target.value)}
+                        placeholder="pk_live_… or pk_test_…"
+                        className="text-xs font-mono bg-background border-border pr-9"
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowPubKey((v) => !v)}
+                      >
+                        {showPubKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Price ID Basic */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Price ID — Basic+</Label>
+                    <Input
+                      value={priceIdBasic}
+                      onChange={(e) => setPriceIdBasic(e.target.value)}
+                      placeholder="price_…"
+                      className="text-xs font-mono bg-background border-border"
+                    />
+                  </div>
+
+                  {/* Price ID Pro */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Price ID — Pro</Label>
+                    <Input
+                      value={priceIdPro}
+                      onChange={(e) => setPriceIdPro(e.target.value)}
+                      placeholder="price_…"
+                      className="text-xs font-mono bg-background border-border"
+                    />
+                  </div>
+
+                  <Button
+                    size="sm"
+                    onClick={saveStripeConfig}
+                    disabled={stripeSaving}
+                    className="w-full"
+                  >
+                    {stripeSaving ? (
+                      <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />Saving…</>
+                    ) : (
+                      <><Settings2 className="w-3.5 h-3.5 mr-2" />Save Configuration</>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Connection Tests */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Radio className="w-4 h-4 text-primary" /> Connection Tests
+            </CardTitle>
+            <CardDescription>
+              Verify that external services are reachable and credentials are valid.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+
+            {/* Stripe test */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Stripe</p>
+                  <p className="text-xs text-muted-foreground">Requires STRIPE_SECRET_KEY</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={testStripe}
+                  disabled={testingStripe}
+                  className="shrink-0"
+                >
+                  {testingStripe ? (
+                    <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Testing…</>
+                  ) : (
+                    "Test"
+                  )}
+                </Button>
+              </div>
+              {stripeTestResult && (
+                <div className={`flex items-start gap-2 text-xs rounded-md px-3 py-2 border ${
+                  stripeTestResult.ok
+                    ? "bg-chart-3/5 border-chart-3/20 text-chart-3"
+                    : "bg-destructive/5 border-destructive/20 text-destructive"
+                }`}>
+                  {stripeTestResult.ok
+                    ? <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    : <XCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />}
+                  <span>{stripeTestResult.message}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-border" />
+
+            {/* TikTools test */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">tik.tools API</p>
+                  <p className="text-xs text-muted-foreground">Requires TIKTOOLS_API_KEY</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={testTiktools}
+                  disabled={testingTiktools}
+                  className="shrink-0"
+                >
+                  {testingTiktools ? (
+                    <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Testing…</>
+                  ) : (
+                    "Test"
+                  )}
+                </Button>
+              </div>
+              {tiktoolsTestResult && (
+                <div className={`flex items-start gap-2 text-xs rounded-md px-3 py-2 border ${
+                  tiktoolsTestResult.ok
+                    ? "bg-chart-3/5 border-chart-3/20 text-chart-3"
+                    : "bg-destructive/5 border-destructive/20 text-destructive"
+                }`}>
+                  {tiktoolsTestResult.ok
+                    ? <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    : <XCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />}
+                  <span>{tiktoolsTestResult.message}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Info note */}
+            <div className="border-t border-border pt-3">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Secret keys and webhook secrets can only be set as environment variables (<code className="text-primary">STRIPE_SECRET_KEY</code>, <code className="text-primary">STRIPE_WEBHOOK_SECRET</code>, <code className="text-primary">TIKTOOLS_API_KEY</code>). They are never stored in config files.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

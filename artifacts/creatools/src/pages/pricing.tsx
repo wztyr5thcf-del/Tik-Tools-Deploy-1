@@ -33,60 +33,60 @@ const plans: Plan[] = [
   {
     id: "free",
     name: "Free",
-    price: "R$0",
+    price: "$0",
     period: "",
-    description: "Comece a monitorar streams TikTok LIVE sem custo algum.",
+    description: "Start monitoring TikTok LIVE streams at no cost.",
     icon: Zap,
     iconColor: "text-chart-3",
     features: [
-      { text: "Dashboard de canais ao vivo", included: true },
-      { text: "Monitor em tempo real (WebSocket)", included: true },
-      { text: "Feed de presentes e eventos", included: true },
-      { text: "Catálogo de presentes", included: true },
-      { text: "Bulk check de múltiplos usuários", included: false },
-      { text: "Viewer counts no bulk check", included: false },
-      { text: "Suporte prioritário", included: false },
+      { text: "Live channels dashboard", included: true },
+      { text: "Real-time monitor (WebSocket)", included: true },
+      { text: "Gift & event feed", included: true },
+      { text: "Gift catalog", included: true },
+      { text: "Bulk check multiple accounts", included: false },
+      { text: "Viewer counts in bulk check", included: false },
+      { text: "Priority support", included: false },
     ],
   },
   {
     id: "basic",
     name: "Basic",
-    price: "R$29",
-    period: "/mês",
-    description: "Bulk check nativo, viewer counts e limites maiores para times em crescimento.",
+    price: "$9",
+    period: "/mo",
+    description: "Bulk check, viewer counts, and higher limits for growing teams.",
     badge: "Popular",
     badgeVariant: "default",
     icon: Shield,
     iconColor: "text-primary",
     highlight: true,
     features: [
-      { text: "Tudo do plano Free", included: true },
-      { text: "Bulk check de múltiplos usuários", included: true },
-      { text: "Viewer counts no bulk check", included: true },
-      { text: "Título do stream no bulk check", included: true },
-      { text: "Limites de API maiores", included: true },
-      { text: "Suporte prioritário", included: true },
-      { text: "Acesso antecipado a novidades", included: false },
+      { text: "Everything in Free", included: true },
+      { text: "Bulk check multiple accounts", included: true },
+      { text: "Viewer counts in bulk check", included: true },
+      { text: "Stream title in bulk check", included: true },
+      { text: "Higher API limits", included: true },
+      { text: "Priority support", included: true },
+      { text: "Early access to new features", included: false },
     ],
   },
   {
     id: "pro",
     name: "Pro",
-    price: "R$79",
-    period: "/mês",
-    description: "Acesso total, WebSockets ilimitados e throughput máximo para profissionais.",
-    badge: "Acesso total",
+    price: "$29",
+    period: "/mo",
+    description: "Full access, unlimited WebSockets, and maximum throughput for professionals.",
+    badge: "Full access",
     badgeVariant: "secondary",
     icon: Crown,
     iconColor: "text-secondary",
     features: [
-      { text: "Tudo do plano Basic", included: true },
-      { text: "WebSockets ilimitados", included: true },
-      { text: "Dados de perfil de usuário", included: true },
-      { text: "Contagem de seguidores e vídeos", included: true },
-      { text: "Bio e metadados sociais", included: true },
-      { text: "Suporte dedicado", included: true },
-      { text: "Acesso antecipado a novidades", included: true },
+      { text: "Everything in Basic", included: true },
+      { text: "Unlimited WebSockets", included: true },
+      { text: "User profile data", included: true },
+      { text: "Follower & video counts", included: true },
+      { text: "Bio & social metadata", included: true },
+      { text: "Dedicated support", included: true },
+      { text: "Early access to new features", included: true },
     ],
   },
 ];
@@ -114,17 +114,17 @@ export default function Pricing() {
   }, []);
 
   useEffect(() => {
-    if (searchParams.get("success") === "1") showToast("✓ Assinatura ativada! Seu plano foi atualizado.", "ok");
-    if (searchParams.get("canceled") === "1") showToast("Pagamento cancelado. Nenhuma cobrança foi feita.", "err");
+    if (searchParams.get("success") === "1") showToast("✓ Subscription activated! Your plan has been updated.", "ok");
+    if (searchParams.get("canceled") === "1") showToast("Payment canceled. You have not been charged.", "err");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   async function handleSubscribe(planId: "basic" | "pro") {
-    if (!token) { showToast("Faça login para assinar um plano.", "err"); return; }
-    if (!stripeConfig?.configured) { showToast("Pagamentos não configurados neste servidor.", "err"); return; }
+    if (!token) { showToast("Please sign in to subscribe.", "err"); return; }
+    if (!stripeConfig?.configured) { showToast("Payments are not configured on this server.", "err"); return; }
 
     const priceId = planId === "basic" ? stripeConfig.basicPriceId : stripeConfig.proPriceId;
-    if (!priceId) { showToast(`Price ID do plano ${planId} não configurado.`, "err"); return; }
+    if (!priceId) { showToast(`Price ID for the ${planId} plan is not configured.`, "err"); return; }
 
     setLoadingPlan(planId);
     try {
@@ -134,7 +134,7 @@ export default function Pricing() {
       }) as { url: string };
       window.location.href = data.url;
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Erro ao criar sessão de pagamento.", "err");
+      showToast(err instanceof Error ? err.message : "Failed to create checkout session.", "err");
       setLoadingPlan(null);
     }
   }
@@ -146,7 +146,7 @@ export default function Pricing() {
       const data = await authFetch("/stripe/portal", token, { method: "POST" }) as { url: string };
       window.location.href = data.url;
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Erro ao abrir portal de cobrança.", "err");
+      showToast(err instanceof Error ? err.message : "Failed to open billing portal.", "err");
       setPortalLoading(false);
     }
   }
@@ -172,12 +172,12 @@ export default function Pricing() {
       <div className="text-center space-y-3 max-w-2xl mx-auto">
         <div className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium">
           <Activity className="w-3 h-3" />
-          Creatools SaaS
+          Creatools Plans
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">Planos & Preços</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Plans & Pricing</h1>
         <p className="text-muted-foreground">
-          Escolha o plano ideal para o seu monitoramento de TikTok LIVE.
-          Cancele quando quiser — sem fidelidade.
+          Choose the right plan for your TikTok LIVE monitoring needs.
+          Cancel anytime — no commitments.
         </p>
       </div>
 
@@ -213,7 +213,7 @@ export default function Pricing() {
                     <CardTitle className="text-lg">{plan.name}</CardTitle>
                     {isCurrentPlan && (
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5 text-chart-3 border-chart-3/30">
-                        ✓ Plano atual
+                        ✓ Current plan
                       </Badge>
                     )}
                   </div>
@@ -249,13 +249,13 @@ export default function Pricing() {
 
                 {plan.id === "free" ? (
                   <Button variant="outline" className="w-full" disabled={isCurrentPlan}>
-                    {isCurrentPlan ? "✓ Plano atual" : "Começar grátis"}
+                    {isCurrentPlan ? "✓ Current plan" : "Get started free"}
                   </Button>
                 ) : isCurrentPlan ? (
                   <Button className="w-full" variant="outline" onClick={handlePortal} disabled={portalLoading}>
                     {portalLoading
-                      ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Carregando...</>
-                      : <><CreditCard className="w-4 h-4 mr-2" />Gerenciar assinatura</>}
+                      ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Loading…</>
+                      : <><CreditCard className="w-4 h-4 mr-2" />Manage subscription</>}
                   </Button>
                 ) : (
                   <Button
@@ -265,13 +265,13 @@ export default function Pricing() {
                     disabled={loadingPlan !== null || !stripeConfig?.configured || !user}
                   >
                     {loadingPlan === plan.id ? (
-                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Aguarde...</>
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Please wait…</>
                     ) : !user ? (
-                      "Faça login para assinar"
+                      "Sign in to subscribe"
                     ) : !stripeConfig?.configured ? (
-                      "Pagamentos não configurados"
+                      "Payments not configured"
                     ) : (
-                      `Assinar ${plan.name}`
+                      `Subscribe to ${plan.name}`
                     )}
                   </Button>
                 )}
@@ -287,9 +287,9 @@ export default function Pricing() {
           <Card className="bg-card/50 border-border">
             <CardContent className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium">Seu plano atual</p>
+                <p className="text-sm font-medium">Your current plan</p>
                 <p className="text-xs text-muted-foreground">
-                  Logado como <span className="font-mono">{user.email}</span>
+                  Signed in as <span className="font-mono">{user.email}</span>
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -312,19 +312,19 @@ export default function Pricing() {
       {/* Stripe not configured notice */}
       {stripeConfig && !stripeConfig.configured && (
         <div className="max-w-5xl mx-auto text-center text-xs text-muted-foreground border border-border rounded-lg p-4">
-          <p className="font-medium text-foreground mb-1">Pagamentos não configurados</p>
+          <p className="font-medium text-foreground mb-1">Payments not configured</p>
           <p>
-            Configure as variáveis{" "}
+            Set the{" "}
             <code className="text-primary">STRIPE_SECRET_KEY</code>,{" "}
-            <code className="text-primary">STRIPE_PRICE_ID_BASIC</code> e{" "}
+            <code className="text-primary">STRIPE_PRICE_ID_BASIC</code>, and{" "}
             <code className="text-primary">STRIPE_PRICE_ID_PRO</code>{" "}
-            no servidor para ativar o checkout.
+            environment variables on the server to enable checkout.
           </p>
         </div>
       )}
 
       <div className="max-w-5xl mx-auto text-center text-xs text-muted-foreground pb-4">
-        <p>Pagamentos processados com segurança pelo Stripe. Cancele a qualquer momento.</p>
+        <p>Payments securely processed by Stripe. Cancel anytime.</p>
       </div>
     </div>
   );
