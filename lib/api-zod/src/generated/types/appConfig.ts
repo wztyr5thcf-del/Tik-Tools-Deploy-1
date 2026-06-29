@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface AppConfig {
+  apiKeySet: boolean;
+  /** @nullable */
+  apiKeyMasked?: string | null;
+  /** @nullable */
+  tier?: string | null;
 }

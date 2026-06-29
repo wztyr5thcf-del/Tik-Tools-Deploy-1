@@ -3,13 +3,18 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Creatools - TikTok LIVE monitoring API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: tiktok
+    description: TikTok LIVE operations
+  - name: config
+    description: Configuration operations
+
 paths:
   /healthz:
     get:
@@ -24,6 +29,154 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /tiktok/top-channels:
+    get:
+      operationId: getTopChannels
+      tags: [tiktok]
+      summary: Get top live channels
+      description: Returns currently live TikTok channels
+      responses:
+        "200":
+          description: List of live channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LiveChannel"
+
+  /tiktok/live-status:
+    get:
+      operationId: getLiveStatus
+      tags: [tiktok]
+      summary: Check if user is live
+      description: Fast liveness check for a TikTok username
+      parameters:
+        - name: uniqueId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: TikTok username (without @)
+      responses:
+        "200":
+          description: Live status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveStatus"
+
+  /tiktok/jwt:
+    post:
+      operationId: mintJwt
+      tags: [tiktok]
+      summary: Mint JWT for WebSocket
+      description: Server-side JWT minting for secure WebSocket connections
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JwtRequest"
+      responses:
+        "200":
+          description: JWT token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JwtResponse"
+        "400":
+          description: Bad request
+
+  /tiktok/room-info:
+    post:
+      operationId: getRoomInfo
+      tags: [tiktok]
+      summary: Get room information
+      description: Returns detailed info about a live stream room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoomInfoRequest"
+      responses:
+        "200":
+          description: Room info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomInfo"
+
+  /tiktok/bulk-check:
+    post:
+      operationId: bulkLiveCheck
+      tags: [tiktok]
+      summary: Check multiple users live status
+      description: Returns live status for multiple TikTok users at once
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkCheckRequest"
+      responses:
+        "200":
+          description: Bulk live check results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BulkCheckResult"
+
+  /tiktok/rate-limits:
+    get:
+      operationId: getRateLimits
+      tags: [tiktok]
+      summary: Get API rate limits
+      description: Returns current API key rate limit status
+      responses:
+        "200":
+          description: Rate limit info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateLimits"
+
+  /config:
+    get:
+      operationId: getConfig
+      tags: [config]
+      summary: Get configuration
+      description: Returns current app configuration (API key is masked)
+      responses:
+        "200":
+          description: Config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppConfig"
+    post:
+      operationId: saveConfig
+      tags: [config]
+      summary: Save configuration
+      description: Save the tik.tools API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfigInput"
+      responses:
+        "200":
+          description: Config saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppConfig"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +187,163 @@ components:
       required:
         - status
 
+    LiveChannel:
+      type: object
+      properties:
+        uniqueId:
+          type: string
+        nickname:
+          type: ["string", "null"]
+        profilePictureUrl:
+          type: ["string", "null"]
+        roomId:
+          type: ["string", "null"]
+        viewerCount:
+          type: ["integer", "null"]
+        title:
+          type: ["string", "null"]
+      required:
+        - uniqueId
+
+    LiveStatus:
+      type: object
+      properties:
+        uniqueId:
+          type: string
+        isLive:
+          type: boolean
+        roomId:
+          type: ["string", "null"]
+        cached:
+          type: boolean
+      required:
+        - uniqueId
+        - isLive
+        - cached
+
+    JwtRequest:
+      type: object
+      properties:
+        uniqueId:
+          type: string
+        expireAfter:
+          type: integer
+          description: Seconds until JWT expires (default 600)
+      required:
+        - uniqueId
+
+    JwtResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        uniqueId:
+          type: string
+      required:
+        - token
+        - uniqueId
+
+    RoomInfoRequest:
+      type: object
+      properties:
+        uniqueId:
+          type: ["string", "null"]
+        roomId:
+          type: ["string", "null"]
+
+    RoomInfo:
+      type: object
+      properties:
+        roomId:
+          type: ["string", "null"]
+        alive:
+          type: boolean
+        title:
+          type: ["string", "null"]
+        viewerCount:
+          type: ["integer", "null"]
+        likeCount:
+          type: ["integer", "null"]
+        owner:
+          $ref: "#/components/schemas/RoomOwner"
+      required:
+        - alive
+
+    RoomOwner:
+      type: object
+      properties:
+        uniqueId:
+          type: ["string", "null"]
+        nickname:
+          type: ["string", "null"]
+        profilePictureUrl:
+          type: ["string", "null"]
+
+    BulkCheckRequest:
+      type: object
+      properties:
+        uniqueIds:
+          type: array
+          items:
+            type: string
+      required:
+        - uniqueIds
+
+    BulkCheckResult:
+      type: object
+      properties:
+        uniqueId:
+          type: string
+        isLive:
+          type: boolean
+        roomId:
+          type: ["string", "null"]
+        title:
+          type: ["string", "null"]
+        viewerCount:
+          type: ["integer", "null"]
+      required:
+        - uniqueId
+        - isLive
+
+    RateLimits:
+      type: object
+      properties:
+        tier:
+          type: string
+        apiLimit:
+          type: integer
+        apiRemaining:
+          type: integer
+        apiResetAt:
+          type: ["integer", "null"]
+        wsLimit:
+          type: integer
+        wsCurrent:
+          type: integer
+      required:
+        - tier
+        - apiLimit
+        - apiRemaining
+        - wsLimit
+        - wsCurrent
+
+    AppConfig:
+      type: object
+      properties:
+        apiKeySet:
+          type: boolean
+        apiKeyMasked:
+          type: ["string", "null"]
+        tier:
+          type: ["string", "null"]
+      required:
+        - apiKeySet
+
+    ConfigInput:
+      type: object
+      properties:
+        apiKey:
+          type: string
+      required:
+        - apiKey
