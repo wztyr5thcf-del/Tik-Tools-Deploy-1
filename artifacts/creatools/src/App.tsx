@@ -59,7 +59,7 @@ function Router() {
             <Route path="/monitor/:username" component={() => <ProtectedRoute component={Monitor} />} />
             <Route path="/bulk-check" component={() => <ProtectedRoute component={BulkCheck} />} />
             <Route path="/gift-gallery" component={() => <ProtectedRoute component={GiftGallery} />} />
-            <Route path="/pricing" component={() => <ProtectedRoute component={Pricing} />} />
+            <Route path="/pricing" component={Pricing} />
             <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
             <Route path="/admin" component={() => <AdminRoute component={Admin} />} />
             <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />

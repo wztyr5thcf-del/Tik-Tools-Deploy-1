@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { handleStripeWebhook } from "./routes/stripe";
 
 const app: Express = express();
 
@@ -25,7 +26,16 @@ app.use(
     },
   }),
 );
+
 app.use(cors());
+
+// Stripe webhook MUST be registered before express.json() — needs raw body
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  handleStripeWebhook,
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

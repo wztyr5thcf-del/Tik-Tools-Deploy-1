@@ -1,18 +1,21 @@
-import { Check, X, Zap, Shield, Crown, ExternalLink, Activity } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, X, Zap, Shield, Crown, Activity, Loader2, ExternalLink, CreditCard } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/context/auth-context";
+import { useAuth, authFetch } from "@/context/auth-context";
+import { useSearch } from "wouter";
 
-interface PlanFeature {
-  text: string;
-  included: boolean;
+interface StripeConfig {
+  configured: boolean;
+  publishableKey: string | null;
+  basicPriceId: string | null;
+  proPriceId: string | null;
 }
 
 interface Plan {
-  id: "sandbox" | "basic" | "pro";
+  id: "free" | "basic" | "pro";
   name: string;
-  tikToolsTier: string;
   price: string;
   period: string;
   description: string;
@@ -20,115 +23,164 @@ interface Plan {
   badgeVariant?: "default" | "secondary" | "outline";
   icon: React.ElementType;
   iconColor: string;
-  features: PlanFeature[];
-  cta: string;
-  ctaHref?: string;
+  features: { text: string; included: boolean }[];
   highlight?: boolean;
 }
 
 const plans: Plan[] = [
   {
-    id: "sandbox",
-    name: "Sandbox",
-    tikToolsTier: "Sandbox",
-    price: "Free",
+    id: "free",
+    name: "Free",
+    price: "R$0",
     period: "",
-    description: "Explore TikTok LIVE monitoring with generous limits — no credit card needed.",
+    description: "Comece a monitorar streams TikTok sem custo algum.",
     icon: Zap,
     iconColor: "text-chart-3",
     features: [
-      { text: "Top live channels (no API key)", included: true },
-      { text: "Live status check per user", included: true },
-      { text: "Real-time WebSocket events", included: true },
-      { text: "Gift catalog & diamond values", included: true },
-      { text: "20 API calls / window", included: true },
-      { text: "3 concurrent WebSocket sessions", included: true },
-      { text: "10-min WebSocket sessions", included: true },
-      { text: "Bulk live check (native)", included: false },
-      { text: "Viewer counts in bulk results", included: false },
-      { text: "User profile data", included: false },
+      { text: "Dashboard de canais ao vivo", included: true },
+      { text: "Monitor em tempo real (WebSocket)", included: true },
+      { text: "Feed de presentes e eventos", included: true },
+      { text: "Catálogo de presentes", included: true },
+      { text: "Bulk check de múltiplos usuários", included: false },
+      { text: "Viewer counts no bulk check", included: false },
+      { text: "Suporte prioritário", included: false },
     ],
-    cta: "Get started free",
-    ctaHref: "https://tik.tools",
   },
   {
     id: "basic",
-    name: "Basic+",
-    tikToolsTier: "Basic+",
-    price: "$19",
-    period: "/month",
-    description: "Native bulk check, viewer counts, and higher rate limits for growing teams.",
+    name: "Basic",
+    price: "R$29",
+    period: "/mês",
+    description: "Bulk check nativo, viewer counts e limites maiores para times em crescimento.",
     badge: "Popular",
     badgeVariant: "default",
     icon: Shield,
     iconColor: "text-primary",
     highlight: true,
     features: [
-      { text: "Everything in Sandbox", included: true },
-      { text: "Native bulk live check", included: true },
-      { text: "Viewer counts in bulk results", included: true },
-      { text: "Room title in bulk results", included: true },
-      { text: "Higher API rate limits", included: true },
-      { text: "More concurrent WebSockets", included: true },
-      { text: "Priority support", included: true },
-      { text: "User profile data", included: false },
-      { text: "Follower / video counts", included: false },
-      { text: "Bio & social metadata", included: false },
+      { text: "Tudo do plano Free", included: true },
+      { text: "Bulk check de múltiplos usuários", included: true },
+      { text: "Viewer counts no bulk check", included: true },
+      { text: "Título do stream no bulk check", included: true },
+      { text: "Limites de API maiores", included: true },
+      { text: "Suporte prioritário", included: true },
+      { text: "Acesso antecipado a novidades", included: false },
     ],
-    cta: "Upgrade to Basic+",
-    ctaHref: "https://tik.tools/pricing",
   },
   {
     id: "pro",
     name: "Pro",
-    tikToolsTier: "Pro",
-    price: "$49",
-    period: "/month",
-    description: "Full user profile data, unlimited WebSockets, and maximum throughput.",
-    badge: "Full access",
+    price: "R$79",
+    period: "/mês",
+    description: "Acesso total, WebSockets ilimitados e throughput máximo para profissionais.",
+    badge: "Acesso total",
     badgeVariant: "secondary",
     icon: Crown,
     iconColor: "text-secondary",
     features: [
-      { text: "Everything in Basic+", included: true },
-      { text: "User profile endpoint", included: true },
-      { text: "Follower & following counts", included: true },
-      { text: "Video count & total likes", included: true },
-      { text: "Bio & signature metadata", included: true },
-      { text: "Maximum API rate limits", included: true },
-      { text: "Unlimited WebSocket sessions", included: true },
-      { text: "Dedicated support", included: true },
-      { text: "SLA guarantee", included: true },
-      { text: "Custom integrations", included: true },
+      { text: "Tudo do plano Basic", included: true },
+      { text: "WebSockets ilimitados", included: true },
+      { text: "Dados de perfil de usuário", included: true },
+      { text: "Contagem de seguidores e vídeos", included: true },
+      { text: "Bio e metadados sociais", included: true },
+      { text: "Suporte dedicado", included: true },
+      { text: "Acesso antecipado a novidades", included: true },
     ],
-    cta: "Upgrade to Pro",
-    ctaHref: "https://tik.tools/pricing",
   },
 ];
 
 export default function Pricing() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const search = useSearch();
+  const searchParams = new URLSearchParams(search);
+  const [stripeConfig, setStripeConfig] = useState<StripeConfig | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
+
+  const showToast = (msg: string, type: "ok" | "err" = "ok") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  useEffect(() => {
+    fetch("/api/stripe/config")
+      .then((r) => r.json())
+      .then((d: StripeConfig) => setStripeConfig(d))
+      .catch(() => setStripeConfig({ configured: false, publishableKey: null, basicPriceId: null, proPriceId: null }));
+  }, []);
+
+  useEffect(() => {
+    if (searchParams.get("success") === "1") showToast("Assinatura ativada! Seu plano foi atualizado.", "ok");
+    if (searchParams.get("canceled") === "1") showToast("Pagamento cancelado. Nenhuma cobrança foi feita.", "err");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  async function handleSubscribe(planId: "basic" | "pro") {
+    if (!token) { showToast("Faça login para assinar um plano.", "err"); return; }
+    if (!stripeConfig?.configured) { showToast("Pagamentos não configurados neste servidor.", "err"); return; }
+
+    const priceId = planId === "basic" ? stripeConfig.basicPriceId : stripeConfig.proPriceId;
+    if (!priceId) { showToast(`Price ID do plano ${planId} não configurado.`, "err"); return; }
+
+    setLoadingPlan(planId);
+    try {
+      const res = await authFetch("/api/stripe/checkout", token, {
+        method: "POST",
+        body: JSON.stringify({ priceId }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) { showToast(data.error ?? "Erro ao criar sessão de pagamento.", "err"); return; }
+      window.location.href = data.url;
+    } catch {
+      showToast("Erro de conexão. Tente novamente.", "err");
+    } finally {
+      setLoadingPlan(null);
+    }
+  }
+
+  async function handlePortal() {
+    if (!token) return;
+    setPortalLoading(true);
+    try {
+      const res = await authFetch("/api/stripe/portal", token, { method: "POST" });
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) { showToast(data.error ?? "Erro ao abrir portal de cobrança.", "err"); return; }
+      window.location.href = data.url;
+    } catch {
+      showToast("Erro de conexão. Tente novamente.", "err");
+    } finally {
+      setPortalLoading(false);
+    }
+  }
+
+  const currentPlan = user?.plan ?? "free";
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Toast */}
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm font-medium shadow-lg border ${
+            toast.type === "ok"
+              ? "bg-chart-3/10 border-chart-3/30 text-chart-3"
+              : "bg-destructive/10 border-destructive/30 text-destructive"
+          }`}
+        >
+          {toast.msg}
+        </div>
+      )}
+
       {/* Header */}
       <div className="text-center space-y-3 max-w-2xl mx-auto">
         <div className="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary font-medium">
           <Activity className="w-3 h-3" />
-          Powered by tik.tools API
+          Creatools SaaS
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">Plans & Pricing</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Planos & Preços</h1>
         <p className="text-muted-foreground">
-          Creatools uses the{" "}
-          <a
-            href="https://tik.tools"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline inline-flex items-center gap-0.5"
-          >
-            tik.tools API <ExternalLink className="w-3 h-3" />
-          </a>{" "}
-          for all real-time data. Choose the tier that fits your monitoring needs.
+          Escolha o plano que se encaixa no seu monitoramento de TikTok LIVE.
+          Cancele quando quiser — sem fidelidade.
         </p>
       </div>
 
@@ -136,6 +188,9 @@ export default function Pricing() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         {plans.map((plan) => {
           const Icon = plan.icon;
+          const isCurrentPlan = currentPlan === plan.id;
+          const isPaid = plan.id !== "free";
+
           return (
             <Card
               key={plan.id}
@@ -155,12 +210,14 @@ export default function Pricing() {
 
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-9 h-9 rounded-lg bg-card border border-border flex items-center justify-center`}>
+                  <div className="w-9 h-9 rounded-lg bg-card border border-border flex items-center justify-center">
                     <Icon className={`w-5 h-5 ${plan.iconColor}`} />
                   </div>
                   <div>
                     <CardTitle className="text-lg">{plan.name}</CardTitle>
-                    <span className="text-xs text-muted-foreground font-mono">tik.tools {plan.tikToolsTier}</span>
+                    {isCurrentPlan && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5">Plano atual</Badge>
+                    )}
                   </div>
                 </div>
 
@@ -192,22 +249,39 @@ export default function Pricing() {
                   ))}
                 </ul>
 
-                {plan.ctaHref ? (
-                  <a href={plan.ctaHref} target="_blank" rel="noopener noreferrer" className="w-full">
-                    <Button
-                      className="w-full"
-                      variant={plan.highlight ? "default" : "outline"}
-                    >
-                      {plan.cta}
-                      <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
-                    </Button>
-                  </a>
+                {plan.id === "free" ? (
+                  <Button variant="outline" className="w-full" disabled={isCurrentPlan}>
+                    {isCurrentPlan ? "Plano atual" : "Começar grátis"}
+                  </Button>
+                ) : isCurrentPlan ? (
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={handlePortal}
+                    disabled={portalLoading}
+                  >
+                    {portalLoading ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Carregando...</>
+                    ) : (
+                      <><CreditCard className="w-4 h-4 mr-2" /> Gerenciar assinatura</>
+                    )}
+                  </Button>
                 ) : (
                   <Button
                     className="w-full"
                     variant={plan.highlight ? "default" : "outline"}
+                    onClick={() => handleSubscribe(plan.id as "basic" | "pro")}
+                    disabled={loadingPlan !== null || !stripeConfig?.configured || !user}
                   >
-                    {plan.cta}
+                    {loadingPlan === plan.id ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Aguarde...</>
+                    ) : !user ? (
+                      "Faça login para assinar"
+                    ) : !stripeConfig?.configured ? (
+                      "Pagamentos não configurados"
+                    ) : (
+                      `Assinar ${plan.name}`
+                    )}
                   </Button>
                 )}
               </CardContent>
@@ -216,32 +290,42 @@ export default function Pricing() {
         })}
       </div>
 
-      {/* Current user plan status */}
+      {/* Current plan status / billing portal */}
       {user && (
         <div className="max-w-5xl mx-auto">
           <Card className="bg-card/50 border-border">
             <CardContent className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium">Your current plan</p>
+                <p className="text-sm font-medium">Seu plano atual</p>
                 <p className="text-xs text-muted-foreground">
-                  Logged in as <span className="font-mono">{user.email}</span>
+                  Logado como <span className="font-mono">{user.email}</span>
                 </p>
               </div>
-              <Badge variant="outline" className="capitalize text-sm px-3 py-1">
-                {user.plan === "free" ? "Sandbox (Free)" : user.plan === "basic" ? "Basic+" : "Pro"}
-              </Badge>
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="capitalize text-sm px-3 py-1">
+                  {currentPlan === "free" ? "Free" : currentPlan === "basic" ? "Basic" : "Pro"}
+                </Badge>
+                {currentPlan !== "free" && (
+                  <Button size="sm" variant="ghost" onClick={handlePortal} disabled={portalLoading}>
+                    {portalLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <><ExternalLink className="w-3 h-3 mr-1" /> Portal</>}
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* API key note */}
-      <div className="max-w-5xl mx-auto text-center text-xs text-muted-foreground space-y-1 pb-4">
-        <p>
-          After purchasing a tik.tools plan, add your API key in{" "}
-          <a href="/settings" className="text-primary hover:underline">Settings</a> to unlock features.
-        </p>
-        <p>Prices shown are for tik.tools API access — Creatools itself is free to use.</p>
+      {/* Stripe notice */}
+      {stripeConfig && !stripeConfig.configured && (
+        <div className="max-w-5xl mx-auto text-center text-xs text-muted-foreground border border-border rounded-lg p-4">
+          <p className="font-medium text-foreground mb-1">Pagamentos não configurados</p>
+          <p>Configure as variáveis <code className="text-primary">STRIPE_SECRET_KEY</code>, <code className="text-primary">STRIPE_PRICE_ID_BASIC</code> e <code className="text-primary">STRIPE_PRICE_ID_PRO</code> no servidor para ativar o checkout.</p>
+        </div>
+      )}
+
+      <div className="max-w-5xl mx-auto text-center text-xs text-muted-foreground pb-4">
+        <p>Pagamentos processados com segurança pelo Stripe. Cancele a qualquer momento.</p>
       </div>
     </div>
   );

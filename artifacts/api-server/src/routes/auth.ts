@@ -1,56 +1,14 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import fs from "fs";
-import path from "path";
+import { loadUsers, saveUsers, makeId, publicUser, type StoredUser } from "../lib/users-store";
+
+export type { StoredUser };
 
 const router: IRouter = Router();
 
-const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
-  ? path.resolve(process.cwd(), "../..")
-  : process.cwd();
-
-const dataDir = path.resolve(workspaceRoot, "artifacts/api-server/data");
-const usersFile = path.resolve(dataDir, "users.json");
-
 const JWT_SECRET = process.env.JWT_SECRET ?? "creatools-secret-change-in-production";
 const SALT_ROUNDS = 10;
-
-export interface StoredUser {
-  id: string;
-  email: string;
-  name: string;
-  passwordHash: string;
-  createdAt: string;
-  plan: "free" | "basic" | "pro";
-  isAdmin: boolean;
-}
-
-interface UsersStore {
-  users: StoredUser[];
-}
-
-function loadUsers(): UsersStore {
-  try {
-    if (fs.existsSync(usersFile)) {
-      return JSON.parse(fs.readFileSync(usersFile, "utf-8")) as UsersStore;
-    }
-  } catch { /* ignore */ }
-  return { users: [] };
-}
-
-function saveUsers(store: UsersStore): void {
-  fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(usersFile, JSON.stringify(store, null, 2));
-}
-
-function makeId(): string {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
-
-function publicUser(u: StoredUser) {
-  return { id: u.id, email: u.email, name: u.name, plan: u.plan, isAdmin: u.isAdmin, createdAt: u.createdAt };
-}
 
 // ── Auth middleware ────────────────────────────────────────────────────────────
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
