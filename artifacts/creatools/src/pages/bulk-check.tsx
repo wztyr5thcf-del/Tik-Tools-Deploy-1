@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useBulkLiveCheck } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Users, Activity, Loader2, ExternalLink, Radio } from "lucide-react";
+import { Users, Activity, Loader2, ExternalLink, Radio, Lock, Zap } from "lucide-react";
+import { useAuth } from "@/context/auth-context";
 
 export default function BulkCheck() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const [input, setInput] = useState("");
   const [results, setResults] = useState<Array<{
     uniqueId: string;
@@ -20,6 +22,8 @@ export default function BulkCheck() {
   }> | null>(null);
 
   const bulkCheck = useBulkLiveCheck();
+
+  const isPaidPlan = user?.plan === "basic" || user?.plan === "pro";
 
   const parseUsernames = (raw: string): string[] => {
     return raw
@@ -52,22 +56,68 @@ export default function BulkCheck() {
       })
     : null;
 
+  if (!isPaidPlan) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-300">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Bulk Check</h1>
+          <p className="text-muted-foreground mt-1">Verifique o status ao vivo de múltiplos criadores de uma vez</p>
+        </div>
+
+        <Card className="bg-card border-primary/20 border-dashed max-w-xl">
+          <CardContent className="flex flex-col items-center text-center py-12 gap-6">
+            <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Lock className="w-7 h-7 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <p className="font-semibold text-lg">Recurso do plano Basic</p>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                O Bulk Check permite verificar múltiplos criadores simultaneamente com viewer counts em tempo real.
+                Disponível a partir do plano Basic.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <Link href="/pricing">
+                <Button className="w-full sm:w-auto">
+                  <Zap className="w-4 h-4 mr-2" />
+                  Ver planos
+                </Button>
+              </Link>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              A partir de R$29/mês · Cancele quando quiser
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Bulk Check</h1>
-        <p className="text-muted-foreground mt-1">Check live status for multiple creators at once</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Bulk Check</h1>
+          <p className="text-muted-foreground mt-1">Verifique o status ao vivo de múltiplos criadores de uma vez</p>
+        </div>
+        <Badge className={`text-xs font-medium border shrink-0 mt-1 ${
+          user?.plan === "pro"
+            ? "bg-violet-400/10 text-violet-400 border-violet-400/30"
+            : "bg-cyan-400/10 text-cyan-400 border-cyan-400/30"
+        }`}>
+          {user?.plan === "pro" ? "Pro" : "Basic"}
+        </Badge>
       </div>
 
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Add Usernames
+            Usernames
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
-            placeholder={`Enter usernames, one per line or comma-separated:\ncharlidamelio\naddison.rae, khaby.lame\naljazeeraenglish`}
+            placeholder={`Digite os usernames, um por linha ou separados por vírgula:\ncharlidamelio\naddison.rae, khaby.lame\naljazeeraenglish`}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             rows={6}
@@ -83,18 +133,18 @@ export default function BulkCheck() {
               {bulkCheck.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Checking...
+                  Verificando...
                 </>
               ) : (
                 <>
                   <Activity className="w-4 h-4 mr-2" />
-                  Check {parseUsernames(input).length > 0 ? `${parseUsernames(input).length} ` : ""}Creators
+                  Verificar {parseUsernames(input).length > 0 ? `${parseUsernames(input).length} ` : ""}criadores
                 </>
               )}
             </Button>
             {results && (
               <span className="text-sm text-muted-foreground font-mono">
-                {liveCount} live / {offlineCount} offline
+                {liveCount} ao vivo / {offlineCount} offline
               </span>
             )}
           </div>
@@ -103,12 +153,11 @@ export default function BulkCheck() {
 
       {sortedResults && sortedResults.length > 0 && (
         <div className="space-y-4">
-          {/* Summary row */}
           <div className="flex gap-4">
             <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-green-400/10 border border-green-400/20">
               <Radio className="w-4 h-4 text-green-400 animate-pulse" />
               <span className="text-green-400 font-mono font-bold">{liveCount}</span>
-              <span className="text-xs text-muted-foreground">LIVE</span>
+              <span className="text-xs text-muted-foreground">AO VIVO</span>
             </div>
             <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/30 border border-border">
               <span className="w-2 h-2 rounded-full bg-muted-foreground" />
@@ -147,7 +196,7 @@ export default function BulkCheck() {
                       <span className="font-medium text-sm truncate">@{creator.uniqueId}</span>
                       {creator.isLive && (
                         <Badge className="text-xs px-1.5 py-0 bg-green-400/15 text-green-400 border-green-400/30 shrink-0">
-                          LIVE
+                          AO VIVO
                         </Badge>
                       )}
                     </div>
@@ -156,7 +205,7 @@ export default function BulkCheck() {
                         {creator.viewerCount !== null && (
                           <span className="flex items-center gap-1 text-xs text-cyan-400 font-mono">
                             <Users className="w-3 h-3" />
-                            {creator.viewerCount.toLocaleString()}
+                            {creator.viewerCount.toLocaleString("pt-BR")}
                           </span>
                         )}
                         {creator.title && (
@@ -192,7 +241,7 @@ export default function BulkCheck() {
         <Card className="bg-card border-border border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <ExternalLink className="w-8 h-8 mb-3 text-muted" />
-            <p className="text-sm">No results returned. Check usernames and try again.</p>
+            <p className="text-sm">Nenhum resultado. Verifique os usernames e tente novamente.</p>
           </CardContent>
         </Card>
       )}

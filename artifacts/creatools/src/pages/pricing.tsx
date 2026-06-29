@@ -13,6 +13,8 @@ interface StripeConfig {
   proPriceId: string | null;
 }
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 interface Plan {
   id: "free" | "basic" | "pro";
   name: string;
@@ -33,7 +35,7 @@ const plans: Plan[] = [
     name: "Free",
     price: "R$0",
     period: "",
-    description: "Comece a monitorar streams TikTok sem custo algum.",
+    description: "Comece a monitorar streams TikTok LIVE sem custo algum.",
     icon: Zap,
     iconColor: "text-chart-3",
     features: [
@@ -93,6 +95,7 @@ export default function Pricing() {
   const { user, token } = useAuth();
   const search = useSearch();
   const searchParams = new URLSearchParams(search);
+
   const [stripeConfig, setStripeConfig] = useState<StripeConfig | null>(null);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -100,18 +103,18 @@ export default function Pricing() {
 
   const showToast = (msg: string, type: "ok" | "err" = "ok") => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 4000);
+    setTimeout(() => setToast(null), 5000);
   };
 
   useEffect(() => {
-    fetch("/api/stripe/config")
+    fetch(`${BASE}/api/stripe/config`)
       .then((r) => r.json())
       .then((d: StripeConfig) => setStripeConfig(d))
       .catch(() => setStripeConfig({ configured: false, publishableKey: null, basicPriceId: null, proPriceId: null }));
   }, []);
 
   useEffect(() => {
-    if (searchParams.get("success") === "1") showToast("Assinatura ativada! Seu plano foi atualizado.", "ok");
+    if (searchParams.get("success") === "1") showToast("✓ Assinatura ativada! Seu plano foi atualizado.", "ok");
     if (searchParams.get("canceled") === "1") showToast("Pagamento cancelado. Nenhuma cobrança foi feita.", "err");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
@@ -125,16 +128,13 @@ export default function Pricing() {
 
     setLoadingPlan(planId);
     try {
-      const res = await authFetch("/api/stripe/checkout", token, {
+      const data = await authFetch("/stripe/checkout", token, {
         method: "POST",
         body: JSON.stringify({ priceId }),
-      });
-      const data = await res.json() as { url?: string; error?: string };
-      if (!res.ok || !data.url) { showToast(data.error ?? "Erro ao criar sessão de pagamento.", "err"); return; }
+      }) as { url: string };
       window.location.href = data.url;
-    } catch {
-      showToast("Erro de conexão. Tente novamente.", "err");
-    } finally {
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Erro ao criar sessão de pagamento.", "err");
       setLoadingPlan(null);
     }
   }
@@ -143,13 +143,10 @@ export default function Pricing() {
     if (!token) return;
     setPortalLoading(true);
     try {
-      const res = await authFetch("/api/stripe/portal", token, { method: "POST" });
-      const data = await res.json() as { url?: string; error?: string };
-      if (!res.ok || !data.url) { showToast(data.error ?? "Erro ao abrir portal de cobrança.", "err"); return; }
+      const data = await authFetch("/stripe/portal", token, { method: "POST" }) as { url: string };
       window.location.href = data.url;
-    } catch {
-      showToast("Erro de conexão. Tente novamente.", "err");
-    } finally {
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Erro ao abrir portal de cobrança.", "err");
       setPortalLoading(false);
     }
   }
@@ -161,7 +158,7 @@ export default function Pricing() {
       {/* Toast */}
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm font-medium shadow-lg border ${
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-sm font-medium shadow-lg border transition-all ${
             toast.type === "ok"
               ? "bg-chart-3/10 border-chart-3/30 text-chart-3"
               : "bg-destructive/10 border-destructive/30 text-destructive"
@@ -179,7 +176,7 @@ export default function Pricing() {
         </div>
         <h1 className="text-3xl font-bold tracking-tight">Planos & Preços</h1>
         <p className="text-muted-foreground">
-          Escolha o plano que se encaixa no seu monitoramento de TikTok LIVE.
+          Escolha o plano ideal para o seu monitoramento de TikTok LIVE.
           Cancele quando quiser — sem fidelidade.
         </p>
       </div>
@@ -189,7 +186,6 @@ export default function Pricing() {
         {plans.map((plan) => {
           const Icon = plan.icon;
           const isCurrentPlan = currentPlan === plan.id;
-          const isPaid = plan.id !== "free";
 
           return (
             <Card
@@ -198,7 +194,7 @@ export default function Pricing() {
                 plan.highlight
                   ? "border-primary/50 shadow-lg shadow-primary/10"
                   : "border-border"
-              }`}
+              } ${isCurrentPlan ? "ring-1 ring-primary/30" : ""}`}
             >
               {plan.badge && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -216,7 +212,9 @@ export default function Pricing() {
                   <div>
                     <CardTitle className="text-lg">{plan.name}</CardTitle>
                     {isCurrentPlan && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5">Plano atual</Badge>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5 text-chart-3 border-chart-3/30">
+                        ✓ Plano atual
+                      </Badge>
                     )}
                   </div>
                 </div>
@@ -251,20 +249,13 @@ export default function Pricing() {
 
                 {plan.id === "free" ? (
                   <Button variant="outline" className="w-full" disabled={isCurrentPlan}>
-                    {isCurrentPlan ? "Plano atual" : "Começar grátis"}
+                    {isCurrentPlan ? "✓ Plano atual" : "Começar grátis"}
                   </Button>
                 ) : isCurrentPlan ? (
-                  <Button
-                    className="w-full"
-                    variant="outline"
-                    onClick={handlePortal}
-                    disabled={portalLoading}
-                  >
-                    {portalLoading ? (
-                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Carregando...</>
-                    ) : (
-                      <><CreditCard className="w-4 h-4 mr-2" /> Gerenciar assinatura</>
-                    )}
+                  <Button className="w-full" variant="outline" onClick={handlePortal} disabled={portalLoading}>
+                    {portalLoading
+                      ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Carregando...</>
+                      : <><CreditCard className="w-4 h-4 mr-2" />Gerenciar assinatura</>}
                   </Button>
                 ) : (
                   <Button
@@ -274,7 +265,7 @@ export default function Pricing() {
                     disabled={loadingPlan !== null || !stripeConfig?.configured || !user}
                   >
                     {loadingPlan === plan.id ? (
-                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Aguarde...</>
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Aguarde...</>
                     ) : !user ? (
                       "Faça login para assinar"
                     ) : !stripeConfig?.configured ? (
@@ -290,7 +281,7 @@ export default function Pricing() {
         })}
       </div>
 
-      {/* Current plan status / billing portal */}
+      {/* Current plan card */}
       {user && (
         <div className="max-w-5xl mx-auto">
           <Card className="bg-card/50 border-border">
@@ -307,7 +298,9 @@ export default function Pricing() {
                 </Badge>
                 {currentPlan !== "free" && (
                   <Button size="sm" variant="ghost" onClick={handlePortal} disabled={portalLoading}>
-                    {portalLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <><ExternalLink className="w-3 h-3 mr-1" /> Portal</>}
+                    {portalLoading
+                      ? <Loader2 className="w-3 h-3 animate-spin" />
+                      : <><ExternalLink className="w-3 h-3 mr-1" />Portal</>}
                   </Button>
                 )}
               </div>
@@ -316,11 +309,17 @@ export default function Pricing() {
         </div>
       )}
 
-      {/* Stripe notice */}
+      {/* Stripe not configured notice */}
       {stripeConfig && !stripeConfig.configured && (
         <div className="max-w-5xl mx-auto text-center text-xs text-muted-foreground border border-border rounded-lg p-4">
           <p className="font-medium text-foreground mb-1">Pagamentos não configurados</p>
-          <p>Configure as variáveis <code className="text-primary">STRIPE_SECRET_KEY</code>, <code className="text-primary">STRIPE_PRICE_ID_BASIC</code> e <code className="text-primary">STRIPE_PRICE_ID_PRO</code> no servidor para ativar o checkout.</p>
+          <p>
+            Configure as variáveis{" "}
+            <code className="text-primary">STRIPE_SECRET_KEY</code>,{" "}
+            <code className="text-primary">STRIPE_PRICE_ID_BASIC</code> e{" "}
+            <code className="text-primary">STRIPE_PRICE_ID_PRO</code>{" "}
+            no servidor para ativar o checkout.
+          </p>
         </div>
       )}
 
