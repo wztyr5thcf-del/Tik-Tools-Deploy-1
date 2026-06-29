@@ -7,6 +7,7 @@ import Dashboard from "./pages/dashboard";
 import Monitor from "./pages/monitor";
 import BulkCheck from "./pages/bulk-check";
 import Settings from "./pages/settings";
+import GiftGallery from "./pages/gift-gallery";
 import AppLayout from "./components/layout/app-layout";
 import { useEffect } from "react";
 
@@ -19,6 +20,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/monitor/:username" component={Monitor} />
         <Route path="/bulk-check" component={BulkCheck} />
+        <Route path="/gift-gallery" component={GiftGallery} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Activity, Users, Settings } from "lucide-react";
+import { LayoutDashboard, Activity, Users, Settings, Diamond } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -9,6 +9,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/monitor/example", label: "Monitor", icon: Activity, matchPrefix: "/monitor" },
     { href: "/bulk-check", label: "Bulk Check", icon: Users },
+    { href: "/gift-gallery", label: "Gift Gallery", icon: Diamond },
     { href: "/settings", label: "Settings", icon: Settings },
   ];
 
