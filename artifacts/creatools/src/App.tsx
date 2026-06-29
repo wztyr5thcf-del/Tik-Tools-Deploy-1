@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "./pages/dashboard";
 import Monitor from "./pages/monitor";
 import BulkCheck from "./pages/bulk-check";
+import Streamers from "./pages/streamers";
 import Settings from "./pages/settings";
 import GiftGallery from "./pages/gift-gallery";
 import Pricing from "./pages/pricing";
@@ -58,6 +59,7 @@ function Router() {
             <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />
             <Route path="/monitor/:username" component={() => <ProtectedRoute component={Monitor} />} />
             <Route path="/bulk-check" component={() => <ProtectedRoute component={BulkCheck} />} />
+            <Route path="/streamers" component={() => <ProtectedRoute component={Streamers} />} />
             <Route path="/gift-gallery" component={() => <ProtectedRoute component={GiftGallery} />} />
             <Route path="/pricing" component={Pricing} />
             <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />

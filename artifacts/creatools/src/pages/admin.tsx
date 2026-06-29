@@ -56,6 +56,7 @@ interface StripeConfig {
   priceIdBasic: string | null;
   priceIdPro: string | null;
   tiktoolsKeySet: boolean;
+  paymentsEnabled: boolean;
 }
 
 interface TestResult {
@@ -77,6 +78,7 @@ export default function Admin() {
   const [stripeConfig, setStripeConfig] = useState<StripeConfig | null>(null);
   const [stripeLoading, setStripeLoading] = useState(true);
   const [stripeSaving, setStripeSaving] = useState(false);
+  const [paymentsEnabled, setPaymentsEnabled] = useState(true);
   const [publishableKey, setPublishableKey] = useState("");
   const [priceIdBasic, setPriceIdBasic] = useState("");
   const [priceIdPro, setPriceIdPro] = useState("");
@@ -110,6 +112,7 @@ export default function Admin() {
       setPublishableKey(data.publishableKey ?? "");
       setPriceIdBasic(data.priceIdBasic ?? "");
       setPriceIdPro(data.priceIdPro ?? "");
+      setPaymentsEnabled(data.paymentsEnabled ?? true);
     } catch {
       // silently fail
     } finally {
@@ -148,8 +151,9 @@ export default function Admin() {
   }
 
   // ── Stripe config save ────────────────────────────────────────
-  async function saveStripeConfig() {
+  async function saveStripeConfig(overrideEnabled?: boolean) {
     setStripeSaving(true);
+    const enabled = overrideEnabled ?? paymentsEnabled;
     try {
       await authFetch("/admin/stripe-config", token, {
         method: "PATCH",
@@ -157,6 +161,7 @@ export default function Admin() {
           publishableKey: publishableKey.trim() || null,
           priceIdBasic: priceIdBasic.trim() || null,
           priceIdPro: priceIdPro.trim() || null,
+          paymentsEnabled: enabled,
         }),
       });
       await fetchStripeConfig();
@@ -454,9 +459,39 @@ export default function Admin() {
                     />
                   </div>
 
+                  {/* Payments enabled toggle */}
+                  <div className="flex items-center justify-between rounded-md border border-border px-3 py-2.5 bg-background">
+                    <div>
+                      <p className="text-sm font-medium">Payments enabled</p>
+                      <p className="text-xs text-muted-foreground">
+                        Disable to test UI without Stripe configured
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={paymentsEnabled}
+                      onClick={async () => {
+                        const next = !paymentsEnabled;
+                        setPaymentsEnabled(next);
+                        await saveStripeConfig(next);
+                      }}
+                      disabled={stripeSaving}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none disabled:opacity-50 ${
+                        paymentsEnabled ? "bg-chart-3" : "bg-muted"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg ring-0 transition-transform ${
+                          paymentsEnabled ? "translate-x-4" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
                   <Button
                     size="sm"
-                    onClick={saveStripeConfig}
+                    onClick={() => saveStripeConfig()}
                     disabled={stripeSaving}
                     className="w-full"
                   >

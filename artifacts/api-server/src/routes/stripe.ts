@@ -86,11 +86,28 @@ router.post("/stripe/portal", requireAuth, async (req: Request, res: Response): 
 
 // GET /api/stripe/config ──────────────────────────────────────────────────────
 router.get("/stripe/config", (req: Request, res: Response): void => {
+  // Read publishable key / price IDs from stripe-config.json (admin-managed fallback)
+  let storedCfg: { publishableKey?: string; priceIdBasic?: string; priceIdPro?: string; paymentsEnabled?: boolean } = {};
+  try {
+    const fs = require("fs") as typeof import("fs");
+    const path = require("path") as typeof import("path");
+    const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
+      ? path.resolve(process.cwd(), "../..")
+      : process.cwd();
+    const cfgFile = path.resolve(workspaceRoot, "artifacts/api-server/data/stripe-config.json");
+    if (fs.existsSync(cfgFile)) {
+      storedCfg = JSON.parse(fs.readFileSync(cfgFile, "utf-8")) as typeof storedCfg;
+    }
+  } catch { /* ignore */ }
+
+  const paymentsEnabled = storedCfg.paymentsEnabled ?? true;
+
   res.json({
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? null,
-    basicPriceId: process.env.STRIPE_PRICE_ID_BASIC ?? null,
-    proPriceId: process.env.STRIPE_PRICE_ID_PRO ?? null,
-    configured: !!process.env.STRIPE_SECRET_KEY,
+    publishableKey: storedCfg.publishableKey ?? process.env.STRIPE_PUBLISHABLE_KEY ?? null,
+    basicPriceId: storedCfg.priceIdBasic ?? process.env.STRIPE_PRICE_ID_BASIC ?? null,
+    proPriceId: storedCfg.priceIdPro ?? process.env.STRIPE_PRICE_ID_PRO ?? null,
+    configured: !!process.env.STRIPE_SECRET_KEY && paymentsEnabled,
+    paymentsEnabled,
   });
 });
 

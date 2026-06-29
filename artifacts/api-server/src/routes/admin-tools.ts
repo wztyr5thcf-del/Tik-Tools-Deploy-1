@@ -26,6 +26,7 @@ interface StripeConfigFile {
   publishableKey?: string;
   priceIdBasic?: string;
   priceIdPro?: string;
+  paymentsEnabled?: boolean;
 }
 
 function loadStripeConfig(): StripeConfigFile {
@@ -52,22 +53,25 @@ router.get("/admin/stripe-config", requireAdmin, (_req, res): void => {
     priceIdBasic: stored.priceIdBasic ?? process.env.STRIPE_PRICE_ID_BASIC ?? null,
     priceIdPro: stored.priceIdPro ?? process.env.STRIPE_PRICE_ID_PRO ?? null,
     tiktoolsKeySet: !!process.env.TIKTOOLS_API_KEY,
+    paymentsEnabled: stored.paymentsEnabled ?? true,
   });
 });
 
 // PATCH /api/admin/stripe-config
 router.patch("/admin/stripe-config", requireAdmin, (req, res): void => {
-  const { publishableKey, priceIdBasic, priceIdPro } = req.body as {
-    publishableKey?: string;
-    priceIdBasic?: string;
-    priceIdPro?: string;
+  const { publishableKey, priceIdBasic, priceIdPro, paymentsEnabled } = req.body as {
+    publishableKey?: string | null;
+    priceIdBasic?: string | null;
+    priceIdPro?: string | null;
+    paymentsEnabled?: boolean;
   };
   const stored = loadStripeConfig();
   if (publishableKey !== undefined) stored.publishableKey = publishableKey || undefined;
   if (priceIdBasic !== undefined) stored.priceIdBasic = priceIdBasic || undefined;
   if (priceIdPro !== undefined) stored.priceIdPro = priceIdPro || undefined;
+  if (paymentsEnabled !== undefined) stored.paymentsEnabled = paymentsEnabled;
   saveStripeConfig(stored);
-  req.log.info("Stripe config updated via admin panel");
+  req.log.info({ paymentsEnabled }, "Stripe config updated via admin panel");
   res.json({ ok: true });
 });
 

@@ -11,6 +11,7 @@ interface StripeConfig {
   publishableKey: string | null;
   basicPriceId: string | null;
   proPriceId: string | null;
+  paymentsEnabled: boolean;
 }
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -110,7 +111,7 @@ export default function Pricing() {
     fetch(`${BASE}/api/stripe/config`)
       .then((r) => r.json())
       .then((d: StripeConfig) => setStripeConfig(d))
-      .catch(() => setStripeConfig({ configured: false, publishableKey: null, basicPriceId: null, proPriceId: null }));
+      .catch(() => setStripeConfig({ configured: false, publishableKey: null, basicPriceId: null, proPriceId: null, paymentsEnabled: true }));
   }, []);
 
   useEffect(() => {
@@ -309,8 +310,16 @@ export default function Pricing() {
         </div>
       )}
 
+      {/* Payments disabled by admin */}
+      {stripeConfig && !stripeConfig.paymentsEnabled && (
+        <div className="max-w-5xl mx-auto text-center text-xs text-muted-foreground border border-yellow-500/30 bg-yellow-500/5 rounded-lg p-4">
+          <p className="font-medium text-yellow-400 mb-1">Payments temporarily disabled</p>
+          <p>The admin has disabled payments. Subscriptions are unavailable while in test mode.</p>
+        </div>
+      )}
+
       {/* Stripe not configured notice */}
-      {stripeConfig && !stripeConfig.configured && (
+      {stripeConfig && stripeConfig.paymentsEnabled && !stripeConfig.configured && (
         <div className="max-w-5xl mx-auto text-center text-xs text-muted-foreground border border-border rounded-lg p-4">
           <p className="font-medium text-foreground mb-1">Payments not configured</p>
           <p>

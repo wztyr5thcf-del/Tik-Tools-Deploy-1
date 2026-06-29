@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Activity, Users, Settings, Diamond,
   Tag, LogOut, ChevronDown, UserCircle, Shield, Menu, X,
-  Lock, Zap, Crown
+  Lock, Zap, Crown, Radio,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import { useState } from "react";
@@ -34,11 +34,12 @@ function planMeets(userPlan: PlanLevel, required: PlanLevel): boolean {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/streamers", label: "Streamers", icon: Radio },
   { href: "/monitor/example", label: "Monitor", icon: Activity, matchPrefix: "/monitor" },
   { href: "/bulk-check", label: "Bulk Check", icon: Users, requiresPlan: "basic" },
   { href: "/gift-gallery", label: "Gift Gallery", icon: Diamond },
-  { href: "/pricing", label: "Planos", icon: Tag },
-  { href: "/settings", label: "Configurações", icon: Settings },
+  { href: "/pricing", label: "Plans", icon: Tag },
+  { href: "/settings", label: "Settings", icon: Settings },
   { href: "/admin", label: "Admin Panel", icon: Shield, adminOnly: true },
 ];
 
