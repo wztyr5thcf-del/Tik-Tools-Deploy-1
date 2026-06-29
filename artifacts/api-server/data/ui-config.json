@@ -1,5 +1,5 @@
 {
-  "navType": "sidebar",
+  "navType": "topbar",
   "primaryColor": "0 84% 60%",
   "secondaryColor": "0 84% 20%",
   "logoText": "",
@@ -126,5 +126,5 @@
       ]
     }
   ],
-  "updatedAt": "2026-06-29T20:16:30.570Z"
+  "updatedAt": "2026-06-29T23:52:13.361Z"
 }
