@@ -12,12 +12,12 @@ export interface BulkCheckResult {
   /** @nullable */
   roomId?: string | null;
   /**
-     * Stream title (only available on Basic+ tier via bulk endpoint)
+     * Available on Basic+ tier only
      * @nullable
      */
   title?: string | null;
   /**
-     * Viewer count (only available on Basic+ tier via bulk endpoint)
+     * Available on Basic+ tier only
      * @nullable
      */
   viewerCount?: number | null;

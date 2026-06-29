@@ -21,7 +21,6 @@ paths:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -35,7 +34,7 @@ paths:
       operationId: getTopChannels
       tags: [tiktok]
       summary: Get top live channels
-      description: Returns currently live TikTok channels. displayName is mapped to nickname.
+      description: Returns currently live TikTok channels (no API key required). displayName mapped to nickname.
       responses:
         "200":
           description: List of live channels
@@ -51,7 +50,7 @@ paths:
       operationId: getLiveStatus
       tags: [tiktok]
       summary: Check if user is live
-      description: Fast liveness check for a TikTok username (proxies to tik.tools /webcast/live_status with unique_id param)
+      description: Calls tik.tools /webcast/live_status with unique_id (snake_case) param.
       parameters:
         - name: uniqueId
           in: query
@@ -72,7 +71,7 @@ paths:
       operationId: mintJwt
       tags: [tiktok]
       summary: Mint JWT for WebSocket
-      description: Server-side JWT minting for secure WebSocket connections to wss://api.tik.tools
+      description: Mints a short-lived JWT for wss://api.tik.tools WebSocket connections.
       requestBody:
         required: true
         content:
@@ -86,15 +85,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/JwtResponse"
-        "400":
-          description: Bad request
 
   /tiktok/room-info:
     post:
       operationId: getRoomInfo
       tags: [tiktok]
       summary: Get room information
-      description: Returns detailed info about a live stream room. If only uniqueId provided, resolves room_id via live_status first.
+      description: If only uniqueId is provided, backend resolves room_id via live_status first, then calls room_info with room_id.
       requestBody:
         required: true
         content:
@@ -114,7 +111,7 @@ paths:
       operationId: bulkLiveCheck
       tags: [tiktok]
       summary: Check multiple users live status
-      description: Returns live status for multiple TikTok users. Uses tik.tools bulk endpoint if available (Basic+), otherwise falls back to parallel individual live_status calls (Sandbox compatible).
+      description: Uses tik.tools bulk endpoint (Basic+ tier). On Sandbox, falls back to parallel individual live_status calls automatically.
       requestBody:
         required: true
         content:
@@ -136,7 +133,6 @@ paths:
       operationId: getRateLimits
       tags: [tiktok]
       summary: Get API rate limits
-      description: Returns current API key rate limit status including tier, API quota and WebSocket connections
       responses:
         "200":
           description: Rate limit info
@@ -144,6 +140,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RateLimits"
+
+  /tiktok/gift-catalog:
+    get:
+      operationId: getGiftCatalog
+      tags: [tiktok]
+      summary: Get gift catalog
+      description: Returns the list of known TikTok gifts with diamond costs and icons. Available on all tiers.
+      responses:
+        "200":
+          description: Gift catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GiftItem"
+
+  /tiktok/user-profile:
+    get:
+      operationId: getUserProfile
+      tags: [tiktok]
+      summary: Get user profile
+      description: Returns TikTok user profile data. Requires Pro tier or above.
+      parameters:
+        - name: uniqueId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: TikTok username (without @)
+      responses:
+        "200":
+          description: User profile or tier error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
 
   /config:
     get:
@@ -184,19 +217,17 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
     LiveChannel:
       type: object
-      description: A currently live TikTok channel. nickname is mapped from tik.tools displayName field.
+      description: A currently live TikTok channel.
       properties:
         uniqueId:
           type: string
-          description: TikTok username (without @)
         nickname:
           type: ["string", "null"]
-          description: Display name (mapped from tik.tools displayName)
+          description: Display name (mapped from tik.tools displayName field)
         profilePictureUrl:
           type: ["string", "null"]
         roomId:
@@ -208,8 +239,7 @@ components:
         region:
           type: ["string", "null"]
           description: Two-letter region code (e.g. TW, CA, US)
-      required:
-        - uniqueId
+      required: [uniqueId]
 
     LiveStatus:
       type: object
@@ -222,10 +252,7 @@ components:
           type: ["string", "null"]
         cached:
           type: boolean
-      required:
-        - uniqueId
-        - isLive
-        - cached
+      required: [uniqueId, isLive, cached]
 
     JwtRequest:
       type: object
@@ -235,8 +262,7 @@ components:
         expireAfter:
           type: integer
           description: Seconds until JWT expires (default 600)
-      required:
-        - uniqueId
+      required: [uniqueId]
 
     JwtResponse:
       type: object
@@ -245,19 +271,15 @@ components:
           type: string
         uniqueId:
           type: string
-      required:
-        - token
-        - uniqueId
+      required: [token, uniqueId]
 
     RoomInfoRequest:
       type: object
       properties:
         uniqueId:
           type: ["string", "null"]
-          description: TikTok username — backend resolves room_id via live_status if roomId not provided
         roomId:
           type: ["string", "null"]
-          description: Direct room ID (preferred — skips live_status resolution step)
 
     RoomInfo:
       type: object
@@ -274,8 +296,7 @@ components:
           type: ["integer", "null"]
         owner:
           $ref: "#/components/schemas/RoomOwner"
-      required:
-        - alive
+      required: [alive]
 
     RoomOwner:
       type: object
@@ -294,9 +315,7 @@ components:
           type: array
           items:
             type: string
-          description: List of TikTok usernames to check (without @)
-      required:
-        - uniqueIds
+      required: [uniqueIds]
 
     BulkCheckResult:
       type: object
@@ -309,40 +328,71 @@ components:
           type: ["string", "null"]
         title:
           type: ["string", "null"]
-          description: Stream title (only available on Basic+ tier via bulk endpoint)
+          description: Available on Basic+ tier only
         viewerCount:
           type: ["integer", "null"]
-          description: Viewer count (only available on Basic+ tier via bulk endpoint)
-      required:
-        - uniqueId
-        - isLive
+          description: Available on Basic+ tier only
+      required: [uniqueId, isLive]
 
     RateLimits:
       type: object
       properties:
         tier:
           type: string
-          description: Current API tier (sandbox, basic, pro, ultra)
         apiLimit:
           type: integer
         apiRemaining:
           type: integer
         apiResetAt:
           type: ["integer", "null"]
-          description: Unix timestamp when API quota resets
         wsLimit:
           type: integer
         wsCurrent:
           type: integer
         bulkCheckLimit:
           type: ["integer", "null"]
-          description: Max usernames per bulk check call (null if not available on current tier)
-      required:
-        - tier
-        - apiLimit
-        - apiRemaining
-        - wsLimit
-        - wsCurrent
+      required: [tier, apiLimit, apiRemaining, wsLimit, wsCurrent]
+
+    GiftItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        iconUrl:
+          type: string
+        diamondCount:
+          type: integer
+        valueUsd:
+          type: number
+      required: [id, name, iconUrl, diamondCount, valueUsd]
+
+    UserProfile:
+      type: object
+      properties:
+        uniqueId:
+          type: string
+        nickname:
+          type: ["string", "null"]
+        profilePictureUrl:
+          type: ["string", "null"]
+        followerCount:
+          type: ["integer", "null"]
+        followingCount:
+          type: ["integer", "null"]
+        videoCount:
+          type: ["integer", "null"]
+        likeCount:
+          type: ["integer", "null"]
+        bio:
+          type: ["string", "null"]
+        available:
+          type: boolean
+          description: False when the endpoint requires a higher tier
+        requiredTier:
+          type: ["string", "null"]
+      required: [uniqueId, available]
 
     AppConfig:
       type: object
@@ -353,13 +403,11 @@ components:
           type: ["string", "null"]
         tier:
           type: ["string", "null"]
-      required:
-        - apiKeySet
+      required: [apiKeySet]
 
     ConfigInput:
       type: object
       properties:
         apiKey:
           type: string
-      required:
-        - apiKey
+      required: [apiKey]

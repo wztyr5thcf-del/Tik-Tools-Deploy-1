@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface BulkCheckRequest {
-  uniqueIds: string[];
-}
+export type GetUserProfileParams = {
+/**
+ * TikTok username (without @)
+ */
+uniqueId: string;
+};

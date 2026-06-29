@@ -7,13 +7,12 @@
  */
 
 /**
- * A currently live TikTok channel. nickname is mapped from tik.tools displayName field.
+ * A currently live TikTok channel.
  */
 export interface LiveChannel {
-  /** TikTok username (without @) */
   uniqueId: string;
   /**
-     * Display name (mapped from tik.tools displayName)
+     * Display name (mapped from tik.tools displayName field)
      * @nullable
      */
   nickname?: string | null;

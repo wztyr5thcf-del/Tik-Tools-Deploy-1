@@ -10,13 +10,12 @@ export interface HealthStatus {
 }
 
 /**
- * A currently live TikTok channel. nickname is mapped from tik.tools displayName field.
+ * A currently live TikTok channel.
  */
 export interface LiveChannel {
-  /** TikTok username (without @) */
   uniqueId: string;
   /**
-     * Display name (mapped from tik.tools displayName)
+     * Display name (mapped from tik.tools displayName field)
      * @nullable
      */
   nickname?: string | null;
@@ -55,15 +54,9 @@ export interface JwtResponse {
 }
 
 export interface RoomInfoRequest {
-  /**
-     * TikTok username — backend resolves room_id via live_status if roomId not provided
-     * @nullable
-     */
+  /** @nullable */
   uniqueId?: string | null;
-  /**
-     * Direct room ID (preferred — skips live_status resolution step)
-     * @nullable
-     */
+  /** @nullable */
   roomId?: string | null;
 }
 
@@ -90,7 +83,6 @@ export interface RoomInfo {
 }
 
 export interface BulkCheckRequest {
-  /** List of TikTok usernames to check (without @) */
   uniqueIds: string[];
 }
 
@@ -100,34 +92,57 @@ export interface BulkCheckResult {
   /** @nullable */
   roomId?: string | null;
   /**
-     * Stream title (only available on Basic+ tier via bulk endpoint)
+     * Available on Basic+ tier only
      * @nullable
      */
   title?: string | null;
   /**
-     * Viewer count (only available on Basic+ tier via bulk endpoint)
+     * Available on Basic+ tier only
      * @nullable
      */
   viewerCount?: number | null;
 }
 
 export interface RateLimits {
-  /** Current API tier (sandbox, basic, pro, ultra) */
   tier: string;
   apiLimit: number;
   apiRemaining: number;
-  /**
-     * Unix timestamp when API quota resets
-     * @nullable
-     */
+  /** @nullable */
   apiResetAt?: number | null;
   wsLimit: number;
   wsCurrent: number;
-  /**
-     * Max usernames per bulk check call (null if not available on current tier)
-     * @nullable
-     */
+  /** @nullable */
   bulkCheckLimit?: number | null;
+}
+
+export interface GiftItem {
+  id: string;
+  name: string;
+  iconUrl: string;
+  diamondCount: number;
+  valueUsd: number;
+}
+
+export interface UserProfile {
+  uniqueId: string;
+  /** @nullable */
+  nickname?: string | null;
+  /** @nullable */
+  profilePictureUrl?: string | null;
+  /** @nullable */
+  followerCount?: number | null;
+  /** @nullable */
+  followingCount?: number | null;
+  /** @nullable */
+  videoCount?: number | null;
+  /** @nullable */
+  likeCount?: number | null;
+  /** @nullable */
+  bio?: string | null;
+  /** False when the endpoint requires a higher tier */
+  available: boolean;
+  /** @nullable */
+  requiredTier?: string | null;
 }
 
 export interface AppConfig {
@@ -143,6 +158,13 @@ export interface ConfigInput {
 }
 
 export type GetLiveStatusParams = {
+/**
+ * TikTok username (without @)
+ */
+uniqueId: string;
+};
+
+export type GetUserProfileParams = {
 /**
  * TikTok username (without @)
  */

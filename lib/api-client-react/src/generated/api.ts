@@ -25,6 +25,8 @@ import type {
   BulkCheckResult,
   ConfigInput,
   GetLiveStatusParams,
+  GetUserProfileParams,
+  GiftItem,
   HealthStatus,
   JwtRequest,
   JwtResponse,
@@ -32,7 +34,8 @@ import type {
   LiveStatus,
   RateLimits,
   RoomInfo,
-  RoomInfoRequest
+  RoomInfoRequest,
+  UserProfile
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -71,7 +74,6 @@ export const getHealthCheckUrl = () => {
 }
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const healthCheck = async ( options?: RequestInit): Promise<HealthStatus> => {
@@ -149,7 +151,7 @@ export const getGetTopChannelsUrl = () => {
 }
 
 /**
- * Returns currently live TikTok channels. displayName is mapped to nickname.
+ * Returns currently live TikTok channels (no API key required). displayName mapped to nickname.
  * @summary Get top live channels
  */
 export const getTopChannels = async ( options?: RequestInit): Promise<LiveChannel[]> => {
@@ -234,7 +236,7 @@ export const getGetLiveStatusUrl = (params: GetLiveStatusParams,) => {
 }
 
 /**
- * Fast liveness check for a TikTok username (proxies to tik.tools /webcast/live_status with unique_id param)
+ * Calls tik.tools /webcast/live_status with unique_id (snake_case) param.
  * @summary Check if user is live
  */
 export const getLiveStatus = async (params: GetLiveStatusParams, options?: RequestInit): Promise<LiveStatus> => {
@@ -312,7 +314,7 @@ export const getMintJwtUrl = () => {
 }
 
 /**
- * Server-side JWT minting for secure WebSocket connections to wss://api.tik.tools
+ * Mints a short-lived JWT for wss://api.tik.tools WebSocket connections.
  * @summary Mint JWT for WebSocket
  */
 export const mintJwt = async (jwtRequest: JwtRequest, options?: RequestInit): Promise<JwtResponse> => {
@@ -329,7 +331,7 @@ export const mintJwt = async (jwtRequest: JwtRequest, options?: RequestInit): Pr
 
 
 
-export const getMintJwtMutationOptions = <TError = ErrorType<void>,
+export const getMintJwtMutationOptions = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mintJwt>>, TError,{data: BodyType<JwtRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof mintJwt>>, TError,{data: BodyType<JwtRequest>}, TContext> => {
 
@@ -358,12 +360,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type MintJwtMutationResult = NonNullable<Awaited<ReturnType<typeof mintJwt>>>
     export type MintJwtMutationBody = BodyType<JwtRequest>
-    export type MintJwtMutationError = ErrorType<void>
+    export type MintJwtMutationError = ErrorType<unknown>
 
     /**
  * @summary Mint JWT for WebSocket
  */
-export const useMintJwt = <TError = ErrorType<void>,
+export const useMintJwt = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof mintJwt>>, TError,{data: BodyType<JwtRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof mintJwt>>,
@@ -383,7 +385,7 @@ export const getGetRoomInfoUrl = () => {
 }
 
 /**
- * Returns detailed info about a live stream room. If only uniqueId provided, resolves room_id via live_status first.
+ * If only uniqueId is provided, backend resolves room_id via live_status first, then calls room_info with room_id.
  * @summary Get room information
  */
 export const getRoomInfo = async (roomInfoRequest: RoomInfoRequest, options?: RequestInit): Promise<RoomInfo> => {
@@ -454,7 +456,7 @@ export const getBulkLiveCheckUrl = () => {
 }
 
 /**
- * Returns live status for multiple TikTok users. Uses tik.tools bulk endpoint if available (Basic+), otherwise falls back to parallel individual live_status calls (Sandbox compatible).
+ * Uses tik.tools bulk endpoint (Basic+ tier). On Sandbox, falls back to parallel individual live_status calls automatically.
  * @summary Check multiple users live status
  */
 export const bulkLiveCheck = async (bulkCheckRequest: BulkCheckRequest, options?: RequestInit): Promise<BulkCheckResult[]> => {
@@ -525,7 +527,6 @@ export const getGetRateLimitsUrl = () => {
 }
 
 /**
- * Returns current API key rate limit status including tier, API quota and WebSocket connections
  * @summary Get API rate limits
  */
 export const getRateLimits = async ( options?: RequestInit): Promise<RateLimits> => {
@@ -582,6 +583,169 @@ export function useGetRateLimits<TData = Awaited<ReturnType<typeof getRateLimits
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetRateLimitsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetGiftCatalogUrl = () => {
+
+
+
+
+  return `/api/tiktok/gift-catalog`
+}
+
+/**
+ * Returns the list of known TikTok gifts with diamond costs and icons. Available on all tiers.
+ * @summary Get gift catalog
+ */
+export const getGiftCatalog = async ( options?: RequestInit): Promise<GiftItem[]> => {
+
+  return customFetch<GiftItem[]>(getGetGiftCatalogUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGiftCatalogQueryKey = () => {
+    return [
+    `/api/tiktok/gift-catalog`
+    ] as const;
+    }
+
+
+export const getGetGiftCatalogQueryOptions = <TData = Awaited<ReturnType<typeof getGiftCatalog>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGiftCatalog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGiftCatalogQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGiftCatalog>>> = ({ signal }) => getGiftCatalog({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGiftCatalog>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGiftCatalogQueryResult = NonNullable<Awaited<ReturnType<typeof getGiftCatalog>>>
+export type GetGiftCatalogQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get gift catalog
+ */
+
+export function useGetGiftCatalog<TData = Awaited<ReturnType<typeof getGiftCatalog>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGiftCatalog>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGiftCatalogQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetUserProfileUrl = (params: GetUserProfileParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tiktok/user-profile?${stringifiedParams}` : `/api/tiktok/user-profile`
+}
+
+/**
+ * Returns TikTok user profile data. Requires Pro tier or above.
+ * @summary Get user profile
+ */
+export const getUserProfile = async (params: GetUserProfileParams, options?: RequestInit): Promise<UserProfile> => {
+
+  return customFetch<UserProfile>(getGetUserProfileUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetUserProfileQueryKey = (params?: GetUserProfileParams,) => {
+    return [
+    `/api/tiktok/user-profile`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetUserProfileQueryOptions = <TData = Awaited<ReturnType<typeof getUserProfile>>, TError = ErrorType<unknown>>(params: GetUserProfileParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUserProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetUserProfileQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUserProfile>>> = ({ signal }) => getUserProfile(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUserProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetUserProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getUserProfile>>>
+export type GetUserProfileQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get user profile
+ */
+
+export function useGetUserProfile<TData = Awaited<ReturnType<typeof getUserProfile>>, TError = ErrorType<unknown>>(
+ params: GetUserProfileParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUserProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetUserProfileQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

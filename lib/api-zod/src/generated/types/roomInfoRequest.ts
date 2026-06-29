@@ -7,14 +7,8 @@
  */
 
 export interface RoomInfoRequest {
-  /**
-     * TikTok username — backend resolves room_id via live_status if roomId not provided
-     * @nullable
-     */
+  /** @nullable */
   uniqueId?: string | null;
-  /**
-     * Direct room ID (preferred — skips live_status resolution step)
-     * @nullable
-     */
+  /** @nullable */
   roomId?: string | null;
 }

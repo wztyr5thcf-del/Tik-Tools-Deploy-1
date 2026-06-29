@@ -4,6 +4,7 @@ import {
   MintJwtBody,
   GetRoomInfoBody,
   BulkLiveCheckBody,
+  GetUserProfileQueryParams,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -16,8 +17,11 @@ function getApiKey(): string {
   return key;
 }
 
+// Gift catalog is cached in memory to avoid repeated API calls
+let giftCatalogCache: { data: unknown; ts: number } | null = null;
+const GIFT_CACHE_TTL = 1000 * 60 * 60; // 1 hour
+
 // ── Top Channels ─────────────────────────────────────────────────────────────
-// Real response shape: { channels: [{ uniqueId, displayName, viewerCount, region, roomId }] }
 router.get("/tiktok/top-channels", async (req, res): Promise<void> => {
   try {
     const r = await fetch(`${TIKTOOLS_API}/api/live/top-channels`);
@@ -34,7 +38,7 @@ router.get("/tiktok/top-channels", async (req, res): Promise<void> => {
     };
     const channels = (json.channels ?? []).map((c) => ({
       uniqueId: c.uniqueId ?? "",
-      nickname: c.displayName ?? null,        // tik.tools uses displayName
+      nickname: c.displayName ?? null,
       profilePictureUrl: c.profilePictureUrl ?? null,
       roomId: c.roomId ?? null,
       viewerCount: c.viewerCount ?? null,
@@ -49,7 +53,6 @@ router.get("/tiktok/top-channels", async (req, res): Promise<void> => {
 });
 
 // ── Live Status ───────────────────────────────────────────────────────────────
-// Correct param: unique_id (snake_case), not uniqueId
 router.get("/tiktok/live-status", async (req, res): Promise<void> => {
   const parsed = GetLiveStatusQueryParams.safeParse(req.query);
   if (!parsed.success) {
@@ -90,18 +93,15 @@ router.post("/tiktok/jwt", async (req, res): Promise<void> => {
   try {
     const apiKey = getApiKey();
     const expireAfter = parsed.data.expireAfter ?? 600;
-    const r = await fetch(
-      `${TIKTOOLS_API}/authentication/jwt?apiKey=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          allowed_creators: [parsed.data.uniqueId],
-          expire_after: expireAfter,
-          max_websockets: 1,
-        }),
-      }
-    );
+    const r = await fetch(`${TIKTOOLS_API}/authentication/jwt?apiKey=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        allowed_creators: [parsed.data.uniqueId],
+        expire_after: expireAfter,
+        max_websockets: 1,
+      }),
+    });
     const json = await r.json() as { data?: { token?: string } };
     const token = json.data?.token;
     if (!token) {
@@ -117,8 +117,6 @@ router.post("/tiktok/jwt", async (req, res): Promise<void> => {
 });
 
 // ── Room Info ─────────────────────────────────────────────────────────────────
-// tik.tools returns resolve_required when using unique_id without a roomId.
-// Correct flow: 1) call live_status to get room_id, 2) call room_info with room_id.
 router.post("/tiktok/room-info", async (req, res): Promise<void> => {
   const parsed = GetRoomInfoBody.safeParse(req.body);
   if (!parsed.success) {
@@ -129,7 +127,7 @@ router.post("/tiktok/room-info", async (req, res): Promise<void> => {
   try {
     const apiKey = getApiKey();
 
-    // If only uniqueId provided, resolve room_id via live_status first
+    // Resolve room_id via live_status if not provided directly
     let roomId = parsed.data.roomId ?? null;
     if (!roomId && parsed.data.uniqueId) {
       const statusR = await fetch(
@@ -188,8 +186,6 @@ router.post("/tiktok/room-info", async (req, res): Promise<void> => {
 });
 
 // ── Bulk Live Check ───────────────────────────────────────────────────────────
-// /webcast/bulk_live_check is Basic+ only.
-// For sandbox users, fall back to parallel individual live_status calls.
 router.post("/tiktok/bulk-check", async (req, res): Promise<void> => {
   const parsed = BulkLiveCheckBody.safeParse(req.body);
   if (!parsed.success) {
@@ -201,7 +197,7 @@ router.post("/tiktok/bulk-check", async (req, res): Promise<void> => {
     const apiKey = getApiKey();
     const { uniqueIds } = parsed.data;
 
-    // Try the bulk endpoint first
+    // Try bulk endpoint first (Basic+ only)
     const bulkR = await fetch(`${TIKTOOLS_API}/webcast/bulk_live_check?apiKey=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -209,7 +205,6 @@ router.post("/tiktok/bulk-check", async (req, res): Promise<void> => {
     });
     const bulkJson = await bulkR.json() as {
       status_code?: number;
-      required_tier?: string;
       data?: Array<{
         unique_id?: string;
         is_live?: boolean;
@@ -219,7 +214,6 @@ router.post("/tiktok/bulk-check", async (req, res): Promise<void> => {
       }>;
     };
 
-    // If bulk endpoint works, return results directly
     if (bulkJson.status_code === 0 && Array.isArray(bulkJson.data)) {
       const results = bulkJson.data.map((c) => ({
         uniqueId: c.unique_id ?? "",
@@ -232,8 +226,8 @@ router.post("/tiktok/bulk-check", async (req, res): Promise<void> => {
       return;
     }
 
-    // Fallback: sandbox tier — run parallel individual live_status calls
-    req.log.info({ tier: "sandbox" }, "bulk_live_check unavailable, falling back to individual live_status calls");
+    // Sandbox fallback: parallel individual live_status calls
+    req.log.info("bulk_live_check unavailable, falling back to parallel live_status calls");
     const results = await Promise.all(
       uniqueIds.map(async (uid) => {
         try {
@@ -286,6 +280,110 @@ router.get("/tiktok/rate-limits", async (req, res): Promise<void> => {
   } catch (err) {
     req.log.error({ err }, "Failed to fetch rate limits");
     res.status(500).json({ error: "Failed to fetch rate limits" });
+  }
+});
+
+// ── Gift Catalog ──────────────────────────────────────────────────────────────
+router.get("/tiktok/gift-catalog", async (req, res): Promise<void> => {
+  try {
+    const now = Date.now();
+    if (giftCatalogCache && now - giftCatalogCache.ts < GIFT_CACHE_TTL) {
+      res.json(giftCatalogCache.data);
+      return;
+    }
+
+    const apiKey = getApiKey();
+    const r = await fetch(`${TIKTOOLS_API}/webcast/gift_info?apiKey=${apiKey}`);
+    const json = await r.json() as {
+      status_code?: number;
+      data?: {
+        gifts?: Array<{
+          id?: string;
+          name?: string;
+          icon_url?: string;
+          diamond_count?: number;
+          value_usd?: number;
+        }>;
+      };
+    };
+
+    const gifts = (json.data?.gifts ?? []).map((g) => ({
+      id: g.id ?? "",
+      name: g.name ?? "Unknown Gift",
+      iconUrl: g.icon_url ?? "",
+      diamondCount: g.diamond_count ?? 0,
+      valueUsd: g.value_usd ?? 0,
+    }));
+
+    giftCatalogCache = { data: gifts, ts: now };
+    res.json(gifts);
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch gift catalog");
+    res.status(500).json({ error: "Failed to fetch gift catalog" });
+  }
+});
+
+// ── User Profile ──────────────────────────────────────────────────────────────
+router.get("/tiktok/user-profile", async (req, res): Promise<void> => {
+  const parsed = GetUserProfileQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(
+      `${TIKTOOLS_API}/webcast/user_profile?apiKey=${apiKey}&unique_id=${encodeURIComponent(parsed.data.uniqueId)}`
+    );
+    const json = await r.json() as {
+      status_code?: number;
+      required_tier?: string;
+      data?: {
+        unique_id?: string;
+        nickname?: string;
+        avatar_thumb?: { url_list?: string[] };
+        follower_count?: number;
+        following_count?: number;
+        video_count?: number;
+        total_favorited?: number;
+        signature?: string;
+      };
+    };
+
+    // Tier error — return gracefully with available: false
+    if (json.status_code !== 0) {
+      res.json({
+        uniqueId: parsed.data.uniqueId,
+        nickname: null,
+        profilePictureUrl: null,
+        followerCount: null,
+        followingCount: null,
+        videoCount: null,
+        likeCount: null,
+        bio: null,
+        available: false,
+        requiredTier: json.required_tier ?? "pro",
+      });
+      return;
+    }
+
+    const d = json.data ?? {};
+    res.json({
+      uniqueId: d.unique_id ?? parsed.data.uniqueId,
+      nickname: d.nickname ?? null,
+      profilePictureUrl: d.avatar_thumb?.url_list?.[0] ?? null,
+      followerCount: d.follower_count ?? null,
+      followingCount: d.following_count ?? null,
+      videoCount: d.video_count ?? null,
+      likeCount: d.total_favorited ?? null,
+      bio: d.signature ?? null,
+      available: true,
+      requiredTier: null,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch user profile");
+    res.status(500).json({ error: "Failed to fetch user profile" });
   }
 });
 

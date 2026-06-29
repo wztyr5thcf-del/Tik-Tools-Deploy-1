@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface BulkCheckRequest {
-  uniqueIds: string[];
+export interface GiftItem {
+  id: string;
+  name: string;
+  iconUrl: string;
+  diamondCount: number;
+  valueUsd: number;
 }

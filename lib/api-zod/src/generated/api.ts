@@ -9,7 +9,6 @@ import * as zod from 'zod';
 
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -18,23 +17,23 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * Returns currently live TikTok channels. displayName is mapped to nickname.
+ * Returns currently live TikTok channels (no API key required). displayName mapped to nickname.
  * @summary Get top live channels
  */
 export const GetTopChannelsResponseItem = zod.object({
-  "uniqueId": zod.string().describe('TikTok username (without @)'),
-  "nickname": zod.string().nullish().describe('Display name (mapped from tik.tools displayName)'),
+  "uniqueId": zod.string(),
+  "nickname": zod.string().nullish().describe('Display name (mapped from tik.tools displayName field)'),
   "profilePictureUrl": zod.string().nullish(),
   "roomId": zod.string().nullish(),
   "viewerCount": zod.number().nullish(),
   "title": zod.string().nullish(),
   "region": zod.string().nullish().describe('Two-letter region code (e.g. TW, CA, US)')
-}).describe('A currently live TikTok channel. nickname is mapped from tik.tools displayName field.')
+}).describe('A currently live TikTok channel.')
 export const GetTopChannelsResponse = zod.array(GetTopChannelsResponseItem)
 
 
 /**
- * Fast liveness check for a TikTok username (proxies to tik.tools /webcast/live_status with unique_id param)
+ * Calls tik.tools /webcast/live_status with unique_id (snake_case) param.
  * @summary Check if user is live
  */
 export const GetLiveStatusQueryParams = zod.object({
@@ -50,7 +49,7 @@ export const GetLiveStatusResponse = zod.object({
 
 
 /**
- * Server-side JWT minting for secure WebSocket connections to wss://api.tik.tools
+ * Mints a short-lived JWT for wss://api.tik.tools WebSocket connections.
  * @summary Mint JWT for WebSocket
  */
 export const MintJwtBody = zod.object({
@@ -65,12 +64,12 @@ export const MintJwtResponse = zod.object({
 
 
 /**
- * Returns detailed info about a live stream room. If only uniqueId provided, resolves room_id via live_status first.
+ * If only uniqueId is provided, backend resolves room_id via live_status first, then calls room_info with room_id.
  * @summary Get room information
  */
 export const GetRoomInfoBody = zod.object({
-  "uniqueId": zod.string().nullish().describe('TikTok username — backend resolves room_id via live_status if roomId not provided'),
-  "roomId": zod.string().nullish().describe('Direct room ID (preferred — skips live_status resolution step)')
+  "uniqueId": zod.string().nullish(),
+  "roomId": zod.string().nullish()
 })
 
 export const GetRoomInfoResponse = zod.object({
@@ -88,35 +87,70 @@ export const GetRoomInfoResponse = zod.object({
 
 
 /**
- * Returns live status for multiple TikTok users. Uses tik.tools bulk endpoint if available (Basic+), otherwise falls back to parallel individual live_status calls (Sandbox compatible).
+ * Uses tik.tools bulk endpoint (Basic+ tier). On Sandbox, falls back to parallel individual live_status calls automatically.
  * @summary Check multiple users live status
  */
 export const BulkLiveCheckBody = zod.object({
-  "uniqueIds": zod.array(zod.string()).describe('List of TikTok usernames to check (without @)')
+  "uniqueIds": zod.array(zod.string())
 })
 
 export const BulkLiveCheckResponseItem = zod.object({
   "uniqueId": zod.string(),
   "isLive": zod.boolean(),
   "roomId": zod.string().nullish(),
-  "title": zod.string().nullish().describe('Stream title (only available on Basic+ tier via bulk endpoint)'),
-  "viewerCount": zod.number().nullish().describe('Viewer count (only available on Basic+ tier via bulk endpoint)')
+  "title": zod.string().nullish().describe('Available on Basic+ tier only'),
+  "viewerCount": zod.number().nullish().describe('Available on Basic+ tier only')
 })
 export const BulkLiveCheckResponse = zod.array(BulkLiveCheckResponseItem)
 
 
 /**
- * Returns current API key rate limit status including tier, API quota and WebSocket connections
  * @summary Get API rate limits
  */
 export const GetRateLimitsResponse = zod.object({
-  "tier": zod.string().describe('Current API tier (sandbox, basic, pro, ultra)'),
+  "tier": zod.string(),
   "apiLimit": zod.number(),
   "apiRemaining": zod.number(),
-  "apiResetAt": zod.number().nullish().describe('Unix timestamp when API quota resets'),
+  "apiResetAt": zod.number().nullish(),
   "wsLimit": zod.number(),
   "wsCurrent": zod.number(),
-  "bulkCheckLimit": zod.number().nullish().describe('Max usernames per bulk check call (null if not available on current tier)')
+  "bulkCheckLimit": zod.number().nullish()
+})
+
+
+/**
+ * Returns the list of known TikTok gifts with diamond costs and icons. Available on all tiers.
+ * @summary Get gift catalog
+ */
+export const GetGiftCatalogResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "iconUrl": zod.string(),
+  "diamondCount": zod.number(),
+  "valueUsd": zod.number()
+})
+export const GetGiftCatalogResponse = zod.array(GetGiftCatalogResponseItem)
+
+
+/**
+ * Returns TikTok user profile data. Requires Pro tier or above.
+ * @summary Get user profile
+ */
+export const GetUserProfileQueryParams = zod.object({
+  "uniqueId": zod.coerce.string().describe('TikTok username (without @)')
+})
+
+export const GetUserProfileResponse = zod.object({
+  "uniqueId": zod.string(),
+  "nickname": zod.string().nullish(),
+  "profilePictureUrl": zod.string().nullish(),
+  "followerCount": zod.number().nullish(),
+  "followingCount": zod.number().nullish(),
+  "videoCount": zod.number().nullish(),
+  "likeCount": zod.number().nullish(),
+  "bio": zod.string().nullish(),
+  "available": zod.boolean().describe('False when the endpoint requires a higher tier'),
+  "requiredTier": zod.string().nullish()
 })
 
 
