@@ -15,7 +15,7 @@
       "name": "piva",
       "passwordHash": "$2b$10$pXEkUFQBrrv/gD6s0pDGMetABVLVZvMx94C0O9g3ofY2hdP3QtbNO",
       "createdAt": "2026-06-29T15:18:27.926Z",
-      "plan": "free",
+      "plan": "pro",
       "isAdmin": true
     },
     {
@@ -24,7 +24,7 @@
       "name": "teste",
       "passwordHash": "$2b$10$SkgPpD/bVQlJRq3GhYPL/uaOEaIuh6dG7Nfod9f7LWBDd0TnRBXRq",
       "createdAt": "2026-06-29T15:32:07.750Z",
-      "plan": "free",
+      "plan": "basic",
       "isAdmin": false
     }
   ]

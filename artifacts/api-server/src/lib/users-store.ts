@@ -18,6 +18,7 @@ export interface StoredUser {
   isAdmin: boolean;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  tiktokUsername?: string;
 }
 
 export interface UsersStore {
@@ -51,5 +52,6 @@ export function publicUser(u: StoredUser) {
     isAdmin: u.isAdmin,
     createdAt: u.createdAt,
     hasStripe: !!u.stripeCustomerId,
+    tiktokUsername: u.tiktokUsername ?? null,
   };
 }

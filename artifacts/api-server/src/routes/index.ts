@@ -4,6 +4,7 @@ import tiktokRouter from "./tiktok";
 import configRouter from "./config";
 import authRouter from "./auth";
 import stripeRouter from "./stripe";
+import adminToolsRouter from "./admin-tools";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(healthRouter);
 router.use(tiktokRouter);
 router.use(configRouter);
 router.use(stripeRouter);
+router.use(adminToolsRouter);
 
 export default router;

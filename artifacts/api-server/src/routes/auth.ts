@@ -94,7 +94,7 @@ router.get("/auth/me", requireAuth, (req, res): void => {
 // ── Update profile ────────────────────────────────────────────────────────────
 router.patch("/auth/profile", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as Request & { userId: string }).userId;
-  const { name, email } = req.body as { name?: string; email?: string };
+  const { name, email, tiktokUsername } = req.body as { name?: string; email?: string; tiktokUsername?: string };
 
   const store = loadUsers();
   const idx = store.users.findIndex((u) => u.id === userId);
@@ -106,6 +106,9 @@ router.patch("/auth/profile", requireAuth, async (req, res): Promise<void> => {
     store.users[idx].email = email.toLowerCase().trim();
   }
   if (name) store.users[idx].name = name.trim();
+  if (tiktokUsername !== undefined) {
+    store.users[idx].tiktokUsername = tiktokUsername.trim().replace(/^@/, "") || undefined;
+  }
 
   saveUsers(store);
   req.log.info({ userId }, "Profile updated");
