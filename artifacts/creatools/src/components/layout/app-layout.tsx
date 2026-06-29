@@ -1,8 +1,8 @@
 import { Link, useLocation } from "wouter";
 import {
-  LayoutDashboard, Activity, Users, Settings, Diamond,
+  LayoutDashboard, Activity, Settings, Diamond,
   Tag, LogOut, ChevronDown, UserCircle, Shield, Menu, X,
-  Lock, Zap, Crown, Radio,
+  Lock, Zap, Crown, Search, Users, Star, Key, BarChart2,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import { useState } from "react";
@@ -26,21 +26,46 @@ interface NavItem {
   requiresPlan?: PlanLevel;
 }
 
+interface NavSection {
+  label?: string;           // section header label (undefined = no header)
+  items: NavItem[];
+}
+
 const PLAN_ORDER: Record<PlanLevel, number> = { free: 0, basic: 1, pro: 2 };
 
 function planMeets(userPlan: PlanLevel, required: PlanLevel): boolean {
   return PLAN_ORDER[userPlan] >= PLAN_ORDER[required];
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/streamers", label: "Streamers", icon: Radio },
-  { href: "/monitor/example", label: "Monitor", icon: Activity, matchPrefix: "/monitor" },
-  { href: "/bulk-check", label: "Bulk Check", icon: Users, requiresPlan: "basic" },
-  { href: "/gift-gallery", label: "Gift Gallery", icon: Diamond },
-  { href: "/pricing", label: "Plans", icon: Tag },
-  { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/admin", label: "Admin Panel", icon: Shield, adminOnly: true },
+const NAV_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { href: "/", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/monitor/example", label: "Monitor", icon: Activity, matchPrefix: "/monitor" },
+      { href: "/gift-gallery", label: "Gift Gallery", icon: Diamond },
+    ],
+  },
+  {
+    label: "Streamer Tools",
+    items: [
+      { href: "/streamer/lookup", label: "Lookup", icon: Search, matchPrefix: "/streamer/lookup" },
+      { href: "/streamer/bulk-check", label: "Bulk Check", icon: Users, requiresPlan: "basic", matchPrefix: "/streamer/bulk-check" },
+      { href: "/streamer/watchlist", label: "Watchlist", icon: Star, matchPrefix: "/streamer/watchlist" },
+      { href: "/streamer/jwt", label: "JWT / WebSocket", icon: Key, matchPrefix: "/streamer/jwt" },
+      { href: "/streamer/rate-limits", label: "Rate Limits", icon: BarChart2, matchPrefix: "/streamer/rate-limits" },
+    ],
+  },
+  {
+    items: [
+      { href: "/pricing", label: "Plans", icon: Tag },
+      { href: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
+  {
+    items: [
+      { href: "/admin", label: "Admin Panel", icon: Shield, adminOnly: true },
+    ],
+  },
 ];
 
 const PLAN_CONFIG: Record<PlanLevel, { label: string; color: string; bg: string }> = {
@@ -57,69 +82,85 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const userPlan: PlanLevel = user?.plan ?? "free";
   const planCfg = PLAN_CONFIG[userPlan];
 
-  const visibleNav = NAV_ITEMS.filter((item) => !item.adminOnly || user?.isAdmin);
-
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : "??";
 
   function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
     return (
-      <>
-        {visibleNav.map((item) => {
-          const isActive =
-            location === item.href ||
-            (item.matchPrefix && location.startsWith(item.matchPrefix));
-          const locked = !!(item.requiresPlan && user && !planMeets(userPlan, item.requiresPlan));
-          const Icon = item.icon;
+      <div className="space-y-4">
+        {NAV_SECTIONS.map((section, si) => {
+          // Filter admin-only items for non-admins
+          const visibleItems = section.items.filter((item) => !item.adminOnly || user?.isAdmin);
+          if (!visibleItems.length) return null;
 
           return (
-            <Link
-              key={item.href}
-              href={locked ? "/pricing" : item.href}
-              onClick={onNavigate}
-              className={`flex items-center px-3 py-2.5 rounded-md text-sm font-medium transition-colors group ${
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : locked
-                  ? "text-muted-foreground/50 hover:bg-accent/50 hover:text-muted-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              }`}
-              title={locked ? `Requer plano ${item.requiresPlan === "basic" ? "Basic" : "Pro"}` : undefined}
-            >
-              <Icon className={`w-5 h-5 mr-3 shrink-0 ${isActive ? "text-primary" : ""}`} />
-              <span className="flex-1">{item.label}</span>
+            <div key={si}>
+              {section.label && (
+                <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                  {section.label}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {visibleItems.map((item) => {
+                  const isActive =
+                    location === item.href ||
+                    (item.matchPrefix && location.startsWith(item.matchPrefix));
+                  const locked = !!(item.requiresPlan && user && !planMeets(userPlan, item.requiresPlan));
+                  const Icon = item.icon;
 
-              {item.adminOnly && (
-                <Badge className="ml-auto text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">
-                  Admin
-                </Badge>
-              )}
-              {locked && (
-                <div className="flex items-center gap-1 ml-auto">
-                  <Lock className="w-3 h-3 text-muted-foreground/50" />
-                  <Badge variant="outline" className="text-[10px] px-1 py-0 text-muted-foreground/60 border-muted/50">
-                    {item.requiresPlan === "basic" ? "Basic+" : "Pro"}
-                  </Badge>
-                </div>
-              )}
-            </Link>
+                  return (
+                    <Link
+                      key={item.href}
+                      href={locked ? "/pricing" : item.href}
+                      onClick={onNavigate}
+                      className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors group ${
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : item.adminOnly
+                          ? "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          : locked
+                          ? "text-muted-foreground/50 hover:bg-accent/50 hover:text-muted-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 mr-3 shrink-0 ${isActive ? "text-primary" : item.adminOnly ? "text-destructive/60" : ""}`} />
+                      <span className="flex-1">{item.label}</span>
+
+                      {item.adminOnly && (
+                        <Badge className="ml-auto text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/20">
+                          Admin
+                        </Badge>
+                      )}
+                      {locked && (
+                        <div className="flex items-center gap-1 ml-auto">
+                          <Lock className="w-3 h-3 text-muted-foreground/50" />
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 text-muted-foreground/60 border-muted/50">
+                            {item.requiresPlan === "basic" ? "Basic+" : "Pro"}
+                          </Badge>
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
-      </>
+      </div>
     );
   }
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground">
       {/* ── Desktop Sidebar ── */}
-      <aside className="w-64 border-r border-border bg-card flex-col hidden md:flex shrink-0">
-        <div className="h-16 flex items-center px-6 border-b border-border shrink-0">
+      <aside className="w-60 border-r border-border bg-card flex-col hidden md:flex shrink-0">
+        <div className="h-16 flex items-center px-5 border-b border-border shrink-0">
           <SiTiktok className="w-6 h-6 text-primary mr-3" />
           <span className="font-bold text-lg tracking-tight">Creatools</span>
         </div>
 
-        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 py-5 px-3 overflow-y-auto">
           <NavLinks />
         </nav>
 
@@ -130,8 +171,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-md bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors cursor-pointer">
                 <Zap className="w-4 h-4 text-primary shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-primary">Fazer upgrade</p>
-                  <p className="text-[10px] text-muted-foreground leading-tight">Desbloquear Bulk Check</p>
+                  <p className="text-xs font-semibold text-primary">Upgrade plan</p>
+                  <p className="text-[10px] text-muted-foreground leading-tight">Unlock Bulk Check & more</p>
                 </div>
                 <Crown className="w-3.5 h-3.5 text-primary/50 ml-auto shrink-0" />
               </div>
@@ -159,14 +200,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-56 mb-1">
                 <div className="px-2 py-1.5 space-y-1">
-                  <p className="text-xs text-muted-foreground">Conectado como</p>
+                  <p className="text-xs text-muted-foreground">Signed in as</p>
                   <p className="text-sm font-medium truncate">{user.email}</p>
                   <div className="flex items-center gap-1.5 flex-wrap mt-1">
                     <Badge className={`text-xs border ${planCfg.bg} ${planCfg.color}`}>
                       {planCfg.label}
                     </Badge>
                     {user.isAdmin && (
-                      <Badge className="text-xs bg-primary/10 text-primary border-primary/20">
+                      <Badge className="text-xs bg-destructive/10 text-destructive border-destructive/20">
                         <Shield className="w-2.5 h-2.5 mr-1" />Admin
                       </Badge>
                     )}
@@ -175,20 +216,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/profile" className="cursor-pointer">
-                    <UserCircle className="w-4 h-4 mr-2" />Meu Perfil
+                    <UserCircle className="w-4 h-4 mr-2" />My Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/pricing" className="cursor-pointer">
                     <Tag className="w-4 h-4 mr-2" />
-                    {userPlan === "free" ? "Fazer upgrade" : "Gerenciar plano"}
+                    {userPlan === "free" ? "Upgrade plan" : "Manage plan"}
                   </Link>
                 </DropdownMenuItem>
                 {user.isAdmin && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href="/admin" className="cursor-pointer">
+                      <Link href="/admin" className="cursor-pointer text-destructive focus:text-destructive">
                         <Shield className="w-4 h-4 mr-2" />Admin Panel
                       </Link>
                     </DropdownMenuItem>
@@ -199,7 +240,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   onClick={logout}
                   className="text-destructive focus:text-destructive cursor-pointer"
                 >
-                  <LogOut className="w-4 h-4 mr-2" />Sair
+                  <LogOut className="w-4 h-4 mr-2" />Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -210,10 +251,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* ── Mobile Sidebar overlay ── */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div
-            className="absolute inset-0 bg-black/60"
-            onClick={() => setMobileOpen(false)}
-          />
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
           <aside className="absolute left-0 top-0 h-full w-72 bg-card border-r border-border flex flex-col z-10">
             <div className="h-16 flex items-center justify-between px-6 border-b border-border shrink-0">
               <div className="flex items-center">
@@ -224,7 +262,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+            <nav className="flex-1 py-5 px-3 overflow-y-auto">
               <NavLinks onNavigate={() => setMobileOpen(false)} />
             </nav>
 
@@ -232,7 +270,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="px-3 pb-3">
                 <Link href="/pricing" onClick={() => setMobileOpen(false)}>
                   <Button size="sm" variant="outline" className="w-full text-primary border-primary/30 hover:bg-primary/10">
-                    <Zap className="w-4 h-4 mr-2" />Fazer upgrade
+                    <Zap className="w-4 h-4 mr-2" />Upgrade plan
                   </Button>
                 </Link>
               </div>
@@ -253,16 +291,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex gap-2">
                     <Link href="/profile" onClick={() => setMobileOpen(false)} className="flex-1">
                       <Button size="sm" variant="outline" className="w-full text-xs">
-                        <UserCircle className="w-3.5 h-3.5 mr-1" />Perfil
+                        <UserCircle className="w-3.5 h-3.5 mr-1" />Profile
                       </Button>
                     </Link>
-                    <Button
-                      size="sm"
-                      variant="ghost"
+                    <Button size="sm" variant="ghost"
                       onClick={() => { logout(); setMobileOpen(false); }}
-                      className="flex-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <LogOut className="w-3.5 h-3.5 mr-1" />Sair
+                      className="flex-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10">
+                      <LogOut className="w-3.5 h-3.5 mr-1" />Sign Out
                     </Button>
                   </div>
                 </div>
@@ -274,13 +309,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* ── Main Content ── */}
       <main className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
-        {/* Mobile Header */}
         <header className="h-16 flex items-center px-4 border-b border-border bg-card md:hidden justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setMobileOpen(true)}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <button onClick={() => setMobileOpen(true)} className="text-muted-foreground hover:text-foreground transition-colors">
               <Menu className="w-5 h-5" />
             </button>
             <SiTiktok className="w-6 h-6 text-primary" />

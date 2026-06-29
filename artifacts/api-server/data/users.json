@@ -24,7 +24,7 @@
       "name": "teste",
       "passwordHash": "$2b$10$SkgPpD/bVQlJRq3GhYPL/uaOEaIuh6dG7Nfod9f7LWBDd0TnRBXRq",
       "createdAt": "2026-06-29T15:32:07.750Z",
-      "plan": "pro",
+      "plan": "free",
       "isAdmin": false
     },
     {

@@ -6,7 +6,10 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "./pages/dashboard";
 import Monitor from "./pages/monitor";
 import BulkCheck from "./pages/bulk-check";
-import Streamers from "./pages/streamers";
+import StreamerLookup from "./pages/streamer-lookup";
+import StreamerWatchlist from "./pages/streamer-watchlist";
+import StreamerJwt from "./pages/streamer-jwt";
+import StreamerRateLimits from "./pages/streamer-rate-limits";
 import Settings from "./pages/settings";
 import GiftGallery from "./pages/gift-gallery";
 import Pricing from "./pages/pricing";
@@ -58,13 +61,26 @@ function Router() {
           <Switch>
             <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />
             <Route path="/monitor/:username" component={() => <ProtectedRoute component={Monitor} />} />
-            <Route path="/bulk-check" component={() => <ProtectedRoute component={BulkCheck} />} />
-            <Route path="/streamers" component={() => <ProtectedRoute component={Streamers} />} />
+
+            {/* Streamer tools — each as its own page */}
+            <Route path="/streamer/lookup" component={() => <ProtectedRoute component={StreamerLookup} />} />
+            <Route path="/streamer/bulk-check" component={() => <ProtectedRoute component={BulkCheck} />} />
+            <Route path="/streamer/watchlist" component={() => <ProtectedRoute component={StreamerWatchlist} />} />
+            <Route path="/streamer/jwt" component={() => <ProtectedRoute component={StreamerJwt} />} />
+            <Route path="/streamer/rate-limits" component={() => <ProtectedRoute component={StreamerRateLimits} />} />
+
+            {/* Legacy redirects */}
+            <Route path="/bulk-check" component={() => <Redirect to="/streamer/bulk-check" />} />
+            <Route path="/streamers" component={() => <Redirect to="/streamer/lookup" />} />
+
             <Route path="/gift-gallery" component={() => <ProtectedRoute component={GiftGallery} />} />
             <Route path="/pricing" component={Pricing} />
             <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
-            <Route path="/admin" component={() => <AdminRoute component={Admin} />} />
             <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
+
+            {/* Admin — hard-gated: non-admins are redirected to / */}
+            <Route path="/admin" component={() => <AdminRoute component={Admin} />} />
+
             <Route component={NotFound} />
           </Switch>
         </AppLayout>

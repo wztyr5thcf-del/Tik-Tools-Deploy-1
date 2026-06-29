@@ -12,9 +12,20 @@ import {
   MessageCircle, Gift, Heart, UserPlus, Share2, Users,
   Wifi, WifiOff, Loader2, ArrowLeft, ExternalLink, RefreshCw, Diamond,
   Clock, Download, Bookmark, BookmarkCheck, TrendingUp,
+  Crown, Smile, HelpCircle, Package, Zap, Shield, Info,
+  Award, Target, AlertTriangle, ShoppingBag, Trash2, Radio,
+  ChevronDown, ChevronUp, Filter, X,
 } from "lucide-react";
 
-type EventType = "chat" | "gift" | "like" | "member" | "follow" | "share" | "roomInfo" | "roomUserSeq" | string;
+// ─── Event types ────────────────────────────────────────────────────────────
+type EventType =
+  | "chat" | "gift" | "like" | "member" | "follow" | "share"
+  | "subscribe" | "emoteChat" | "questionNew" | "envelopeOpen"
+  | "linkMicBattle" | "linkMicArmies" | "liveIntro"
+  | "rankUpdate" | "hourlyRankUpdate" | "goalUpdate"
+  | "unauthedGift" | "streamEnd" | "barrageInfo"
+  | "oecLiveShoppingInfo" | "imDelete" | "msgDetect"
+  | "communityMessage" | "roomInfo" | "roomUserSeq" | string;
 
 interface LiveEvent {
   id: string;
@@ -27,53 +38,120 @@ interface LiveEvent {
   repeatCount?: number;
   diamondCount?: number;
   likeCount?: number;
+  // subscribe
+  subMonth?: number;
+  newSubscriber?: boolean;
+  // emoteChat
+  emotes?: Array<{ name?: string; emoteId?: string }>;
+  // questionNew
+  question?: string;
+  // envelopeOpen
+  treasureCount?: number;
+  // linkMicBattle
+  battleStatus?: number;
+  // rankUpdate / hourlyRankUpdate
+  rank?: number;
+  // goalUpdate
+  goalTitle?: string;
+  goalProgress?: number;
+  // liveIntro
+  introTitle?: string;
+  // shopping
+  productTitle?: string;
+  // raw fallback
+  rawData?: Record<string, unknown>;
 }
 
-interface TopGifter {
-  userId: string;
-  nickname: string;
-  diamonds: number;
-  giftCount: number;
-}
-
+interface TopGifter { userId: string; nickname: string; diamonds: number; giftCount: number; }
+interface GiftTally { name: string; icon: string; count: number; totalDiamonds: number; }
 type ConnStatus = "idle" | "connecting" | "connected" | "disconnected" | "error";
 
-const EVENT_COLORS: Record<string, string> = {
-  chat: "text-cyan-400",
-  gift: "text-yellow-400",
-  like: "text-pink-400",
-  member: "text-green-400",
-  follow: "text-violet-400",
-  share: "text-blue-400",
+// ─── Event metadata ──────────────────────────────────────────────────────────
+const EVENT_META: Record<string, { color: string; bg: string; icon: React.ElementType; label: string }> = {
+  chat:               { color: "text-cyan-400",         bg: "bg-cyan-400/10",       icon: MessageCircle, label: "CHAT" },
+  gift:               { color: "text-yellow-400",       bg: "bg-yellow-400/10",     icon: Gift,          label: "GIFT" },
+  unauthedGift:       { color: "text-yellow-600",       bg: "bg-yellow-600/10",     icon: Gift,          label: "GIFT?" },
+  like:               { color: "text-pink-400",         bg: "bg-pink-400/10",       icon: Heart,         label: "LIKE" },
+  member:             { color: "text-green-400",        bg: "bg-green-400/10",      icon: UserPlus,      label: "JOIN" },
+  follow:             { color: "text-violet-400",       bg: "bg-violet-400/10",     icon: UserPlus,      label: "FOLLOW" },
+  share:              { color: "text-blue-400",         bg: "bg-blue-400/10",       icon: Share2,        label: "SHARE" },
+  subscribe:          { color: "text-amber-400",        bg: "bg-amber-400/10",      icon: Crown,         label: "SUB" },
+  emoteChat:          { color: "text-purple-400",       bg: "bg-purple-400/10",     icon: Smile,         label: "EMOTE" },
+  questionNew:        { color: "text-sky-400",          bg: "bg-sky-400/10",        icon: HelpCircle,    label: "QUESTION" },
+  envelopeOpen:       { color: "text-orange-400",       bg: "bg-orange-400/10",     icon: Package,       label: "ENVELOPE" },
+  linkMicBattle:      { color: "text-rose-400",         bg: "bg-rose-400/10",       icon: Zap,           label: "BATTLE" },
+  linkMicArmies:      { color: "text-red-400",          bg: "bg-red-400/10",        icon: Shield,        label: "ARMIES" },
+  liveIntro:          { color: "text-teal-400",         bg: "bg-teal-400/10",       icon: Info,          label: "INTRO" },
+  rankUpdate:         { color: "text-indigo-400",       bg: "bg-indigo-400/10",     icon: TrendingUp,    label: "RANK" },
+  hourlyRankUpdate:   { color: "text-indigo-300",       bg: "bg-indigo-300/10",     icon: Award,         label: "HOURLY RANK" },
+  goalUpdate:         { color: "text-lime-400",         bg: "bg-lime-400/10",       icon: Target,        label: "GOAL" },
+  streamEnd:          { color: "text-destructive",      bg: "bg-destructive/10",    icon: WifiOff,       label: "STREAM END" },
+  barrageInfo:        { color: "text-fuchsia-400",      bg: "bg-fuchsia-400/10",    icon: Radio,         label: "BARRAGE" },
+  oecLiveShoppingInfo:{ color: "text-emerald-400",      bg: "bg-emerald-400/10",    icon: ShoppingBag,   label: "SHOPPING" },
+  imDelete:           { color: "text-muted-foreground", bg: "bg-muted/20",          icon: Trash2,        label: "DELETED" },
+  msgDetect:          { color: "text-yellow-600",       bg: "bg-yellow-600/10",     icon: AlertTriangle, label: "MOD" },
+  communityMessage:   { color: "text-cyan-300",         bg: "bg-cyan-300/10",       icon: MessageCircle, label: "COMMUNITY" },
 };
 
-const EVENT_ICONS: Record<string, React.ElementType> = {
-  chat: MessageCircle,
-  gift: Gift,
-  like: Heart,
-  member: UserPlus,
-  follow: UserPlus,
-  share: Share2,
-};
+const SILENT_EVENTS = new Set(["roomInfo", "roomUserSeq"]);
 
-const EVENT_LABELS: Record<string, string> = {
-  chat: "CHAT",
-  gift: "GIFT",
-  like: "LIKE",
-  member: "JOIN",
-  follow: "FOLLOW",
-  share: "SHARE",
-};
-
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatEvent(ev: LiveEvent): string {
   switch (ev.event) {
-    case "chat": return ev.comment || "";
-    case "gift": return `sent ${ev.giftName || "a gift"}${ev.repeatCount && ev.repeatCount > 1 ? ` x${ev.repeatCount}` : ""}${ev.diamondCount ? ` — ${ev.diamondCount.toLocaleString()} diamonds` : ""}`;
-    case "like": return `liked x${ev.likeCount || 1}`;
-    case "member": return "joined the stream";
-    case "follow": return "followed";
-    case "share": return "shared the stream";
-    default: return "";
+    case "chat":
+      return ev.comment || "";
+    case "emoteChat":
+      return [
+        ev.emotes?.map((e) => e.name || "").filter(Boolean).join(" ") || "",
+        ev.comment || "",
+      ].filter(Boolean).join(" · ") || "sent an emote";
+    case "gift":
+    case "unauthedGift":
+      return `sent ${ev.giftName || "a gift"}${(ev.repeatCount ?? 1) > 1 ? ` ×${ev.repeatCount}` : ""}${ev.diamondCount ? ` — ${ev.diamondCount.toLocaleString()} 💎` : ""}`;
+    case "like":
+      return `liked ×${ev.likeCount || 1}`;
+    case "member":
+      return "joined the stream";
+    case "follow":
+      return "followed";
+    case "share":
+      return "shared the stream";
+    case "subscribe":
+      return ev.newSubscriber
+        ? `subscribed for the first time${ev.subMonth ? ` (month ${ev.subMonth})` : ""}!`
+        : `renewed subscription${ev.subMonth ? ` (month ${ev.subMonth})` : ""}`;
+    case "questionNew":
+      return ev.question ? `"${ev.question}"` : "asked a question";
+    case "envelopeOpen":
+      return `opened a lucky envelope${ev.treasureCount ? ` — ${ev.treasureCount} treasures` : ""}${ev.diamondCount ? `, ${ev.diamondCount} 💎` : ""}`;
+    case "linkMicBattle":
+      if (ev.battleStatus === 1) return "Link Mic Battle started!";
+      if (ev.battleStatus === 2) return "Link Mic Battle ended";
+      return "Link Mic Battle event";
+    case "linkMicArmies":
+      return "Army battle scores updated";
+    case "liveIntro":
+      return ev.introTitle ? `"${ev.introTitle}"` : "Stream intro updated";
+    case "rankUpdate":
+      return ev.rank != null ? `Stream reached rank #${ev.rank}` : "Ranking updated";
+    case "hourlyRankUpdate":
+      return ev.rank != null ? `Hourly rank: #${ev.rank}` : "Hourly rank updated";
+    case "goalUpdate":
+      return [ev.goalTitle, ev.goalProgress != null ? `${ev.goalProgress}%` : ""].filter(Boolean).join(" — ") || "Goal updated";
+    case "streamEnd":
+      return "Stream has ended";
+    case "barrageInfo":
+      return "Barrage event";
+    case "oecLiveShoppingInfo":
+      return ev.productTitle ? `Product: ${ev.productTitle}` : "Live shopping event";
+    case "imDelete":
+      return "Message deleted by moderator";
+    case "msgDetect":
+      return "Message flagged by moderation";
+    case "communityMessage":
+      return ev.comment || "Community message";
+    default:
+      return "";
   }
 }
 
@@ -86,31 +164,28 @@ function formatDuration(secs: number): string {
   return `${pad(m)}:${pad(s)}`;
 }
 
-// Diamonds → USD: ~200 diamonds = $1 (TikTok creator payout rate)
-function diamondsToUsd(d: number): string {
-  return (d / 200).toFixed(2);
-}
+function diamondsToUsd(d: number): string { return (d / 200).toFixed(2); }
 
 interface WatchlistEntry {
-  uniqueId: string;
-  addedAt: string;
+  uniqueId: string; addedAt: string;
   lastStatus: "live" | "offline" | "unknown";
   lastViewerCount: number | null;
+  lastTitle: string | null; lastChecked: string | null;
 }
 
 function loadWatchlist(): WatchlistEntry[] {
   try { return JSON.parse(localStorage.getItem("creatools_watchlist") || "[]") as WatchlistEntry[]; }
   catch { return []; }
 }
-
 function saveWatchlistEntry(uniqueId: string, viewers: number | null) {
   const list = loadWatchlist();
   if (!list.find((e) => e.uniqueId === uniqueId)) {
-    list.push({ uniqueId, addedAt: new Date().toISOString(), lastStatus: "live", lastViewerCount: viewers });
+    list.push({ uniqueId, addedAt: new Date().toISOString(), lastStatus: "live", lastViewerCount: viewers, lastTitle: null, lastChecked: new Date().toISOString() });
     localStorage.setItem("creatools_watchlist", JSON.stringify(list));
   }
 }
 
+// ─── Component ───────────────────────────────────────────────────────────────
 export default function Monitor() {
   const { username } = useParams<{ username: string }>();
   const [, setLocation] = useLocation();
@@ -123,22 +198,26 @@ export default function Monitor() {
   const [totalLikes, setTotalLikes] = useState(0);
   const [topGifters, setTopGifters] = useState<TopGifter[]>([]);
 
-  // Session tracking
   const [peakViewers, setPeakViewers] = useState(0);
   const [sessionDuration, setSessionDuration] = useState(0);
   const [inWatchlist, setInWatchlist] = useState(false);
   const [exportCopied, setExportCopied] = useState(false);
+  const [giftTally, setGiftTally] = useState<Record<string, GiftTally>>({});
+
+  // Filter state
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
+
   const sessionStartRef = useRef<Date | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeUsernameRef = useRef(activeUsername);
+  activeUsernameRef.current = activeUsername;
 
   const mintJwt = useMintJwt();
   const roomInfo = useGetRoomInfo();
-  const { data: giftCatalog } = useGetGiftCatalog({
-    query: { queryKey: getGetGiftCatalogQueryKey() }
-  });
+  const { data: giftCatalog } = useGetGiftCatalog({ query: { queryKey: getGetGiftCatalogQueryKey() } });
 
   const giftIconMap = useRef<Record<string, string>>({});
   const giftDiamondMap = useRef<Record<string, number>>({});
@@ -155,9 +234,7 @@ export default function Monitor() {
   useEffect(() => {
     if (connStatus === "connected") {
       timerRef.current = setInterval(() => {
-        if (sessionStartRef.current) {
-          setSessionDuration(Math.floor((Date.now() - sessionStartRef.current.getTime()) / 1000));
-        }
+        if (sessionStartRef.current) setSessionDuration(Math.floor((Date.now() - sessionStartRef.current.getTime()) / 1000));
       }, 1000);
     } else {
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -165,22 +242,16 @@ export default function Monitor() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [connStatus]);
 
-  // Peak viewers tracking
   useEffect(() => {
-    if (viewerCount !== null && viewerCount > peakViewers) {
-      setPeakViewers(viewerCount);
-    }
+    if (viewerCount !== null && viewerCount > peakViewers) setPeakViewers(viewerCount);
   }, [viewerCount, peakViewers]);
 
-  // Sync watchlist state when active username changes
   useEffect(() => {
-    if (activeUsername) {
-      setInWatchlist(loadWatchlist().some((e) => e.uniqueId === activeUsername));
-    }
+    if (activeUsername) setInWatchlist(loadWatchlist().some((e) => e.uniqueId === activeUsername));
   }, [activeUsername]);
 
   const addEvent = useCallback((ev: LiveEvent) => {
-    setEvents((prev) => [ev, ...prev].slice(0, 200));
+    setEvents((prev) => [ev, ...prev].slice(0, 500));
   }, []);
 
   const updateTopGifters = useCallback((userId: string, nickname: string, diamonds: number) => {
@@ -188,40 +259,37 @@ export default function Monitor() {
       const existing = prev.find((g) => g.userId === userId);
       if (existing) {
         return prev
-          .map((g) => g.userId === userId
-            ? { ...g, diamonds: g.diamonds + diamonds, giftCount: g.giftCount + 1 }
-            : g
-          )
-          .sort((a, b) => b.diamonds - a.diamonds)
-          .slice(0, 10);
+          .map((g) => g.userId === userId ? { ...g, diamonds: g.diamonds + diamonds, giftCount: g.giftCount + 1 } : g)
+          .sort((a, b) => b.diamonds - a.diamonds).slice(0, 10);
       }
       return [...prev, { userId, nickname, diamonds, giftCount: 1 }]
-        .sort((a, b) => b.diamonds - a.diamonds)
-        .slice(0, 10);
+        .sort((a, b) => b.diamonds - a.diamonds).slice(0, 10);
+    });
+  }, []);
+
+  const updateGiftTally = useCallback((giftName: string, diamonds: number) => {
+    const key = giftName.toLowerCase();
+    const icon = giftIconMap.current[key] || "";
+    setGiftTally((prev) => {
+      const existing = prev[key];
+      if (existing) return { ...prev, [key]: { ...existing, count: existing.count + 1, totalDiamonds: existing.totalDiamonds + diamonds } };
+      return { ...prev, [key]: { name: giftName, icon, count: 1, totalDiamonds: diamonds } };
     });
   }, []);
 
   const disconnect = useCallback(() => {
     if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-    if (wsRef.current) {
-      wsRef.current.onclose = null;
-      wsRef.current.close();
-      wsRef.current = null;
-    }
+    if (wsRef.current) { wsRef.current.onclose = null; wsRef.current.close(); wsRef.current = null; }
     setConnStatus("disconnected");
   }, []);
 
   const connect = useCallback((user: string, token: string) => {
-    if (wsRef.current) {
-      wsRef.current.onclose = null;
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
+    if (wsRef.current) { wsRef.current.onclose = null; wsRef.current.close(); wsRef.current = null; }
     setConnStatus("connecting");
     sessionStartRef.current = new Date();
     setSessionDuration(0);
     setPeakViewers(0);
+    setGiftTally({});
 
     const ws = new WebSocket(`wss://api.tik.tools?uniqueId=${encodeURIComponent(user)}&jwtKey=${encodeURIComponent(token)}`);
     wsRef.current = ws;
@@ -230,42 +298,74 @@ export default function Monitor() {
 
     ws.onmessage = (e) => {
       try {
-        const msg = JSON.parse(e.data as string);
-        const d = msg.data || {};
+        const msg = JSON.parse(e.data as string) as { event: string; data?: Record<string, unknown> };
+        const d = (msg.data || {}) as Record<string, unknown>;
 
+        // Silent metadata events
         if (msg.event === "roomUserSeq") {
-          setViewerCount(d.viewerCount ?? null);
+          setViewerCount((d.viewerCount as number) ?? null);
           return;
         }
-        if (msg.event === "roomInfo") return;
+        if (SILENT_EVENTS.has(msg.event)) return;
 
-        let diamonds = d.diamondCount ?? 0;
-        const giftKey = (d.giftName || "").toLowerCase();
-        if (msg.event === "gift" && !diamonds && giftKey) {
+        // Compute diamonds for gift events
+        let diamonds = (d.diamondCount as number) ?? 0;
+        const giftKey = ((d.giftName as string) || "").toLowerCase();
+        if ((msg.event === "gift" || msg.event === "unauthedGift") && !diamonds && giftKey) {
           const catalogDiamonds = giftDiamondMap.current[giftKey] ?? 0;
-          const repeat = d.repeatCount ?? 1;
+          const repeat = (d.repeatCount as number) ?? 1;
           diamonds = catalogDiamonds * repeat;
         }
+        if (msg.event === "envelopeOpen") {
+          diamonds = (d.diamonds as number) ?? (d.diamondCount as number) ?? 0;
+        }
+
+        // Extract user
+        const user = d.user as LiveEvent["user"] | undefined;
 
         const ev: LiveEvent = {
           id: `${Date.now()}-${Math.random()}`,
           event: msg.event,
           timestamp: new Date(),
-          user: d.user,
-          comment: d.comment,
-          giftName: d.giftName,
-          giftId: d.giftId,
-          repeatCount: d.repeatCount,
-          diamondCount: diamonds,
-          likeCount: d.likeCount,
+          user,
+          comment: d.comment as string | undefined,
+          giftName: d.giftName as string | undefined,
+          giftId: d.giftId as string | undefined,
+          repeatCount: d.repeatCount as number | undefined,
+          diamondCount: diamonds || undefined,
+          likeCount: d.likeCount as number | undefined,
+          // subscribe
+          subMonth: d.subMonth as number | undefined,
+          newSubscriber: d.newSubscriber as boolean | undefined,
+          // emoteChat
+          emotes: d.emotes as LiveEvent["emotes"],
+          // questionNew
+          question: d.question as string | undefined ??
+            (d.questionDetails as { question?: string } | undefined)?.question,
+          // envelopeOpen
+          treasureCount: d.treasureCount as number | undefined,
+          // linkMicBattle
+          battleStatus: d.battleStatus as number | undefined,
+          // rank
+          rank: d.rank as number | undefined,
+          // goalUpdate
+          goalTitle: (d.goal as { title?: string } | undefined)?.title,
+          goalProgress: (d.goal as { progress?: number } | undefined)?.progress,
+          // liveIntro
+          introTitle: d.title as string | undefined,
+          // shopping
+          productTitle: (d.product as { title?: string } | undefined)?.title,
+          rawData: d,
         };
 
-        if (msg.event === "like") setTotalLikes((n) => n + (d.likeCount || 1));
-        if (msg.event === "gift" && diamonds > 0) {
+        // Aggregations
+        if (msg.event === "like") setTotalLikes((n) => n + ((d.likeCount as number) || 1));
+        if ((msg.event === "gift" || msg.event === "unauthedGift") && diamonds > 0) {
           setTotalDiamonds((n) => n + diamonds);
-          const uid = d.user?.uniqueId || d.user?.userId || "unknown";
-          const nick = d.user?.nickname || uid;
+          const uid = user?.uniqueId || "unknown";
+          const nick = user?.nickname || uid;
           updateTopGifters(uid, nick, diamonds);
+          if (d.giftName) updateGiftTally(d.giftName as string, diamonds);
         }
 
         addEvent(ev);
@@ -275,11 +375,11 @@ export default function Monitor() {
     ws.onclose = () => {
       setConnStatus("disconnected");
       wsRef.current = null;
-      reconnectTimer.current = setTimeout(() => startConnection(user), 5000);
+      reconnectTimer.current = setTimeout(() => startConnection(activeUsernameRef.current), 5000);
     };
 
     ws.onerror = () => setConnStatus("error");
-  }, [addEvent, updateTopGifters]);
+  }, [addEvent, updateTopGifters, updateGiftTally]);
 
   const startConnection = useCallback((user: string) => {
     if (!user) return;
@@ -287,10 +387,7 @@ export default function Monitor() {
     mintJwt.mutate(
       { data: { uniqueId: user } },
       {
-        onSuccess: (data) => {
-          connect(user, data.token);
-          roomInfo.mutate({ data: { uniqueId: user } });
-        },
+        onSuccess: (data) => { connect(user, data.token); roomInfo.mutate({ data: { uniqueId: user } }); },
         onError: () => setConnStatus("error"),
       }
     );
@@ -298,11 +395,8 @@ export default function Monitor() {
 
   useEffect(() => {
     if (activeUsername) {
-      setEvents([]);
-      setTotalDiamonds(0);
-      setTotalLikes(0);
-      setTopGifters([]);
-      setViewerCount(null);
+      setEvents([]); setTotalDiamonds(0); setTotalLikes(0);
+      setTopGifters([]); setViewerCount(null);
       startConnection(activeUsername);
     }
     return () => { disconnect(); };
@@ -316,32 +410,28 @@ export default function Monitor() {
     setActiveUsername(user);
   };
 
-  const handleAddToWatchlist = () => {
-    saveWatchlistEntry(activeUsername, viewerCount);
-    setInWatchlist(true);
-  };
-
   const handleExport = () => {
     const top5 = topGifters.slice(0, 5).map((g, i) => `  ${i + 1}. ${g.nickname} — ${g.diamonds.toLocaleString()} 💎`).join("\n");
+    const eventTypes = Object.keys(EVENT_META);
+    const breakdown = eventTypes
+      .map((k) => { const c = events.filter((e) => e.event === k).length; return c > 0 ? `  ${EVENT_META[k].label.padEnd(14)} ${c}` : ""; })
+      .filter(Boolean).join("\n");
+
     const summary = [
       "📊 Creatools Session Summary",
       "─".repeat(36),
-      `Streamer:      @${activeUsername}`,
-      `Duration:      ${formatDuration(sessionDuration)}`,
-      `Peak Viewers:  ${peakViewers.toLocaleString()}`,
-      `Diamonds:      ${totalDiamonds.toLocaleString()} (~$${diamondsToUsd(totalDiamonds)} USD)`,
-      `Likes:         ${totalLikes.toLocaleString()}`,
+      `Streamer:     @${activeUsername}`,
+      `Duration:     ${formatDuration(sessionDuration)}`,
+      `Peak Viewers: ${peakViewers.toLocaleString()}`,
+      `Diamonds:     ${totalDiamonds.toLocaleString()} (~$${diamondsToUsd(totalDiamonds)} USD)`,
+      `Likes:        ${totalLikes.toLocaleString()}`,
+      `Events:       ${events.length}`,
       "",
       "Top Gifters:",
-      top5 || "  (none yet)",
+      top5 || "  (none)",
       "",
       "Event Breakdown:",
-      `  Chat    ${events.filter((e) => e.event === "chat").length}`,
-      `  Gifts   ${events.filter((e) => e.event === "gift").length}`,
-      `  Joins   ${events.filter((e) => e.event === "member").length}`,
-      `  Follows ${events.filter((e) => e.event === "follow").length}`,
-      `  Likes   ${events.filter((e) => e.event === "like").length}`,
-      `  Shares  ${events.filter((e) => e.event === "share").length}`,
+      breakdown || "  (none)",
       "",
       `Generated by Creatools · ${new Date().toLocaleString()}`,
     ].join("\n");
@@ -351,23 +441,37 @@ export default function Monitor() {
     setTimeout(() => setExportCopied(false), 2000);
   };
 
-  const statusConfig = {
-    idle: { label: "Idle", color: "text-muted-foreground", dot: "bg-muted-foreground" },
-    connecting: { label: "Connecting...", color: "text-yellow-400", dot: "bg-yellow-400 animate-pulse" },
-    connected: { label: "LIVE", color: "text-green-400", dot: "bg-green-400 animate-pulse" },
-    disconnected: { label: "Reconnecting...", color: "text-orange-400", dot: "bg-orange-400 animate-pulse" },
-    error: { label: "Error", color: "text-destructive", dot: "bg-destructive" },
+  const toggleFilter = (key: string) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
   };
 
+  // Events that actually appeared in this session
+  const seenEventTypes = [...new Set(events.map((e) => e.event))].filter((t) => !SILENT_EVENTS.has(t));
+
+  const filteredEvents = activeFilters.size === 0
+    ? events
+    : events.filter((e) => activeFilters.has(e.event));
+
+  const statusConfig = {
+    idle:         { label: "Idle",           color: "text-muted-foreground", dot: "bg-muted-foreground" },
+    connecting:   { label: "Connecting...",  color: "text-yellow-400",       dot: "bg-yellow-400 animate-pulse" },
+    connected:    { label: "LIVE",           color: "text-green-400",        dot: "bg-green-400 animate-pulse" },
+    disconnected: { label: "Reconnecting…", color: "text-orange-400",       dot: "bg-orange-400 animate-pulse" },
+    error:        { label: "Error",          color: "text-destructive",      dot: "bg-destructive" },
+  };
   const status = statusConfig[connStatus];
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Header row */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => setLocation("/")} className="w-fit">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Dashboard
+          <ArrowLeft className="w-4 h-4 mr-2" />Dashboard
         </Button>
 
         <form onSubmit={handleMonitor} className="flex gap-2 flex-1 max-w-lg">
@@ -385,19 +489,16 @@ export default function Monitor() {
         {activeUsername && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`flex items-center gap-1.5 text-sm font-medium ${status.color}`}>
-              <span className={`w-2 h-2 rounded-full ${status.dot}`} />
-              {status.label}
+              <span className={`w-2 h-2 rounded-full ${status.dot}`} />{status.label}
             </span>
             {connStatus === "connected" && (
               <span className="text-xs font-mono text-muted-foreground bg-muted/30 rounded px-1.5 py-0.5">
-                <Clock className="w-3 h-3 inline mr-1" />
-                {formatDuration(sessionDuration)}
+                <Clock className="w-3 h-3 inline mr-1" />{formatDuration(sessionDuration)}
               </span>
             )}
             {(connStatus === "disconnected" || connStatus === "error") && (
               <Button size="sm" variant="outline" onClick={() => startConnection(activeUsername)}>
-                <RefreshCw className="w-3 h-3 mr-1" />
-                Retry
+                <RefreshCw className="w-3 h-3 mr-1" />Retry
               </Button>
             )}
             {connStatus === "connected" && (
@@ -409,7 +510,7 @@ export default function Monitor() {
 
       {activeUsername ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left sidebar */}
+          {/* ── Left sidebar ── */}
           <div className="space-y-4">
             {/* Stream info */}
             <Card className="bg-card border-border">
@@ -436,44 +537,32 @@ export default function Monitor() {
                 ) : (
                   <div className="flex items-center gap-2">
                     <Skeleton className="w-10 h-10 rounded-full" />
-                    <div className="space-y-1">
-                      <Skeleton className="h-3 w-24" />
-                      <Skeleton className="h-3 w-16" />
-                    </div>
+                    <div className="space-y-1"><Skeleton className="h-3 w-24" /><Skeleton className="h-3 w-16" /></div>
                   </div>
                 )}
-                <a
-                  href={`https://tiktok.com/@${activeUsername}/live`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-primary hover:underline"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  Open on TikTok
+                <a href={`https://tiktok.com/@${activeUsername}/live`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-primary hover:underline">
+                  <ExternalLink className="w-3 h-3" />Open on TikTok
                 </a>
               </CardContent>
             </Card>
 
-            {/* Live stats — 5 cards */}
+            {/* Stats */}
             <div className="grid grid-cols-2 gap-2">
-              <Card className="bg-card border-border">
-                <CardContent className="p-3 text-center">
-                  <Users className="w-4 h-4 mx-auto mb-1 text-cyan-400" />
-                  <div className="text-sm font-bold font-mono text-cyan-400 leading-tight">
-                    {viewerCount !== null ? viewerCount.toLocaleString() : "—"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Viewers</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-card border-border">
-                <CardContent className="p-3 text-center">
-                  <TrendingUp className="w-4 h-4 mx-auto mb-1 text-cyan-300" />
-                  <div className="text-sm font-bold font-mono text-cyan-300 leading-tight">
-                    {peakViewers > 0 ? peakViewers.toLocaleString() : "—"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Peak</div>
-                </CardContent>
-              </Card>
+              {[
+                { icon: Users,      color: "text-cyan-400",   value: viewerCount !== null ? viewerCount.toLocaleString() : "—", label: "Viewers" },
+                { icon: TrendingUp, color: "text-cyan-300",   value: peakViewers > 0 ? peakViewers.toLocaleString() : "—", label: "Peak" },
+                { icon: Heart,      color: "text-pink-400",   value: totalLikes.toLocaleString(), label: "Likes" },
+                { icon: Clock,      color: "text-violet-400", value: formatDuration(sessionDuration), label: "Duration" },
+              ].map(({ icon: Icon, color, value, label }) => (
+                <Card key={label} className="bg-card border-border">
+                  <CardContent className="p-3 text-center">
+                    <Icon className={`w-4 h-4 mx-auto mb-1 ${color}`} />
+                    <div className={`text-sm font-bold font-mono leading-tight ${color}`}>{value}</div>
+                    <div className="text-xs text-muted-foreground">{label}</div>
+                  </CardContent>
+                </Card>
+              ))}
               <Card className="bg-card border-border col-span-2">
                 <CardContent className="p-3 text-center">
                   <Diamond className="w-4 h-4 mx-auto mb-1 text-yellow-400" />
@@ -484,67 +573,40 @@ export default function Monitor() {
                   <div className="text-xs text-muted-foreground">Diamonds (est. revenue)</div>
                 </CardContent>
               </Card>
-              <Card className="bg-card border-border">
-                <CardContent className="p-3 text-center">
-                  <Heart className="w-4 h-4 mx-auto mb-1 text-pink-400" />
-                  <div className="text-sm font-bold font-mono text-pink-400 leading-tight">
-                    {totalLikes.toLocaleString()}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Likes</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-card border-border">
-                <CardContent className="p-3 text-center">
-                  <Clock className="w-4 h-4 mx-auto mb-1 text-violet-400" />
-                  <div className="text-sm font-bold font-mono text-violet-400 leading-tight">
-                    {formatDuration(sessionDuration)}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Duration</div>
-                </CardContent>
-              </Card>
             </div>
 
             {/* Session actions */}
             <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1 text-xs h-8"
-                onClick={handleExport}
-              >
+              <Button size="sm" variant="outline" className="flex-1 text-xs h-8" onClick={handleExport}>
                 {exportCopied
-                  ? <><BookmarkCheck className="w-3 h-3 mr-1.5 text-chart-3" />Copied!</>
-                  : <><Download className="w-3 h-3 mr-1.5" />Export Summary</>
-                }
+                  ? <><BookmarkCheck className="w-3 h-3 mr-1.5 text-green-400" />Copied!</>
+                  : <><Download className="w-3 h-3 mr-1.5" />Export</>}
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
+              <Button size="sm" variant="outline"
                 className={`flex-1 text-xs h-8 ${inWatchlist ? "text-primary border-primary/50" : ""}`}
-                onClick={handleAddToWatchlist}
-                disabled={inWatchlist}
-              >
-                {inWatchlist
-                  ? <><BookmarkCheck className="w-3 h-3 mr-1.5" />Watchlisted</>
-                  : <><Bookmark className="w-3 h-3 mr-1.5" />Watchlist</>
-                }
+                onClick={() => { saveWatchlistEntry(activeUsername, viewerCount); setInWatchlist(true); }}
+                disabled={inWatchlist}>
+                {inWatchlist ? <><BookmarkCheck className="w-3 h-3 mr-1.5" />Watchlisted</> : <><Bookmark className="w-3 h-3 mr-1.5" />Watchlist</>}
               </Button>
             </div>
 
-            {/* Event counts */}
+            {/* Event breakdown */}
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Event Breakdown</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1.5 pt-0">
-                {Object.entries(EVENT_LABELS).map(([key, label]) => {
-                  const Icon = EVENT_ICONS[key] || MessageCircle;
+              <CardContent className="space-y-1 pt-0">
+                {seenEventTypes.length === 0 ? (
+                  <p className="text-xs text-muted-foreground/50">No events yet</p>
+                ) : seenEventTypes.map((key) => {
+                  const meta = EVENT_META[key];
                   const count = events.filter((e) => e.event === key).length;
+                  if (!meta || !count) return null;
+                  const Icon = meta.icon;
                   return (
                     <div key={key} className="flex items-center justify-between text-xs">
-                      <span className={`flex items-center gap-1.5 ${EVENT_COLORS[key] || "text-muted-foreground"}`}>
-                        <Icon className="w-3 h-3" />
-                        {label}
+                      <span className={`flex items-center gap-1.5 ${meta.color}`}>
+                        <Icon className="w-3 h-3" />{meta.label}
                       </span>
                       <span className="font-mono text-muted-foreground">{count}</span>
                     </div>
@@ -553,13 +615,12 @@ export default function Monitor() {
               </CardContent>
             </Card>
 
-            {/* Top Gifters leaderboard */}
+            {/* Top Gifters */}
             {topGifters.length > 0 && (
               <Card className="bg-card border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <Diamond className="w-3 h-3 text-yellow-400" />
-                    Top Gifters
+                    <Diamond className="w-3 h-3 text-yellow-400" />Top Gifters
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 pt-0">
@@ -569,64 +630,120 @@ export default function Monitor() {
                         {i + 1}
                       </span>
                       <span className="flex-1 truncate text-foreground/90">{gifter.nickname}</span>
-                      <span className="font-mono text-yellow-400 shrink-0">{gifter.diamonds.toLocaleString()}</span>
+                      <span className="font-mono text-yellow-400 shrink-0">{gifter.diamonds.toLocaleString()} 💎</span>
                     </div>
                   ))}
                 </CardContent>
               </Card>
             )}
+
+            {/* Gift tally */}
+            {Object.keys(giftTally).length > 0 && (
+              <Card className="bg-card border-border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Gift className="w-3 h-3 text-yellow-400" />Gift Tally
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1.5 pt-0">
+                  {Object.values(giftTally)
+                    .sort((a, b) => b.totalDiamonds - a.totalDiamonds)
+                    .slice(0, 8)
+                    .map((g) => (
+                      <div key={g.name} className="flex items-center gap-2 text-xs">
+                        {g.icon ? (
+                          <img src={g.icon} alt={g.name} className="w-4 h-4 object-contain shrink-0" />
+                        ) : (
+                          <Gift className="w-3 h-3 text-yellow-400 shrink-0" />
+                        )}
+                        <span className="flex-1 truncate text-foreground/80">{g.name}</span>
+                        <span className="font-mono text-muted-foreground shrink-0">×{g.count}</span>
+                        <span className="font-mono text-yellow-400 shrink-0">{g.totalDiamonds.toLocaleString()}💎</span>
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
-          {/* Event Feed */}
+          {/* ── Event Feed ── */}
           <div className="lg:col-span-2">
             <Card className="bg-card border-border h-full min-h-[500px] flex flex-col">
-              <CardHeader className="pb-3 flex-row items-center justify-between">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Live Events Feed
-                </CardTitle>
-                <Badge
-                  variant="outline"
-                  className={`text-xs font-mono ${connStatus === "connected" ? "border-green-400/50 text-green-400" : "border-muted text-muted-foreground"}`}
-                >
-                  {events.length} events
-                </Badge>
+              <CardHeader className="pb-3 shrink-0">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Live Events Feed
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline"
+                      className={`text-xs font-mono ${connStatus === "connected" ? "border-green-400/50 text-green-400" : "border-muted text-muted-foreground"}`}>
+                      {filteredEvents.length} / {events.length}
+                    </Badge>
+                    <Button size="sm" variant="ghost" className={`h-7 px-2 text-xs gap-1 ${filterOpen ? "text-primary" : "text-muted-foreground"}`}
+                      onClick={() => setFilterOpen((v) => !v)}>
+                      <Filter className="w-3.5 h-3.5" />Filter
+                      {activeFilters.size > 0 && <Badge className="ml-0.5 text-[10px] px-1 py-0 bg-primary/20 text-primary border-primary/30">{activeFilters.size}</Badge>}
+                      {filterOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Filter chips */}
+                {filterOpen && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <div className="flex flex-wrap gap-1.5">
+                      {activeFilters.size > 0 && (
+                        <button onClick={() => setActiveFilters(new Set())}
+                          className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors">
+                          <X className="w-2.5 h-2.5" />Clear
+                        </button>
+                      )}
+                      {Object.entries(EVENT_META).map(([key, meta]) => {
+                        const count = events.filter((e) => e.event === key).length;
+                        if (!count) return null;
+                        const Icon = meta.icon;
+                        const active = activeFilters.has(key);
+                        return (
+                          <button key={key} onClick={() => toggleFilter(key)}
+                            className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                              active ? `${meta.bg} ${meta.color} border-current/30` : "text-muted-foreground border-border hover:border-muted-foreground"
+                            }`}>
+                            <Icon className="w-2.5 h-2.5" />{meta.label}
+                            <span className="font-mono opacity-60">{count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </CardHeader>
-              <CardContent className="flex-1 p-0">
-                <ScrollArea className="h-[500px] lg:h-[640px]">
-                  {events.length === 0 ? (
+
+              <CardContent className="flex-1 p-0 min-h-0">
+                <ScrollArea className="h-[500px] lg:h-[620px]">
+                  {filteredEvents.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
                       {connStatus === "connecting" ? (
-                        <>
-                          <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
-                          <span className="text-sm">Connecting to @{activeUsername}...</span>
-                        </>
+                        <><Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" /><span className="text-sm">Connecting to @{activeUsername}...</span></>
                       ) : connStatus === "connected" ? (
-                        <>
-                          <Wifi className="w-8 h-8 mb-3 text-green-400 animate-pulse" />
-                          <span className="text-sm">Waiting for events...</span>
-                        </>
+                        <><Wifi className="w-8 h-8 mb-3 text-green-400 animate-pulse" /><span className="text-sm">Waiting for events...</span></>
                       ) : (
-                        <>
-                          <WifiOff className="w-8 h-8 mb-3 text-muted" />
-                          <span className="text-sm">Not connected</span>
-                        </>
+                        <><WifiOff className="w-8 h-8 mb-3 text-muted" /><span className="text-sm">Not connected</span></>
                       )}
                     </div>
                   ) : (
-                    <div className="divide-y divide-border/40">
-                      {events.map((ev) => {
-                        const color = EVENT_COLORS[ev.event] || "text-muted-foreground";
-                        const Icon = EVENT_ICONS[ev.event] || MessageCircle;
-                        const label = EVENT_LABELS[ev.event] || ev.event.toUpperCase();
+                    <div className="divide-y divide-border/30">
+                      {filteredEvents.map((ev) => {
+                        const meta = EVENT_META[ev.event];
+                        const color = meta?.color || "text-muted-foreground";
+                        const Icon = meta?.icon || MessageCircle;
+                        const label = meta?.label || ev.event.toUpperCase();
                         const text = formatEvent(ev);
                         const payGrade = ev.user?.payGrade ?? (ev.user as { level?: number })?.level;
                         const giftIcon = ev.giftName ? giftIconMap.current[ev.giftName.toLowerCase()] : null;
 
                         return (
-                          <div
-                            key={ev.id}
-                            className="flex items-start gap-3 px-4 py-2 hover:bg-muted/10 transition-colors animate-in slide-in-from-top-1 duration-150"
-                          >
+                          <div key={ev.id}
+                            className="flex items-start gap-3 px-4 py-2 hover:bg-muted/10 transition-colors animate-in slide-in-from-top-1 duration-150">
                             <div className={`mt-0.5 shrink-0 ${color}`}>
                               {giftIcon ? (
                                 <img src={giftIcon} alt={ev.giftName} className="w-3.5 h-3.5 object-contain" />
@@ -637,16 +754,16 @@ export default function Monitor() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-baseline gap-1.5 flex-wrap">
                                 <span className={`text-xs font-mono font-bold uppercase ${color}`}>{label}</span>
-                                <span className="text-xs font-semibold text-foreground/90">
-                                  {ev.user?.nickname || ev.user?.uniqueId || "unknown"}
-                                  {payGrade ? (
-                                    <span className="ml-1 text-xs font-mono text-muted-foreground">lv{payGrade}</span>
-                                  ) : null}
-                                </span>
-                                {text && <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">{text}</span>}
+                                {ev.user && (
+                                  <span className="text-xs font-semibold text-foreground/90">
+                                    {ev.user.nickname || ev.user.uniqueId || "unknown"}
+                                    {payGrade ? <span className="ml-1 text-[10px] font-mono text-muted-foreground">lv{payGrade}</span> : null}
+                                  </span>
+                                )}
+                                {text && <span className="text-xs text-muted-foreground min-w-0 break-words">{text}</span>}
                               </div>
                             </div>
-                            <time className="text-xs text-muted-foreground/60 font-mono shrink-0">
+                            <time className="text-xs text-muted-foreground/50 font-mono shrink-0 tabular-nums">
                               {ev.timestamp.toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
                             </time>
                           </div>
