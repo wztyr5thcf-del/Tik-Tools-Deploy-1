@@ -6,6 +6,7 @@ import {
   BulkLiveCheckBody,
   GetUserProfileQueryParams,
 } from "@workspace/api-zod";
+import { requireAuth } from "./auth";
 
 const router: IRouter = Router();
 
@@ -53,7 +54,7 @@ router.get("/tiktok/top-channels", async (req, res): Promise<void> => {
 });
 
 // ── Live Status ───────────────────────────────────────────────────────────────
-router.get("/tiktok/live-status", async (req, res): Promise<void> => {
+router.get("/tiktok/live-status", requireAuth, async (req, res): Promise<void> => {
   const parsed = GetLiveStatusQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -83,7 +84,7 @@ router.get("/tiktok/live-status", async (req, res): Promise<void> => {
 });
 
 // ── JWT Mint ──────────────────────────────────────────────────────────────────
-router.post("/tiktok/jwt", async (req, res): Promise<void> => {
+router.post("/tiktok/jwt", requireAuth, async (req, res): Promise<void> => {
   const parsed = MintJwtBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -117,7 +118,7 @@ router.post("/tiktok/jwt", async (req, res): Promise<void> => {
 });
 
 // ── Room Info ─────────────────────────────────────────────────────────────────
-router.post("/tiktok/room-info", async (req, res): Promise<void> => {
+router.post("/tiktok/room-info", requireAuth, async (req, res): Promise<void> => {
   const parsed = GetRoomInfoBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -186,7 +187,7 @@ router.post("/tiktok/room-info", async (req, res): Promise<void> => {
 });
 
 // ── Bulk Live Check ───────────────────────────────────────────────────────────
-router.post("/tiktok/bulk-check", async (req, res): Promise<void> => {
+router.post("/tiktok/bulk-check", requireAuth, async (req, res): Promise<void> => {
   const parsed = BulkLiveCheckBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -255,7 +256,7 @@ router.post("/tiktok/bulk-check", async (req, res): Promise<void> => {
 });
 
 // ── Rate Limits ───────────────────────────────────────────────────────────────
-router.get("/tiktok/rate-limits", async (req, res): Promise<void> => {
+router.get("/tiktok/rate-limits", requireAuth, async (req, res): Promise<void> => {
   try {
     const apiKey = getApiKey();
     const r = await fetch(`${TIKTOOLS_API}/webcast/rate_limits?apiKey=${apiKey}`);
@@ -324,7 +325,7 @@ router.get("/tiktok/gift-catalog", async (req, res): Promise<void> => {
 });
 
 // ── User Profile ──────────────────────────────────────────────────────────────
-router.get("/tiktok/user-profile", async (req, res): Promise<void> => {
+router.get("/tiktok/user-profile", requireAuth, async (req, res): Promise<void> => {
   const parsed = GetUserProfileQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });

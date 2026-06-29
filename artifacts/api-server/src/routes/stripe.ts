@@ -30,6 +30,16 @@ router.post("/stripe/checkout", requireAuth, async (req: Request, res: Response)
   const { priceId } = req.body as { priceId?: string };
   if (!priceId) { res.status(400).json({ error: "priceId is required" }); return; }
 
+  // Validate priceId against server-known price IDs only
+  const allowedPriceIds = [
+    process.env.STRIPE_PRICE_ID_BASIC,
+    process.env.STRIPE_PRICE_ID_PRO,
+  ].filter(Boolean);
+  if (allowedPriceIds.length > 0 && !allowedPriceIds.includes(priceId)) {
+    res.status(400).json({ error: "Invalid priceId" });
+    return;
+  }
+
   const store = loadUsers();
   const idx = store.users.findIndex((u) => u.id === userId);
   if (idx === -1) { res.status(404).json({ error: "User not found" }); return; }

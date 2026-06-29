@@ -191,6 +191,15 @@ export default function Monitor() {
   const [, setLocation] = useLocation();
   const [searchInput, setSearchInput] = useState(username || "");
   const [activeUsername, setActiveUsername] = useState(username || "");
+
+  // Sync search input and active username when route param changes
+  useEffect(() => {
+    if (username && username !== activeUsernameRef.current) {
+      setSearchInput(username);
+      setActiveUsername(username);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [username]);
   const [events, setEvents] = useState<LiveEvent[]>([]);
   const [connStatus, setConnStatus] = useState<ConnStatus>("idle");
   const [viewerCount, setViewerCount] = useState<number | null>(null);

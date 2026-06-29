@@ -107,7 +107,8 @@ router.post("/admin/test-stripe", requireAdmin, async (req, res): Promise<void> 
   }
   try {
     const Stripe = (await import("stripe")).default;
-    const stripe = new Stripe(secretKey, { apiVersion: "2026-06-24.dahlia" as Parameters<typeof Stripe>[1]["apiVersion"] });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stripe = new Stripe(secretKey, { apiVersion: "2026-06-24.dahlia" as any });
     const balance = await stripe.balance.retrieve();
     res.json({
       ok: true,

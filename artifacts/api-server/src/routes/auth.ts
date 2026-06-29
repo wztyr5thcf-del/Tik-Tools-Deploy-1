@@ -7,7 +7,11 @@ export type { StoredUser };
 
 const router: IRouter = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET ?? "creatools-secret-change-in-production";
+const DEFAULT_JWT_SECRET = "creatools-secret-change-in-production";
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error("JWT_SECRET environment variable must be set in production");
+}
+const JWT_SECRET = process.env.JWT_SECRET ?? DEFAULT_JWT_SECRET;
 const SALT_ROUNDS = 10;
 
 // ── Auth middleware ────────────────────────────────────────────────────────────
