@@ -1,16 +1,16 @@
 {
-  "navType": "topbar",
+  "navType": "sidebar",
   "primaryColor": "0 84% 60%",
-  "secondaryColor": "180 100% 50%",
-  "logoText": "Creatools",
-  "logoUrl": "",
+  "secondaryColor": "0 84% 20%",
+  "logoText": "",
+  "logoUrl": "https://creatools.co/logoexte.png",
   "sidebarSections": [
     {
       "id": "main",
       "items": [
         {
           "id": "dashboard",
-          "label": "Dashboard",
+          "label": "Hub",
           "href": "/",
           "icon": "LayoutDashboard",
           "visible": true
@@ -25,7 +25,7 @@
         },
         {
           "id": "gift-gallery",
-          "label": "Gift Gallery",
+          "label": "Galeria",
           "href": "/gift-gallery",
           "icon": "Diamond",
           "visible": true
@@ -38,7 +38,7 @@
       "items": [
         {
           "id": "lookup",
-          "label": "Lookup",
+          "label": "Análise",
           "href": "/streamer/lookup",
           "icon": "Search",
           "matchPrefix": "/streamer/lookup",
@@ -55,7 +55,7 @@
         },
         {
           "id": "watchlist",
-          "label": "Watchlist",
+          "label": "X9",
           "href": "/streamer/watchlist",
           "icon": "Star",
           "matchPrefix": "/streamer/watchlist",
@@ -71,7 +71,7 @@
         },
         {
           "id": "rate-limits",
-          "label": "Rate Limits",
+          "label": "Meus Limites",
           "href": "/streamer/rate-limits",
           "icon": "BarChart2",
           "matchPrefix": "/streamer/rate-limits",
@@ -126,5 +126,5 @@
       ]
     }
   ],
-  "updatedAt": "2026-06-29T18:44:52.436Z"
+  "updatedAt": "2026-06-29T20:16:30.570Z"
 }

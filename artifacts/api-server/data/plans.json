@@ -2,24 +2,23 @@
   "plans": [
     {
       "id": "free",
-      "name": "Sandbox",
-      "description": "Gratuito para testes e exploração",
+      "name": "Iniciante",
+      "description": "Gratuito para exploração",
       "price": 0,
       "currency": "USD",
       "billingPeriod": "free",
       "permissions": [
         "view_dashboard",
         "view_monitor",
-        "view_gift_gallery",
-        "change_tiktok_username"
+        "use_jwt",
+        "view_live_analytics"
       ],
       "tiktokUsernameChangesPerWeek": 1,
-      "maxConcurrentWs": 3,
-      "maxApiCallsPerWindow": 20,
+      "maxConcurrentWs": 2,
+      "maxApiCallsPerWindow": 2,
       "features": [
-        "Dashboard",
-        "Monitor (básico)",
-        "Gift Gallery"
+        "Hub",
+        "Monitor (básico)"
       ],
       "color": "gray",
       "order": 0,
@@ -27,7 +26,7 @@
     },
     {
       "id": "basic",
-      "name": "Basic+",
+      "name": "Básico",
       "description": "Para criadores que precisam de mais ferramentas",
       "price": 1999,
       "currency": "USD",
@@ -40,16 +39,22 @@
         "view_country_leaderboard",
         "view_gift_gallery",
         "use_watchlist",
-        "change_tiktok_username"
+        "view_webhooks",
+        "view_live_analytics",
+        "view_live_captions",
+        "view_gaming_leaderboard",
+        "use_jwt"
       ],
-      "tiktokUsernameChangesPerWeek": 3,
+      "tiktokUsernameChangesPerWeek": 1,
       "maxConcurrentWs": 5,
       "maxApiCallsPerWindow": 100,
       "features": [
-        "Tudo do Sandbox",
+        "Tudo do Iniciante",
         "Bulk Check",
         "Gifters Leaderboard",
-        "Watchlist"
+        "Watchlist",
+        "Webhooks",
+        "Live Analytics"
       ],
       "color": "cyan",
       "order": 1,
