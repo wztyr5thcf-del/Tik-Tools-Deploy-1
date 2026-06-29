@@ -210,6 +210,80 @@ paths:
               schema:
                 $ref: "#/components/schemas/AppConfig"
 
+  /tiktok/sign-url:
+    post:
+      operationId: signUrl
+      tags: [tiktok]
+      summary: Sign a TikTok webcast URL
+      description: Adds X-Bogus and X-Gnarly anti-automation signatures required for direct TikTok API access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignUrlRequest"
+      responses:
+        "200":
+          description: Signed URL with required headers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignedUrlData"
+        "402":
+          description: Tier requirement not met
+
+  /tiktok/leaderboards/leagues/{region}:
+    get:
+      operationId: getLeaderboardLeagues
+      tags: [tiktok]
+      summary: Get available leagues for a region (Ultra+ tier)
+      description: Returns available league classes for a given region code (e.g. BK, TW, US+).
+      parameters:
+        - name: region
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Region code (e.g. BK, TW, US+, CA)
+      responses:
+        "200":
+          description: League list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardLeagues"
+        "402":
+          description: Tier requirement not met
+
+  /tiktok/leaderboards/league/{region}/{classType}:
+    get:
+      operationId: getLeaderboardLeague
+      tags: [tiktok]
+      summary: Get ranked creators in a league class (Ultra+ full, others teaser)
+      description: Returns up to 99 ranked creators for Ultra+, or 5 teaser entries for lower tiers.
+      parameters:
+        - name: region
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Region code
+        - name: classType
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Class type integer (2000=A1, 1900=A2, 1000=C1, etc.)
+      responses:
+        "200":
+          description: Ranked creator list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaderboardLeague"
+        "402":
+          description: Tier requirement not met
+
 components:
   schemas:
     HealthStatus:
@@ -411,3 +485,84 @@ components:
         apiKey:
           type: string
       required: [apiKey]
+
+    SignUrlRequest:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Raw TikTok webcast URL to sign
+      required: [url]
+
+    SignedUrlData:
+      type: object
+      properties:
+        signedUrl:
+          type: ["string", "null"]
+        xBogus:
+          type: ["string", "null"]
+        xGnarly:
+          type: ["string", "null"]
+        userAgent:
+          type: ["string", "null"]
+        cookies:
+          type: ["string", "null"]
+
+    LeagueInfo:
+      type: object
+      properties:
+        classType:
+          type: integer
+        classLabel:
+          type: string
+      required: [classType, classLabel]
+
+    LeaderboardLeagues:
+      type: object
+      properties:
+        region:
+          type: string
+        available:
+          type: boolean
+        leagues:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeagueInfo"
+      required: [region, available, leagues]
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        score:
+          type: integer
+        uniqueId:
+          type: string
+        nickname:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        isLive:
+          type: boolean
+        roomId:
+          type: ["string", "null"]
+      required: [rank, score, uniqueId, isLive]
+
+    LeaderboardLeague:
+      type: object
+      properties:
+        region:
+          type: string
+        classType:
+          type: integer
+        classLabel:
+          type: string
+        teaser:
+          type: boolean
+          description: True when only 5 sample entries are returned (non-Ultra tier)
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeaderboardEntry"
+      required: [region, classType, classLabel, teaser, entries]

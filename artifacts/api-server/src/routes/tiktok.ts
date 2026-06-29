@@ -388,4 +388,158 @@ router.get("/tiktok/user-profile", requireAuth, async (req, res): Promise<void> 
   }
 });
 
+// ── Sign URL ──────────────────────────────────────────────────────────────────
+// Signs any TikTok webcast URL with required X-Bogus / X-Gnarly parameters
+router.post("/tiktok/sign-url", requireAuth, async (req, res): Promise<void> => {
+  const { url: rawUrl } = req.body as { url?: string };
+  if (!rawUrl || typeof rawUrl !== "string") {
+    res.status(400).json({ error: "url (string) is required in body" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(`${TIKTOOLS_API}/webcast/sign_url?apiKey=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: rawUrl }),
+    });
+    const json = await r.json() as {
+      status_code?: number;
+      required_tier?: string;
+      data?: {
+        signed_url?: string;
+        x_bogus?: string;
+        x_gnarly?: string;
+        user_agent?: string;
+        cookies?: string;
+      };
+    };
+
+    if (json.status_code !== 0) {
+      res.status(402).json({
+        error: "Tier requirement not met",
+        requiredTier: json.required_tier ?? "pro",
+        available: false,
+      });
+      return;
+    }
+
+    const d = json.data ?? {};
+    res.json({
+      signedUrl: d.signed_url ?? null,
+      xBogus: d.x_bogus ?? null,
+      xGnarly: d.x_gnarly ?? null,
+      userAgent: d.user_agent ?? null,
+      cookies: d.cookies ?? null,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to sign URL");
+    res.status(500).json({ error: "Failed to sign URL" });
+  }
+});
+
+// ── Leaderboards: League List ─────────────────────────────────────────────────
+router.get("/tiktok/leaderboards/leagues/:region", requireAuth, async (req, res): Promise<void> => {
+  const { region } = req.params;
+  if (!region) {
+    res.status(400).json({ error: "region param is required" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(
+      `${TIKTOOLS_API}/api/leaderboards/leagues/${encodeURIComponent(region)}?apiKey=${apiKey}`
+    );
+    const json = await r.json() as {
+      status_code?: number;
+      required_tier?: string;
+      region?: string;
+      available?: boolean;
+      leagues?: Array<{ classType?: number; classLabel?: string }>;
+    };
+
+    if (json.status_code !== undefined && json.status_code !== 0) {
+      res.status(402).json({
+        error: "Tier requirement not met",
+        requiredTier: json.required_tier ?? "ultra",
+        available: false,
+      });
+      return;
+    }
+
+    res.json({
+      region: json.region ?? region,
+      available: json.available ?? true,
+      leagues: (json.leagues ?? []).map((l) => ({
+        classType: l.classType ?? 0,
+        classLabel: l.classLabel ?? "",
+      })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch leaderboard leagues");
+    res.status(500).json({ error: "Failed to fetch leaderboard leagues" });
+  }
+});
+
+// ── Leaderboards: League Entries ──────────────────────────────────────────────
+router.get("/tiktok/leaderboards/league/:region/:classType", requireAuth, async (req, res): Promise<void> => {
+  const { region, classType } = req.params;
+  const classTypeNum = parseInt(classType, 10);
+  if (!region || isNaN(classTypeNum)) {
+    res.status(400).json({ error: "region and classType params are required" });
+    return;
+  }
+  try {
+    const apiKey = getApiKey();
+    const r = await fetch(
+      `${TIKTOOLS_API}/api/leaderboards/league/${encodeURIComponent(region)}/${classTypeNum}?apiKey=${apiKey}`
+    );
+    const json = await r.json() as {
+      status_code?: number;
+      required_tier?: string;
+      region?: string;
+      classType?: number;
+      classLabel?: string;
+      entries?: Array<{
+        rank?: number;
+        score?: number;
+        uniqueId?: string;
+        nickname?: string;
+        avatarUrl?: string;
+        isLive?: boolean;
+        roomId?: string;
+      }>;
+      teaser?: boolean;
+    };
+
+    if (json.status_code !== undefined && json.status_code !== 0) {
+      res.status(402).json({
+        error: "Tier requirement not met",
+        requiredTier: json.required_tier ?? "ultra",
+        available: false,
+      });
+      return;
+    }
+
+    res.json({
+      region: json.region ?? region,
+      classType: json.classType ?? classTypeNum,
+      classLabel: json.classLabel ?? "",
+      teaser: json.teaser ?? false,
+      entries: (json.entries ?? []).map((e) => ({
+        rank: e.rank ?? 0,
+        score: e.score ?? 0,
+        uniqueId: e.uniqueId ?? "",
+        nickname: e.nickname ?? null,
+        avatarUrl: e.avatarUrl ?? null,
+        isLive: e.isLive ?? false,
+        roomId: e.roomId ?? null,
+      })),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch leaderboard league");
+    res.status(500).json({ error: "Failed to fetch leaderboard league" });
+  }
+});
+
 export default router;

@@ -30,11 +30,15 @@ import type {
   HealthStatus,
   JwtRequest,
   JwtResponse,
+  LeaderboardLeague,
+  LeaderboardLeagues,
   LiveChannel,
   LiveStatus,
   RateLimits,
   RoomInfo,
   RoomInfoRequest,
+  SignUrlRequest,
+  SignedUrlData,
   UserProfile
 } from './api.schemas';
 
@@ -906,4 +910,236 @@ export const useSaveConfig = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getSaveConfigMutationOptions(options));
     }
+
+export const getSignUrlUrl = () => {
+
+
+
+
+  return `/api/tiktok/sign-url`
+}
+
+/**
+ * Adds X-Bogus and X-Gnarly anti-automation signatures required for direct TikTok API access.
+ * @summary Sign a TikTok webcast URL
+ */
+export const signUrl = async (signUrlRequest: SignUrlRequest, options?: RequestInit): Promise<SignedUrlData> => {
+
+  return customFetch<SignedUrlData>(getSignUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(signUrlRequest)
+  }
+);}
+
+
+
+
+export const getSignUrlMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof signUrl>>, TError,{data: BodyType<SignUrlRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof signUrl>>, TError,{data: BodyType<SignUrlRequest>}, TContext> => {
+
+const mutationKey = ['signUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof signUrl>>, {data: BodyType<SignUrlRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  signUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SignUrlMutationResult = NonNullable<Awaited<ReturnType<typeof signUrl>>>
+    export type SignUrlMutationBody = BodyType<SignUrlRequest>
+    export type SignUrlMutationError = ErrorType<void>
+
+    /**
+ * @summary Sign a TikTok webcast URL
+ */
+export const useSignUrl = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof signUrl>>, TError,{data: BodyType<SignUrlRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof signUrl>>,
+        TError,
+        {data: BodyType<SignUrlRequest>},
+        TContext
+      > => {
+      return useMutation(getSignUrlMutationOptions(options));
+    }
+
+export const getGetLeaderboardLeaguesUrl = (region: string,) => {
+
+
+
+
+  return `/api/tiktok/leaderboards/leagues/${region}`
+}
+
+/**
+ * Returns available league classes for a given region code (e.g. BK, TW, US+).
+ * @summary Get available leagues for a region (Ultra+ tier)
+ */
+export const getLeaderboardLeagues = async (region: string, options?: RequestInit): Promise<LeaderboardLeagues> => {
+
+  return customFetch<LeaderboardLeagues>(getGetLeaderboardLeaguesUrl(region),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLeaderboardLeaguesQueryKey = (region: string,) => {
+    return [
+    `/api/tiktok/leaderboards/leagues/${region}`
+    ] as const;
+    }
+
+
+export const getGetLeaderboardLeaguesQueryOptions = <TData = Awaited<ReturnType<typeof getLeaderboardLeagues>>, TError = ErrorType<void>>(region: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeaderboardLeagues>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLeaderboardLeaguesQueryKey(region);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeaderboardLeagues>>> = ({ signal }) => getLeaderboardLeagues(region, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: region !== null && region !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLeaderboardLeagues>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLeaderboardLeaguesQueryResult = NonNullable<Awaited<ReturnType<typeof getLeaderboardLeagues>>>
+export type GetLeaderboardLeaguesQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get available leagues for a region (Ultra+ tier)
+ */
+
+export function useGetLeaderboardLeagues<TData = Awaited<ReturnType<typeof getLeaderboardLeagues>>, TError = ErrorType<void>>(
+ region: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeaderboardLeagues>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLeaderboardLeaguesQueryOptions(region,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetLeaderboardLeagueUrl = (region: string,
+    classType: number,) => {
+
+
+
+
+  return `/api/tiktok/leaderboards/league/${region}/${classType}`
+}
+
+/**
+ * Returns up to 99 ranked creators for Ultra+, or 5 teaser entries for lower tiers.
+ * @summary Get ranked creators in a league class (Ultra+ full, others teaser)
+ */
+export const getLeaderboardLeague = async (region: string,
+    classType: number, options?: RequestInit): Promise<LeaderboardLeague> => {
+
+  return customFetch<LeaderboardLeague>(getGetLeaderboardLeagueUrl(region,classType),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLeaderboardLeagueQueryKey = (region: string,
+    classType: number,) => {
+    return [
+    `/api/tiktok/leaderboards/league/${region}/${classType}`
+    ] as const;
+    }
+
+
+export const getGetLeaderboardLeagueQueryOptions = <TData = Awaited<ReturnType<typeof getLeaderboardLeague>>, TError = ErrorType<void>>(region: string,
+    classType: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeaderboardLeague>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLeaderboardLeagueQueryKey(region,classType);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeaderboardLeague>>> = ({ signal }) => getLeaderboardLeague(region,classType, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: region !== null && region !== undefined && classType !== null && classType !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLeaderboardLeague>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLeaderboardLeagueQueryResult = NonNullable<Awaited<ReturnType<typeof getLeaderboardLeague>>>
+export type GetLeaderboardLeagueQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get ranked creators in a league class (Ultra+ full, others teaser)
+ */
+
+export function useGetLeaderboardLeague<TData = Awaited<ReturnType<typeof getLeaderboardLeague>>, TError = ErrorType<void>>(
+ region: string,
+    classType: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLeaderboardLeague>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLeaderboardLeagueQueryOptions(region,classType,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

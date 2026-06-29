@@ -180,3 +180,64 @@ export const SaveConfigResponse = zod.object({
 })
 
 
+/**
+ * Adds X-Bogus and X-Gnarly anti-automation signatures required for direct TikTok API access.
+ * @summary Sign a TikTok webcast URL
+ */
+export const SignUrlBody = zod.object({
+  "url": zod.string().describe('Raw TikTok webcast URL to sign')
+})
+
+export const SignUrlResponse = zod.object({
+  "signedUrl": zod.string().nullish(),
+  "xBogus": zod.string().nullish(),
+  "xGnarly": zod.string().nullish(),
+  "userAgent": zod.string().nullish(),
+  "cookies": zod.string().nullish()
+})
+
+
+/**
+ * Returns available league classes for a given region code (e.g. BK, TW, US+).
+ * @summary Get available leagues for a region (Ultra+ tier)
+ */
+export const GetLeaderboardLeaguesParams = zod.object({
+  "region": zod.coerce.string().describe('Region code (e.g. BK, TW, US+, CA)')
+})
+
+export const GetLeaderboardLeaguesResponse = zod.object({
+  "region": zod.string(),
+  "available": zod.boolean(),
+  "leagues": zod.array(zod.object({
+  "classType": zod.number(),
+  "classLabel": zod.string()
+}))
+})
+
+
+/**
+ * Returns up to 99 ranked creators for Ultra+, or 5 teaser entries for lower tiers.
+ * @summary Get ranked creators in a league class (Ultra+ full, others teaser)
+ */
+export const GetLeaderboardLeagueParams = zod.object({
+  "region": zod.coerce.string().describe('Region code'),
+  "classType": zod.coerce.number().describe('Class type integer (2000=A1, 1900=A2, 1000=C1, etc.)')
+})
+
+export const GetLeaderboardLeagueResponse = zod.object({
+  "region": zod.string(),
+  "classType": zod.number(),
+  "classLabel": zod.string(),
+  "teaser": zod.boolean().describe('True when only 5 sample entries are returned (non-Ultra tier)'),
+  "entries": zod.array(zod.object({
+  "rank": zod.number(),
+  "score": zod.number(),
+  "uniqueId": zod.string(),
+  "nickname": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "isLive": zod.boolean(),
+  "roomId": zod.string().nullish()
+}))
+})
+
+

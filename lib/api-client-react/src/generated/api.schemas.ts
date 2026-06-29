@@ -157,6 +157,57 @@ export interface ConfigInput {
   apiKey: string;
 }
 
+export interface SignUrlRequest {
+  /** Raw TikTok webcast URL to sign */
+  url: string;
+}
+
+export interface SignedUrlData {
+  /** @nullable */
+  signedUrl?: string | null;
+  /** @nullable */
+  xBogus?: string | null;
+  /** @nullable */
+  xGnarly?: string | null;
+  /** @nullable */
+  userAgent?: string | null;
+  /** @nullable */
+  cookies?: string | null;
+}
+
+export interface LeagueInfo {
+  classType: number;
+  classLabel: string;
+}
+
+export interface LeaderboardLeagues {
+  region: string;
+  available: boolean;
+  leagues: LeagueInfo[];
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  score: number;
+  uniqueId: string;
+  /** @nullable */
+  nickname?: string | null;
+  /** @nullable */
+  avatarUrl?: string | null;
+  isLive: boolean;
+  /** @nullable */
+  roomId?: string | null;
+}
+
+export interface LeaderboardLeague {
+  region: string;
+  classType: number;
+  classLabel: string;
+  /** True when only 5 sample entries are returned (non-Ultra tier) */
+  teaser: boolean;
+  entries: LeaderboardEntry[];
+}
+
 export type GetLiveStatusParams = {
 /**
  * TikTok username (without @)

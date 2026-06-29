@@ -16,6 +16,7 @@ import Pricing from "./pages/pricing";
 import Login from "./pages/login";
 import Profile from "./pages/profile";
 import Admin from "./pages/admin";
+import Leaderboards from "./pages/leaderboards";
 import AppLayout from "./components/layout/app-layout";
 import { AuthProvider, useAuth } from "./context/auth-context";
 import { useEffect } from "react";
@@ -77,6 +78,8 @@ function Router() {
             <Route path="/pricing" component={Pricing} />
             <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
             <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
+
+            <Route path="/leaderboards" component={() => <ProtectedRoute component={Leaderboards} />} />
 
             {/* Admin — hard-gated: non-admins are redirected to / */}
             <Route path="/admin" component={() => <AdminRoute component={Admin} />} />

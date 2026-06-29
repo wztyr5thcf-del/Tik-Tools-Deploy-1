@@ -12,20 +12,33 @@ import {
   MessageCircle, Gift, Heart, UserPlus, Share2, Users,
   Wifi, WifiOff, Loader2, ArrowLeft, ExternalLink, RefreshCw, Diamond,
   Clock, Download, Bookmark, BookmarkCheck, TrendingUp,
-  Crown, Smile, HelpCircle, Package, Zap, Shield, Info,
+  Crown, Smile, HelpCircle, Package, Zap, Shield,
   Award, Target, AlertTriangle, ShoppingBag, Trash2, Radio,
-  ChevronDown, ChevronUp, Filter, X,
+  ChevronDown, ChevronUp, Filter, X, Languages, AlignLeft,
+  Swords, Bell, Star, Tv2, Hash,
+  Mic, MicOff, Play, Pause, StopCircle, Flag,
 } from "lucide-react";
 
 // ─── Event types ────────────────────────────────────────────────────────────
 type EventType =
+  // Core interaction
   | "chat" | "gift" | "like" | "member" | "follow" | "share"
   | "subscribe" | "emoteChat" | "questionNew" | "envelopeOpen"
-  | "linkMicBattle" | "linkMicArmies" | "liveIntro"
+  | "unauthedGift"
+  // Battles & rankings
+  | "linkMicBattle" | "linkMicArmies" | "battleArmies"
   | "rankUpdate" | "hourlyRankUpdate" | "goalUpdate"
-  | "unauthedGift" | "streamEnd" | "barrageInfo"
-  | "oecLiveShoppingInfo" | "imDelete" | "msgDetect"
-  | "communityMessage" | "roomInfo" | "roomUserSeq" | string;
+  // Stream lifecycle
+  | "liveIntro" | "streamEnd" | "streamPaused" | "streamResumed"
+  // Captions & translations
+  | "caption" | "translation"
+  // Moderation
+  | "imDelete" | "msgDetect" | "controlMessage" | "moderatorBadge"
+  // Shopping & monetization
+  | "oecLiveShoppingInfo" | "productOffer" | "productClick"
+  // Community & system
+  | "communityMessage" | "barrageInfo" | "systemMessage"
+  | "poke" | "noticeMessage" | "roomInfo" | "roomUserSeq" | string;
 
 interface LiveEvent {
   id: string;
@@ -47,8 +60,9 @@ interface LiveEvent {
   question?: string;
   // envelopeOpen
   treasureCount?: number;
-  // linkMicBattle
+  // linkMicBattle / battleArmies
   battleStatus?: number;
+  armies?: Array<{ hostUserId: string; points: number }>;
   // rankUpdate / hourlyRankUpdate
   rank?: number;
   // goalUpdate
@@ -58,6 +72,17 @@ interface LiveEvent {
   introTitle?: string;
   // shopping
   productTitle?: string;
+  productId?: string;
+  // caption / translation
+  captionText?: string;
+  language?: string;
+  translatedText?: string;
+  originalText?: string;
+  // poke
+  targetUser?: { nickname?: string; uniqueId?: string };
+  // controlMessage / systemMessage / noticeMessage
+  messageText?: string;
+  action?: string;
   // raw fallback
   rawData?: Record<string, unknown>;
 }
@@ -68,6 +93,7 @@ type ConnStatus = "idle" | "connecting" | "connected" | "disconnected" | "error"
 
 // ─── Event metadata ──────────────────────────────────────────────────────────
 const EVENT_META: Record<string, { color: string; bg: string; icon: React.ElementType; label: string }> = {
+  // ── Core interactions ──────────────────────────────────────────────────────
   chat:               { color: "text-cyan-400",         bg: "bg-cyan-400/10",       icon: MessageCircle, label: "CHAT" },
   gift:               { color: "text-yellow-400",       bg: "bg-yellow-400/10",     icon: Gift,          label: "GIFT" },
   unauthedGift:       { color: "text-yellow-600",       bg: "bg-yellow-600/10",     icon: Gift,          label: "GIFT?" },
@@ -79,18 +105,39 @@ const EVENT_META: Record<string, { color: string; bg: string; icon: React.Elemen
   emoteChat:          { color: "text-purple-400",       bg: "bg-purple-400/10",     icon: Smile,         label: "EMOTE" },
   questionNew:        { color: "text-sky-400",          bg: "bg-sky-400/10",        icon: HelpCircle,    label: "QUESTION" },
   envelopeOpen:       { color: "text-orange-400",       bg: "bg-orange-400/10",     icon: Package,       label: "ENVELOPE" },
-  linkMicBattle:      { color: "text-rose-400",         bg: "bg-rose-400/10",       icon: Zap,           label: "BATTLE" },
+  poke:               { color: "text-pink-300",         bg: "bg-pink-300/10",       icon: Zap,           label: "POKE" },
+  // ── Battles & rankings ─────────────────────────────────────────────────────
+  linkMicBattle:      { color: "text-rose-400",         bg: "bg-rose-400/10",       icon: Swords,        label: "BATTLE" },
   linkMicArmies:      { color: "text-red-400",          bg: "bg-red-400/10",        icon: Shield,        label: "ARMIES" },
-  liveIntro:          { color: "text-teal-400",         bg: "bg-teal-400/10",       icon: Info,          label: "INTRO" },
+  battleArmies:       { color: "text-red-300",          bg: "bg-red-300/10",        icon: Shield,        label: "BATTLE ARMIES" },
   rankUpdate:         { color: "text-indigo-400",       bg: "bg-indigo-400/10",     icon: TrendingUp,    label: "RANK" },
   hourlyRankUpdate:   { color: "text-indigo-300",       bg: "bg-indigo-300/10",     icon: Award,         label: "HOURLY RANK" },
   goalUpdate:         { color: "text-lime-400",         bg: "bg-lime-400/10",       icon: Target,        label: "GOAL" },
-  streamEnd:          { color: "text-destructive",      bg: "bg-destructive/10",    icon: WifiOff,       label: "STREAM END" },
-  barrageInfo:        { color: "text-fuchsia-400",      bg: "bg-fuchsia-400/10",    icon: Radio,         label: "BARRAGE" },
+  // ── Stream lifecycle ───────────────────────────────────────────────────────
+  liveIntro:          { color: "text-teal-400",         bg: "bg-teal-400/10",       icon: Tv2,           label: "INTRO" },
+  streamEnd:          { color: "text-destructive",      bg: "bg-destructive/10",    icon: StopCircle,    label: "STREAM END" },
+  streamPaused:       { color: "text-amber-600",        bg: "bg-amber-600/10",      icon: Pause,         label: "PAUSED" },
+  streamResumed:      { color: "text-green-500",        bg: "bg-green-500/10",      icon: Play,          label: "RESUMED" },
+  // ── Captions & translations ────────────────────────────────────────────────
+  caption:            { color: "text-sky-300",          bg: "bg-sky-300/10",        icon: AlignLeft,     label: "CAPTION" },
+  translation:        { color: "text-violet-300",       bg: "bg-violet-300/10",     icon: Languages,     label: "TRANSLATE" },
+  // ── Shopping & monetization ────────────────────────────────────────────────
   oecLiveShoppingInfo:{ color: "text-emerald-400",      bg: "bg-emerald-400/10",    icon: ShoppingBag,   label: "SHOPPING" },
+  productOffer:       { color: "text-green-400",        bg: "bg-green-400/10",      icon: ShoppingBag,   label: "OFFER" },
+  productClick:       { color: "text-teal-300",         bg: "bg-teal-300/10",       icon: Hash,          label: "PROD CLICK" },
+  // ── Moderation ─────────────────────────────────────────────────────────────
   imDelete:           { color: "text-muted-foreground", bg: "bg-muted/20",          icon: Trash2,        label: "DELETED" },
   msgDetect:          { color: "text-yellow-600",       bg: "bg-yellow-600/10",     icon: AlertTriangle, label: "MOD" },
+  controlMessage:     { color: "text-orange-500",       bg: "bg-orange-500/10",     icon: Flag,          label: "CONTROL" },
+  moderatorBadge:     { color: "text-yellow-500",       bg: "bg-yellow-500/10",     icon: Star,          label: "MOD BADGE" },
+  // ── Community & system ─────────────────────────────────────────────────────
   communityMessage:   { color: "text-cyan-300",         bg: "bg-cyan-300/10",       icon: MessageCircle, label: "COMMUNITY" },
+  barrageInfo:        { color: "text-fuchsia-400",      bg: "bg-fuchsia-400/10",    icon: Radio,         label: "BARRAGE" },
+  systemMessage:      { color: "text-muted-foreground", bg: "bg-muted/30",          icon: Bell,          label: "SYSTEM" },
+  noticeMessage:      { color: "text-cyan-500",         bg: "bg-cyan-500/10",       icon: Bell,          label: "NOTICE" },
+  // ── Mic events ─────────────────────────────────────────────────────────────
+  micBattleStart:     { color: "text-rose-300",         bg: "bg-rose-300/10",       icon: Mic,           label: "MIC BATTLE" },
+  micBattleEnd:       { color: "text-rose-200",         bg: "bg-rose-200/10",       icon: MicOff,        label: "MIC END" },
 };
 
 const SILENT_EVENTS = new Set(["roomInfo", "roomUserSeq"]);
@@ -150,8 +197,51 @@ function formatEvent(ev: LiveEvent): string {
       return "Message flagged by moderation";
     case "communityMessage":
       return ev.comment || "Community message";
+    // ── Battles ──
+    case "battleArmies":
+      return ev.armies?.length
+        ? ev.armies.map((a) => `${a.points} pts`).join(" vs ") + " (battle update)"
+        : "Army battle scores updated";
+    // ── Stream lifecycle ──
+    case "streamPaused":
+      return ev.messageText || "Stream paused";
+    case "streamResumed":
+      return ev.messageText || "Stream resumed";
+    // ── Captions & translations ──
+    case "caption":
+      return ev.captionText
+        ? `"${ev.captionText}"${ev.language ? ` [${ev.language}]` : ""}`
+        : "Caption event";
+    case "translation":
+      return ev.translatedText
+        ? `"${ev.translatedText}"${ev.language ? ` → ${ev.language}` : ""}${ev.originalText ? ` (from: "${ev.originalText}")` : ""}`
+        : "Translation event";
+    // ── Shopping ──
+    case "productOffer":
+      return ev.productTitle ? `Offer: ${ev.productTitle}` : "Product offered";
+    case "productClick":
+      return ev.productTitle ? `Clicked: ${ev.productTitle}` : "Product clicked";
+    // ── Moderation ──
+    case "controlMessage":
+      return ev.action ? `Action: ${ev.action}` : ev.messageText || "Control message";
+    case "moderatorBadge":
+      return "Moderator badge awarded";
+    // ── Community & system ──
+    case "systemMessage":
+      return ev.messageText || "System message";
+    case "noticeMessage":
+      return ev.messageText || "Notice from host";
+    case "poke":
+      return ev.targetUser
+        ? `poked @${ev.targetUser.nickname || ev.targetUser.uniqueId || "someone"}`
+        : "poked";
+    // ── Mic events ──
+    case "micBattleStart":
+      return "Mic battle started!";
+    case "micBattleEnd":
+      return "Mic battle ended";
     default:
-      return "";
+      return ev.messageText || ev.comment || "";
   }
 }
 
@@ -353,8 +443,9 @@ export default function Monitor() {
             (d.questionDetails as { question?: string } | undefined)?.question,
           // envelopeOpen
           treasureCount: d.treasureCount as number | undefined,
-          // linkMicBattle
+          // linkMicBattle / battleArmies
           battleStatus: d.battleStatus as number | undefined,
+          armies: d.armies as LiveEvent["armies"],
           // rank
           rank: d.rank as number | undefined,
           // goalUpdate
@@ -363,7 +454,21 @@ export default function Monitor() {
           // liveIntro
           introTitle: d.title as string | undefined,
           // shopping
-          productTitle: (d.product as { title?: string } | undefined)?.title,
+          productTitle: (d.product as { title?: string } | undefined)?.title ??
+            (d.productInfo as { title?: string } | undefined)?.title ?? d.productTitle as string | undefined,
+          productId: (d.product as { id?: string } | undefined)?.id ?? d.productId as string | undefined,
+          // caption
+          captionText: d.text as string | undefined ?? d.captionText as string | undefined,
+          language: d.language as string | undefined,
+          // translation
+          translatedText: d.translatedText as string | undefined,
+          originalText: d.originalText as string | undefined,
+          // poke
+          targetUser: d.targetUser as LiveEvent["targetUser"],
+          // controlMessage / systemMessage / noticeMessage
+          messageText: d.message as string | undefined ?? d.messageText as string | undefined ??
+            (msg.event !== "caption" ? d.text as string | undefined : undefined),
+          action: d.action as string | undefined,
           rawData: d,
         };
 

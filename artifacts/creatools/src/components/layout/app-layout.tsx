@@ -56,6 +56,12 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: "Analytics",
+    items: [
+      { href: "/leaderboards", label: "Leaderboards", icon: Crown, matchPrefix: "/leaderboards" },
+    ],
+  },
+  {
     items: [
       { href: "/pricing", label: "Plans", icon: Tag },
       { href: "/settings", label: "Settings", icon: Settings },
