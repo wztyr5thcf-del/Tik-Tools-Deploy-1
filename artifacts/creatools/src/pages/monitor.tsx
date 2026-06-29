@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   MessageCircle, Gift, Heart, UserPlus, Share2, Users,
   Wifi, WifiOff, Loader2, ArrowLeft, ExternalLink, RefreshCw, Diamond,
+  Clock, Download, Bookmark, BookmarkCheck, TrendingUp,
 } from "lucide-react";
 
 type EventType = "chat" | "gift" | "like" | "member" | "follow" | "share" | "roomInfo" | "roomUserSeq" | string;
@@ -76,6 +77,40 @@ function formatEvent(ev: LiveEvent): string {
   }
 }
 
+function formatDuration(secs: number): string {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (h > 0) return `${h}:${pad(m)}:${pad(s)}`;
+  return `${pad(m)}:${pad(s)}`;
+}
+
+// Diamonds → USD: ~200 diamonds = $1 (TikTok creator payout rate)
+function diamondsToUsd(d: number): string {
+  return (d / 200).toFixed(2);
+}
+
+interface WatchlistEntry {
+  uniqueId: string;
+  addedAt: string;
+  lastStatus: "live" | "offline" | "unknown";
+  lastViewerCount: number | null;
+}
+
+function loadWatchlist(): WatchlistEntry[] {
+  try { return JSON.parse(localStorage.getItem("creatools_watchlist") || "[]") as WatchlistEntry[]; }
+  catch { return []; }
+}
+
+function saveWatchlistEntry(uniqueId: string, viewers: number | null) {
+  const list = loadWatchlist();
+  if (!list.find((e) => e.uniqueId === uniqueId)) {
+    list.push({ uniqueId, addedAt: new Date().toISOString(), lastStatus: "live", lastViewerCount: viewers });
+    localStorage.setItem("creatools_watchlist", JSON.stringify(list));
+  }
+}
+
 export default function Monitor() {
   const { username } = useParams<{ username: string }>();
   const [, setLocation] = useLocation();
@@ -87,6 +122,15 @@ export default function Monitor() {
   const [totalDiamonds, setTotalDiamonds] = useState(0);
   const [totalLikes, setTotalLikes] = useState(0);
   const [topGifters, setTopGifters] = useState<TopGifter[]>([]);
+
+  // Session tracking
+  const [peakViewers, setPeakViewers] = useState(0);
+  const [sessionDuration, setSessionDuration] = useState(0);
+  const [inWatchlist, setInWatchlist] = useState(false);
+  const [exportCopied, setExportCopied] = useState(false);
+  const sessionStartRef = useRef<Date | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -96,7 +140,6 @@ export default function Monitor() {
     query: { queryKey: getGetGiftCatalogQueryKey() }
   });
 
-  // Build a name→icon map from gift catalog for enriching feed events
   const giftIconMap = useRef<Record<string, string>>({});
   const giftDiamondMap = useRef<Record<string, number>>({});
   useEffect(() => {
@@ -107,6 +150,34 @@ export default function Monitor() {
       }
     }
   }, [giftCatalog]);
+
+  // Session timer
+  useEffect(() => {
+    if (connStatus === "connected") {
+      timerRef.current = setInterval(() => {
+        if (sessionStartRef.current) {
+          setSessionDuration(Math.floor((Date.now() - sessionStartRef.current.getTime()) / 1000));
+        }
+      }, 1000);
+    } else {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [connStatus]);
+
+  // Peak viewers tracking
+  useEffect(() => {
+    if (viewerCount !== null && viewerCount > peakViewers) {
+      setPeakViewers(viewerCount);
+    }
+  }, [viewerCount, peakViewers]);
+
+  // Sync watchlist state when active username changes
+  useEffect(() => {
+    if (activeUsername) {
+      setInWatchlist(loadWatchlist().some((e) => e.uniqueId === activeUsername));
+    }
+  }, [activeUsername]);
 
   const addEvent = useCallback((ev: LiveEvent) => {
     setEvents((prev) => [ev, ...prev].slice(0, 200));
@@ -148,6 +219,10 @@ export default function Monitor() {
     }
 
     setConnStatus("connecting");
+    sessionStartRef.current = new Date();
+    setSessionDuration(0);
+    setPeakViewers(0);
+
     const ws = new WebSocket(`wss://api.tik.tools?uniqueId=${encodeURIComponent(user)}&jwtKey=${encodeURIComponent(token)}`);
     wsRef.current = ws;
 
@@ -164,7 +239,6 @@ export default function Monitor() {
         }
         if (msg.event === "roomInfo") return;
 
-        // Enrich gift diamonds from catalog if not provided in payload
         let diamonds = d.diamondCount ?? 0;
         const giftKey = (d.giftName || "").toLowerCase();
         if (msg.event === "gift" && !diamonds && giftKey) {
@@ -242,6 +316,41 @@ export default function Monitor() {
     setActiveUsername(user);
   };
 
+  const handleAddToWatchlist = () => {
+    saveWatchlistEntry(activeUsername, viewerCount);
+    setInWatchlist(true);
+  };
+
+  const handleExport = () => {
+    const top5 = topGifters.slice(0, 5).map((g, i) => `  ${i + 1}. ${g.nickname} — ${g.diamonds.toLocaleString()} 💎`).join("\n");
+    const summary = [
+      "📊 Creatools Session Summary",
+      "─".repeat(36),
+      `Streamer:      @${activeUsername}`,
+      `Duration:      ${formatDuration(sessionDuration)}`,
+      `Peak Viewers:  ${peakViewers.toLocaleString()}`,
+      `Diamonds:      ${totalDiamonds.toLocaleString()} (~$${diamondsToUsd(totalDiamonds)} USD)`,
+      `Likes:         ${totalLikes.toLocaleString()}`,
+      "",
+      "Top Gifters:",
+      top5 || "  (none yet)",
+      "",
+      "Event Breakdown:",
+      `  Chat    ${events.filter((e) => e.event === "chat").length}`,
+      `  Gifts   ${events.filter((e) => e.event === "gift").length}`,
+      `  Joins   ${events.filter((e) => e.event === "member").length}`,
+      `  Follows ${events.filter((e) => e.event === "follow").length}`,
+      `  Likes   ${events.filter((e) => e.event === "like").length}`,
+      `  Shares  ${events.filter((e) => e.event === "share").length}`,
+      "",
+      `Generated by Creatools · ${new Date().toLocaleString()}`,
+    ].join("\n");
+
+    void navigator.clipboard.writeText(summary);
+    setExportCopied(true);
+    setTimeout(() => setExportCopied(false), 2000);
+  };
+
   const statusConfig = {
     idle: { label: "Idle", color: "text-muted-foreground", dot: "bg-muted-foreground" },
     connecting: { label: "Connecting...", color: "text-yellow-400", dot: "bg-yellow-400 animate-pulse" },
@@ -274,11 +383,17 @@ export default function Monitor() {
         </form>
 
         {activeUsername && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className={`flex items-center gap-1.5 text-sm font-medium ${status.color}`}>
               <span className={`w-2 h-2 rounded-full ${status.dot}`} />
               {status.label}
             </span>
+            {connStatus === "connected" && (
+              <span className="text-xs font-mono text-muted-foreground bg-muted/30 rounded px-1.5 py-0.5">
+                <Clock className="w-3 h-3 inline mr-1" />
+                {formatDuration(sessionDuration)}
+              </span>
+            )}
             {(connStatus === "disconnected" || connStatus === "error") && (
               <Button size="sm" variant="outline" onClick={() => startConnection(activeUsername)}>
                 <RefreshCw className="w-3 h-3 mr-1" />
@@ -339,8 +454,8 @@ export default function Monitor() {
               </CardContent>
             </Card>
 
-            {/* Live stats */}
-            <div className="grid grid-cols-3 gap-2">
+            {/* Live stats — 5 cards */}
+            <div className="grid grid-cols-2 gap-2">
               <Card className="bg-card border-border">
                 <CardContent className="p-3 text-center">
                   <Users className="w-4 h-4 mx-auto mb-1 text-cyan-400" />
@@ -352,11 +467,21 @@ export default function Monitor() {
               </Card>
               <Card className="bg-card border-border">
                 <CardContent className="p-3 text-center">
+                  <TrendingUp className="w-4 h-4 mx-auto mb-1 text-cyan-300" />
+                  <div className="text-sm font-bold font-mono text-cyan-300 leading-tight">
+                    {peakViewers > 0 ? peakViewers.toLocaleString() : "—"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Peak</div>
+                </CardContent>
+              </Card>
+              <Card className="bg-card border-border col-span-2">
+                <CardContent className="p-3 text-center">
                   <Diamond className="w-4 h-4 mx-auto mb-1 text-yellow-400" />
                   <div className="text-sm font-bold font-mono text-yellow-400 leading-tight">
                     {totalDiamonds.toLocaleString()}
+                    <span className="text-xs text-muted-foreground ml-1.5 font-normal">≈ ${diamondsToUsd(totalDiamonds)}</span>
                   </div>
-                  <div className="text-xs text-muted-foreground">Diamonds</div>
+                  <div className="text-xs text-muted-foreground">Diamonds (est. revenue)</div>
                 </CardContent>
               </Card>
               <Card className="bg-card border-border">
@@ -368,6 +493,42 @@ export default function Monitor() {
                   <div className="text-xs text-muted-foreground">Likes</div>
                 </CardContent>
               </Card>
+              <Card className="bg-card border-border">
+                <CardContent className="p-3 text-center">
+                  <Clock className="w-4 h-4 mx-auto mb-1 text-violet-400" />
+                  <div className="text-sm font-bold font-mono text-violet-400 leading-tight">
+                    {formatDuration(sessionDuration)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Duration</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Session actions */}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 text-xs h-8"
+                onClick={handleExport}
+              >
+                {exportCopied
+                  ? <><BookmarkCheck className="w-3 h-3 mr-1.5 text-chart-3" />Copied!</>
+                  : <><Download className="w-3 h-3 mr-1.5" />Export Summary</>
+                }
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className={`flex-1 text-xs h-8 ${inWatchlist ? "text-primary border-primary/50" : ""}`}
+                onClick={handleAddToWatchlist}
+                disabled={inWatchlist}
+              >
+                {inWatchlist
+                  ? <><BookmarkCheck className="w-3 h-3 mr-1.5" />Watchlisted</>
+                  : <><Bookmark className="w-3 h-3 mr-1.5" />Watchlist</>
+                }
+              </Button>
             </div>
 
             {/* Event counts */}

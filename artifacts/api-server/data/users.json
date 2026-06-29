@@ -26,6 +26,15 @@
       "createdAt": "2026-06-29T15:32:07.750Z",
       "plan": "pro",
       "isAdmin": false
+    },
+    {
+      "id": "0c889q458eomqzf7sfc",
+      "email": "teste@2.com",
+      "name": "testando 2",
+      "passwordHash": "$2b$10$a2UCZilqpynZwmEefK6nQuzApw5eqxT3PKg01np6OU2sM6dpTtrEu",
+      "createdAt": "2026-06-29T16:17:04.680Z",
+      "plan": "free",
+      "isAdmin": false
     }
   ]
 }
