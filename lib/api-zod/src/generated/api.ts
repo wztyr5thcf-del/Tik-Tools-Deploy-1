@@ -18,22 +18,23 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * Returns currently live TikTok channels
+ * Returns currently live TikTok channels. displayName is mapped to nickname.
  * @summary Get top live channels
  */
 export const GetTopChannelsResponseItem = zod.object({
-  "uniqueId": zod.string(),
-  "nickname": zod.string().nullish(),
+  "uniqueId": zod.string().describe('TikTok username (without @)'),
+  "nickname": zod.string().nullish().describe('Display name (mapped from tik.tools displayName)'),
   "profilePictureUrl": zod.string().nullish(),
   "roomId": zod.string().nullish(),
   "viewerCount": zod.number().nullish(),
-  "title": zod.string().nullish()
-})
+  "title": zod.string().nullish(),
+  "region": zod.string().nullish().describe('Two-letter region code (e.g. TW, CA, US)')
+}).describe('A currently live TikTok channel. nickname is mapped from tik.tools displayName field.')
 export const GetTopChannelsResponse = zod.array(GetTopChannelsResponseItem)
 
 
 /**
- * Fast liveness check for a TikTok username
+ * Fast liveness check for a TikTok username (proxies to tik.tools /webcast/live_status with unique_id param)
  * @summary Check if user is live
  */
 export const GetLiveStatusQueryParams = zod.object({
@@ -49,7 +50,7 @@ export const GetLiveStatusResponse = zod.object({
 
 
 /**
- * Server-side JWT minting for secure WebSocket connections
+ * Server-side JWT minting for secure WebSocket connections to wss://api.tik.tools
  * @summary Mint JWT for WebSocket
  */
 export const MintJwtBody = zod.object({
@@ -64,12 +65,12 @@ export const MintJwtResponse = zod.object({
 
 
 /**
- * Returns detailed info about a live stream room
+ * Returns detailed info about a live stream room. If only uniqueId provided, resolves room_id via live_status first.
  * @summary Get room information
  */
 export const GetRoomInfoBody = zod.object({
-  "uniqueId": zod.string().nullish(),
-  "roomId": zod.string().nullish()
+  "uniqueId": zod.string().nullish().describe('TikTok username — backend resolves room_id via live_status if roomId not provided'),
+  "roomId": zod.string().nullish().describe('Direct room ID (preferred — skips live_status resolution step)')
 })
 
 export const GetRoomInfoResponse = zod.object({
@@ -87,34 +88,35 @@ export const GetRoomInfoResponse = zod.object({
 
 
 /**
- * Returns live status for multiple TikTok users at once
+ * Returns live status for multiple TikTok users. Uses tik.tools bulk endpoint if available (Basic+), otherwise falls back to parallel individual live_status calls (Sandbox compatible).
  * @summary Check multiple users live status
  */
 export const BulkLiveCheckBody = zod.object({
-  "uniqueIds": zod.array(zod.string())
+  "uniqueIds": zod.array(zod.string()).describe('List of TikTok usernames to check (without @)')
 })
 
 export const BulkLiveCheckResponseItem = zod.object({
   "uniqueId": zod.string(),
   "isLive": zod.boolean(),
   "roomId": zod.string().nullish(),
-  "title": zod.string().nullish(),
-  "viewerCount": zod.number().nullish()
+  "title": zod.string().nullish().describe('Stream title (only available on Basic+ tier via bulk endpoint)'),
+  "viewerCount": zod.number().nullish().describe('Viewer count (only available on Basic+ tier via bulk endpoint)')
 })
 export const BulkLiveCheckResponse = zod.array(BulkLiveCheckResponseItem)
 
 
 /**
- * Returns current API key rate limit status
+ * Returns current API key rate limit status including tier, API quota and WebSocket connections
  * @summary Get API rate limits
  */
 export const GetRateLimitsResponse = zod.object({
-  "tier": zod.string(),
+  "tier": zod.string().describe('Current API tier (sandbox, basic, pro, ultra)'),
   "apiLimit": zod.number(),
   "apiRemaining": zod.number(),
-  "apiResetAt": zod.number().nullish(),
+  "apiResetAt": zod.number().nullish().describe('Unix timestamp when API quota resets'),
   "wsLimit": zod.number(),
-  "wsCurrent": zod.number()
+  "wsCurrent": zod.number(),
+  "bulkCheckLimit": zod.number().nullish().describe('Max usernames per bulk check call (null if not available on current tier)')
 })
 
 

@@ -11,8 +11,14 @@ export interface BulkCheckResult {
   isLive: boolean;
   /** @nullable */
   roomId?: string | null;
-  /** @nullable */
+  /**
+     * Stream title (only available on Basic+ tier via bulk endpoint)
+     * @nullable
+     */
   title?: string | null;
-  /** @nullable */
+  /**
+     * Viewer count (only available on Basic+ tier via bulk endpoint)
+     * @nullable
+     */
   viewerCount?: number | null;
 }

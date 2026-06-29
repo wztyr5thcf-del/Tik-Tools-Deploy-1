@@ -149,7 +149,7 @@ export const getGetTopChannelsUrl = () => {
 }
 
 /**
- * Returns currently live TikTok channels
+ * Returns currently live TikTok channels. displayName is mapped to nickname.
  * @summary Get top live channels
  */
 export const getTopChannels = async ( options?: RequestInit): Promise<LiveChannel[]> => {
@@ -234,7 +234,7 @@ export const getGetLiveStatusUrl = (params: GetLiveStatusParams,) => {
 }
 
 /**
- * Fast liveness check for a TikTok username
+ * Fast liveness check for a TikTok username (proxies to tik.tools /webcast/live_status with unique_id param)
  * @summary Check if user is live
  */
 export const getLiveStatus = async (params: GetLiveStatusParams, options?: RequestInit): Promise<LiveStatus> => {
@@ -312,7 +312,7 @@ export const getMintJwtUrl = () => {
 }
 
 /**
- * Server-side JWT minting for secure WebSocket connections
+ * Server-side JWT minting for secure WebSocket connections to wss://api.tik.tools
  * @summary Mint JWT for WebSocket
  */
 export const mintJwt = async (jwtRequest: JwtRequest, options?: RequestInit): Promise<JwtResponse> => {
@@ -383,7 +383,7 @@ export const getGetRoomInfoUrl = () => {
 }
 
 /**
- * Returns detailed info about a live stream room
+ * Returns detailed info about a live stream room. If only uniqueId provided, resolves room_id via live_status first.
  * @summary Get room information
  */
 export const getRoomInfo = async (roomInfoRequest: RoomInfoRequest, options?: RequestInit): Promise<RoomInfo> => {
@@ -454,7 +454,7 @@ export const getBulkLiveCheckUrl = () => {
 }
 
 /**
- * Returns live status for multiple TikTok users at once
+ * Returns live status for multiple TikTok users. Uses tik.tools bulk endpoint if available (Basic+), otherwise falls back to parallel individual live_status calls (Sandbox compatible).
  * @summary Check multiple users live status
  */
 export const bulkLiveCheck = async (bulkCheckRequest: BulkCheckRequest, options?: RequestInit): Promise<BulkCheckResult[]> => {
@@ -525,7 +525,7 @@ export const getGetRateLimitsUrl = () => {
 }
 
 /**
- * Returns current API key rate limit status
+ * Returns current API key rate limit status including tier, API quota and WebSocket connections
  * @summary Get API rate limits
  */
 export const getRateLimits = async ( options?: RequestInit): Promise<RateLimits> => {

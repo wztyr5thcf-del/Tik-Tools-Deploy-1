@@ -16,17 +16,30 @@ function getApiKey(): string {
   return key;
 }
 
+// ── Top Channels ─────────────────────────────────────────────────────────────
+// Real response shape: { channels: [{ uniqueId, displayName, viewerCount, region, roomId }] }
 router.get("/tiktok/top-channels", async (req, res): Promise<void> => {
   try {
     const r = await fetch(`${TIKTOOLS_API}/api/live/top-channels`);
-    const json = await r.json() as { channels?: Array<{ uniqueId?: string; nickname?: string; profilePictureUrl?: string; roomId?: string; viewerCount?: number; title?: string }> };
+    const json = await r.json() as {
+      channels?: Array<{
+        uniqueId?: string;
+        displayName?: string;
+        profilePictureUrl?: string | null;
+        roomId?: string;
+        viewerCount?: number;
+        title?: string | null;
+        region?: string | null;
+      }>;
+    };
     const channels = (json.channels ?? []).map((c) => ({
       uniqueId: c.uniqueId ?? "",
-      nickname: c.nickname ?? null,
+      nickname: c.displayName ?? null,        // tik.tools uses displayName
       profilePictureUrl: c.profilePictureUrl ?? null,
       roomId: c.roomId ?? null,
       viewerCount: c.viewerCount ?? null,
       title: c.title ?? null,
+      region: c.region ?? null,
     }));
     res.json(channels);
   } catch (err) {
@@ -35,6 +48,8 @@ router.get("/tiktok/top-channels", async (req, res): Promise<void> => {
   }
 });
 
+// ── Live Status ───────────────────────────────────────────────────────────────
+// Correct param: unique_id (snake_case), not uniqueId
 router.get("/tiktok/live-status", async (req, res): Promise<void> => {
   const parsed = GetLiveStatusQueryParams.safeParse(req.query);
   if (!parsed.success) {
@@ -45,9 +60,12 @@ router.get("/tiktok/live-status", async (req, res): Promise<void> => {
   try {
     const apiKey = getApiKey();
     const r = await fetch(
-      `${TIKTOOLS_API}/webcast/live_status?apiKey=${apiKey}&uniqueId=${encodeURIComponent(parsed.data.uniqueId)}`
+      `${TIKTOOLS_API}/webcast/live_status?apiKey=${apiKey}&unique_id=${encodeURIComponent(parsed.data.uniqueId)}`
     );
-    const json = await r.json() as { data?: { unique_id?: string; is_live?: boolean; room_id?: string; cached?: boolean } };
+    const json = await r.json() as {
+      status_code?: number;
+      data?: { unique_id?: string; is_live?: boolean; room_id?: string; cached?: boolean };
+    };
     const data = json.data ?? {};
     res.json({
       uniqueId: data.unique_id ?? parsed.data.uniqueId,
@@ -61,6 +79,7 @@ router.get("/tiktok/live-status", async (req, res): Promise<void> => {
   }
 });
 
+// ── JWT Mint ──────────────────────────────────────────────────────────────────
 router.post("/tiktok/jwt", async (req, res): Promise<void> => {
   const parsed = MintJwtBody.safeParse(req.body);
   if (!parsed.success) {
@@ -97,6 +116,9 @@ router.post("/tiktok/jwt", async (req, res): Promise<void> => {
   }
 });
 
+// ── Room Info ─────────────────────────────────────────────────────────────────
+// tik.tools returns resolve_required when using unique_id without a roomId.
+// Correct flow: 1) call live_status to get room_id, 2) call room_info with room_id.
 router.post("/tiktok/room-info", async (req, res): Promise<void> => {
   const parsed = GetRoomInfoBody.safeParse(req.body);
   if (!parsed.success) {
@@ -106,37 +128,56 @@ router.post("/tiktok/room-info", async (req, res): Promise<void> => {
 
   try {
     const apiKey = getApiKey();
-    const body: Record<string, string> = {};
-    if (parsed.data.uniqueId) body.unique_id = parsed.data.uniqueId;
-    if (parsed.data.roomId) body.room_id = parsed.data.roomId;
+
+    // If only uniqueId provided, resolve room_id via live_status first
+    let roomId = parsed.data.roomId ?? null;
+    if (!roomId && parsed.data.uniqueId) {
+      const statusR = await fetch(
+        `${TIKTOOLS_API}/webcast/live_status?apiKey=${apiKey}&unique_id=${encodeURIComponent(parsed.data.uniqueId)}`
+      );
+      const statusJson = await statusR.json() as { data?: { room_id?: string } };
+      roomId = statusJson.data?.room_id ?? null;
+    }
+
+    if (!roomId) {
+      res.json({ roomId: null, alive: false, title: null, viewerCount: null, likeCount: null, owner: null });
+      return;
+    }
 
     const r = await fetch(`${TIKTOOLS_API}/webcast/room_info?apiKey=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ room_id: roomId }),
     });
     const json = await r.json() as {
+      status_code?: number;
       data?: {
         room_id?: string;
         alive?: boolean;
         title?: string;
         user_count?: number;
         like_count?: number;
-        owner?: { uniqueId?: string; nickname?: string; profilePictureUrl?: string; display_id?: string };
-      }
+        owner?: {
+          unique_id?: string;
+          display_id?: string;
+          nickname?: string;
+          avatar_thumb?: { url_list?: string[] };
+        };
+      };
     };
+
     const data = json.data ?? {};
     res.json({
-      roomId: data.room_id ?? null,
+      roomId: data.room_id ?? roomId,
       alive: data.alive ?? false,
       title: data.title ?? null,
       viewerCount: data.user_count ?? null,
       likeCount: data.like_count ?? null,
       owner: data.owner
         ? {
-            uniqueId: data.owner.uniqueId ?? data.owner.display_id ?? null,
+            uniqueId: data.owner.unique_id ?? data.owner.display_id ?? null,
             nickname: data.owner.nickname ?? null,
-            profilePictureUrl: data.owner.profilePictureUrl ?? null,
+            profilePictureUrl: data.owner.avatar_thumb?.url_list?.[0] ?? null,
           }
         : null,
     });
@@ -146,6 +187,9 @@ router.post("/tiktok/room-info", async (req, res): Promise<void> => {
   }
 });
 
+// ── Bulk Live Check ───────────────────────────────────────────────────────────
+// /webcast/bulk_live_check is Basic+ only.
+// For sandbox users, fall back to parallel individual live_status calls.
 router.post("/tiktok/bulk-check", async (req, res): Promise<void> => {
   const parsed = BulkLiveCheckBody.safeParse(req.body);
   if (!parsed.success) {
@@ -155,27 +199,60 @@ router.post("/tiktok/bulk-check", async (req, res): Promise<void> => {
 
   try {
     const apiKey = getApiKey();
-    const r = await fetch(`${TIKTOOLS_API}/webcast/bulk_live_check?apiKey=${apiKey}`, {
+    const { uniqueIds } = parsed.data;
+
+    // Try the bulk endpoint first
+    const bulkR = await fetch(`${TIKTOOLS_API}/webcast/bulk_live_check?apiKey=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ unique_ids: parsed.data.uniqueIds }),
+      body: JSON.stringify({ unique_ids: uniqueIds }),
     });
-    const json = await r.json() as {
+    const bulkJson = await bulkR.json() as {
+      status_code?: number;
+      required_tier?: string;
       data?: Array<{
         unique_id?: string;
         is_live?: boolean;
         room_id?: string;
         title?: string;
-        userCount?: number;
-      }>
+        user_count?: number;
+      }>;
     };
-    const results = (json.data ?? []).map((c) => ({
-      uniqueId: c.unique_id ?? "",
-      isLive: c.is_live ?? false,
-      roomId: c.room_id ?? null,
-      title: c.title ?? null,
-      viewerCount: c.userCount ?? null,
-    }));
+
+    // If bulk endpoint works, return results directly
+    if (bulkJson.status_code === 0 && Array.isArray(bulkJson.data)) {
+      const results = bulkJson.data.map((c) => ({
+        uniqueId: c.unique_id ?? "",
+        isLive: c.is_live ?? false,
+        roomId: c.room_id ?? null,
+        title: c.title ?? null,
+        viewerCount: c.user_count ?? null,
+      }));
+      res.json(results);
+      return;
+    }
+
+    // Fallback: sandbox tier — run parallel individual live_status calls
+    req.log.info({ tier: "sandbox" }, "bulk_live_check unavailable, falling back to individual live_status calls");
+    const results = await Promise.all(
+      uniqueIds.map(async (uid) => {
+        try {
+          const r = await fetch(
+            `${TIKTOOLS_API}/webcast/live_status?apiKey=${apiKey}&unique_id=${encodeURIComponent(uid)}`
+          );
+          const json = await r.json() as { data?: { is_live?: boolean; room_id?: string } };
+          return {
+            uniqueId: uid,
+            isLive: json.data?.is_live ?? false,
+            roomId: json.data?.room_id ?? null,
+            title: null,
+            viewerCount: null,
+          };
+        } catch {
+          return { uniqueId: uid, isLive: false, roomId: null, title: null, viewerCount: null };
+        }
+      })
+    );
     res.json(results);
   } catch (err) {
     req.log.error({ err }, "Failed to bulk check");
@@ -183,6 +260,7 @@ router.post("/tiktok/bulk-check", async (req, res): Promise<void> => {
   }
 });
 
+// ── Rate Limits ───────────────────────────────────────────────────────────────
 router.get("/tiktok/rate-limits", async (req, res): Promise<void> => {
   try {
     const apiKey = getApiKey();
@@ -192,7 +270,8 @@ router.get("/tiktok/rate-limits", async (req, res): Promise<void> => {
         tier?: string;
         api?: { limit?: number; remaining?: number; reset_at?: number };
         websocket?: { limit?: number; current?: number };
-      }
+        bulk_check_limit?: number;
+      };
     };
     const data = json.data ?? {};
     res.json({
@@ -202,6 +281,7 @@ router.get("/tiktok/rate-limits", async (req, res): Promise<void> => {
       apiResetAt: data.api?.reset_at ?? null,
       wsLimit: data.websocket?.limit ?? 0,
       wsCurrent: data.websocket?.current ?? 0,
+      bulkCheckLimit: data.bulk_check_limit ?? null,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch rate limits");

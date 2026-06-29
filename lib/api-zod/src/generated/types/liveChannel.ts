@@ -6,9 +6,16 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * A currently live TikTok channel. nickname is mapped from tik.tools displayName field.
+ */
 export interface LiveChannel {
+  /** TikTok username (without @) */
   uniqueId: string;
-  /** @nullable */
+  /**
+     * Display name (mapped from tik.tools displayName)
+     * @nullable
+     */
   nickname?: string | null;
   /** @nullable */
   profilePictureUrl?: string | null;
@@ -18,4 +25,9 @@ export interface LiveChannel {
   viewerCount?: number | null;
   /** @nullable */
   title?: string | null;
+  /**
+     * Two-letter region code (e.g. TW, CA, US)
+     * @nullable
+     */
+  region?: string | null;
 }

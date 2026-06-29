@@ -35,7 +35,7 @@ paths:
       operationId: getTopChannels
       tags: [tiktok]
       summary: Get top live channels
-      description: Returns currently live TikTok channels
+      description: Returns currently live TikTok channels. displayName is mapped to nickname.
       responses:
         "200":
           description: List of live channels
@@ -51,7 +51,7 @@ paths:
       operationId: getLiveStatus
       tags: [tiktok]
       summary: Check if user is live
-      description: Fast liveness check for a TikTok username
+      description: Fast liveness check for a TikTok username (proxies to tik.tools /webcast/live_status with unique_id param)
       parameters:
         - name: uniqueId
           in: query
@@ -72,7 +72,7 @@ paths:
       operationId: mintJwt
       tags: [tiktok]
       summary: Mint JWT for WebSocket
-      description: Server-side JWT minting for secure WebSocket connections
+      description: Server-side JWT minting for secure WebSocket connections to wss://api.tik.tools
       requestBody:
         required: true
         content:
@@ -94,7 +94,7 @@ paths:
       operationId: getRoomInfo
       tags: [tiktok]
       summary: Get room information
-      description: Returns detailed info about a live stream room
+      description: Returns detailed info about a live stream room. If only uniqueId provided, resolves room_id via live_status first.
       requestBody:
         required: true
         content:
@@ -114,7 +114,7 @@ paths:
       operationId: bulkLiveCheck
       tags: [tiktok]
       summary: Check multiple users live status
-      description: Returns live status for multiple TikTok users at once
+      description: Returns live status for multiple TikTok users. Uses tik.tools bulk endpoint if available (Basic+), otherwise falls back to parallel individual live_status calls (Sandbox compatible).
       requestBody:
         required: true
         content:
@@ -136,7 +136,7 @@ paths:
       operationId: getRateLimits
       tags: [tiktok]
       summary: Get API rate limits
-      description: Returns current API key rate limit status
+      description: Returns current API key rate limit status including tier, API quota and WebSocket connections
       responses:
         "200":
           description: Rate limit info
@@ -189,11 +189,14 @@ components:
 
     LiveChannel:
       type: object
+      description: A currently live TikTok channel. nickname is mapped from tik.tools displayName field.
       properties:
         uniqueId:
           type: string
+          description: TikTok username (without @)
         nickname:
           type: ["string", "null"]
+          description: Display name (mapped from tik.tools displayName)
         profilePictureUrl:
           type: ["string", "null"]
         roomId:
@@ -202,6 +205,9 @@ components:
           type: ["integer", "null"]
         title:
           type: ["string", "null"]
+        region:
+          type: ["string", "null"]
+          description: Two-letter region code (e.g. TW, CA, US)
       required:
         - uniqueId
 
@@ -248,8 +254,10 @@ components:
       properties:
         uniqueId:
           type: ["string", "null"]
+          description: TikTok username — backend resolves room_id via live_status if roomId not provided
         roomId:
           type: ["string", "null"]
+          description: Direct room ID (preferred — skips live_status resolution step)
 
     RoomInfo:
       type: object
@@ -286,6 +294,7 @@ components:
           type: array
           items:
             type: string
+          description: List of TikTok usernames to check (without @)
       required:
         - uniqueIds
 
@@ -300,8 +309,10 @@ components:
           type: ["string", "null"]
         title:
           type: ["string", "null"]
+          description: Stream title (only available on Basic+ tier via bulk endpoint)
         viewerCount:
           type: ["integer", "null"]
+          description: Viewer count (only available on Basic+ tier via bulk endpoint)
       required:
         - uniqueId
         - isLive
@@ -311,16 +322,21 @@ components:
       properties:
         tier:
           type: string
+          description: Current API tier (sandbox, basic, pro, ultra)
         apiLimit:
           type: integer
         apiRemaining:
           type: integer
         apiResetAt:
           type: ["integer", "null"]
+          description: Unix timestamp when API quota resets
         wsLimit:
           type: integer
         wsCurrent:
           type: integer
+        bulkCheckLimit:
+          type: ["integer", "null"]
+          description: Max usernames per bulk check call (null if not available on current tier)
       required:
         - tier
         - apiLimit

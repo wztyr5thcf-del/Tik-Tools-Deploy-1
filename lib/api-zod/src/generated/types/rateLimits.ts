@@ -7,11 +7,20 @@
  */
 
 export interface RateLimits {
+  /** Current API tier (sandbox, basic, pro, ultra) */
   tier: string;
   apiLimit: number;
   apiRemaining: number;
-  /** @nullable */
+  /**
+     * Unix timestamp when API quota resets
+     * @nullable
+     */
   apiResetAt?: number | null;
   wsLimit: number;
   wsCurrent: number;
+  /**
+     * Max usernames per bulk check call (null if not available on current tier)
+     * @nullable
+     */
+  bulkCheckLimit?: number | null;
 }

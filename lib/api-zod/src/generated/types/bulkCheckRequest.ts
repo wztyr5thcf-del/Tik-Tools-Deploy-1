@@ -7,5 +7,6 @@
  */
 
 export interface BulkCheckRequest {
+  /** List of TikTok usernames to check (without @) */
   uniqueIds: string[];
 }

@@ -9,9 +9,16 @@ export interface HealthStatus {
   status: string;
 }
 
+/**
+ * A currently live TikTok channel. nickname is mapped from tik.tools displayName field.
+ */
 export interface LiveChannel {
+  /** TikTok username (without @) */
   uniqueId: string;
-  /** @nullable */
+  /**
+     * Display name (mapped from tik.tools displayName)
+     * @nullable
+     */
   nickname?: string | null;
   /** @nullable */
   profilePictureUrl?: string | null;
@@ -21,6 +28,11 @@ export interface LiveChannel {
   viewerCount?: number | null;
   /** @nullable */
   title?: string | null;
+  /**
+     * Two-letter region code (e.g. TW, CA, US)
+     * @nullable
+     */
+  region?: string | null;
 }
 
 export interface LiveStatus {
@@ -43,9 +55,15 @@ export interface JwtResponse {
 }
 
 export interface RoomInfoRequest {
-  /** @nullable */
+  /**
+     * TikTok username — backend resolves room_id via live_status if roomId not provided
+     * @nullable
+     */
   uniqueId?: string | null;
-  /** @nullable */
+  /**
+     * Direct room ID (preferred — skips live_status resolution step)
+     * @nullable
+     */
   roomId?: string | null;
 }
 
@@ -72,6 +90,7 @@ export interface RoomInfo {
 }
 
 export interface BulkCheckRequest {
+  /** List of TikTok usernames to check (without @) */
   uniqueIds: string[];
 }
 
@@ -80,20 +99,35 @@ export interface BulkCheckResult {
   isLive: boolean;
   /** @nullable */
   roomId?: string | null;
-  /** @nullable */
+  /**
+     * Stream title (only available on Basic+ tier via bulk endpoint)
+     * @nullable
+     */
   title?: string | null;
-  /** @nullable */
+  /**
+     * Viewer count (only available on Basic+ tier via bulk endpoint)
+     * @nullable
+     */
   viewerCount?: number | null;
 }
 
 export interface RateLimits {
+  /** Current API tier (sandbox, basic, pro, ultra) */
   tier: string;
   apiLimit: number;
   apiRemaining: number;
-  /** @nullable */
+  /**
+     * Unix timestamp when API quota resets
+     * @nullable
+     */
   apiResetAt?: number | null;
   wsLimit: number;
   wsCurrent: number;
+  /**
+     * Max usernames per bulk check call (null if not available on current tier)
+     * @nullable
+     */
+  bulkCheckLimit?: number | null;
 }
 
 export interface AppConfig {
