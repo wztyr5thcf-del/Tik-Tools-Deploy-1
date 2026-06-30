@@ -31,7 +31,7 @@ const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   LayoutDashboard, Activity, Settings, Diamond, Tag, Shield,
   Search, Users, Star, Key, BarChart2, Crown, Zap, Lock,
   Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2, Tv2, Trophy,
-  Monitor, Target, Layers,
+  Monitor, Target, Layers, Sparkles,
 };
 function NavIcon({ name, className = "w-4 h-4" }: { name: string; className?: string }) {
   const Icon = ICON_MAP[name] ?? LayoutDashboard;
@@ -49,14 +49,62 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
     id: "main",
     label: "PAINEL",
     items: [
-      { id: "dashboard",     label: "Dashboard",    href: "/",                icon: "LayoutDashboard", visible: true },
-      { id: "monitor",       label: "Conexão",      href: "/monitor/example", icon: "Activity",        matchPrefix: "/monitor",       visible: true },
-      { id: "overlays",      label: "Sobreposições", href: "/overlays",       icon: "Monitor",         matchPrefix: "/overlays",      visible: true },
-      { id: "stream-tools",  label: "Stream Tools",  href: "/stream-tools",   icon: "Tv2",             matchPrefix: "/stream-tools",  visible: true },
-      { id: "scoreboards",   label: "Scoreboards",   href: "/scoreboards",    icon: "Trophy",          matchPrefix: "/scoreboards",   visible: true },
-      { id: "minigames",     label: "Jogos",         href: "/minigames",      icon: "Gamepad2",        matchPrefix: "/minigames",     visible: true },
-      { id: "notifications", label: "Notificações",  href: "/notifications",  icon: "Bell",            matchPrefix: "/notifications", visible: true },
-      { id: "gift-gallery",  label: "Gift Gallery",  href: "/gift-gallery",   icon: "Diamond",         visible: true },
+      { id: "dashboard", label: "Dashboard",     href: "/",                icon: "LayoutDashboard", visible: true },
+      { id: "monitor",   label: "Conexão",        href: "/monitor/example", icon: "Activity",        matchPrefix: "/monitor", visible: true },
+      {
+        id: "overlays", label: "Sobreposições", href: "/overlays", icon: "Monitor", matchPrefix: "/overlays", visible: true,
+        children: [
+          { id: "ov-likes",        label: "Likes",         href: "/overlays/likes",         icon: "Layers", visible: true },
+          { id: "ov-likes-up",     label: "Likes Upgrade", href: "/overlays/likes-upgrade", icon: "Layers", visible: true, badge: "PRO", badgeColor: "#f97316" },
+          { id: "ov-coins",        label: "Moedas",        href: "/overlays/coins",         icon: "Layers", visible: true },
+          { id: "ov-share",        label: "Share",         href: "/overlays/share",         icon: "Layers", visible: true },
+          { id: "ov-battle",       label: "Battle",        href: "/overlays/battle",        icon: "Layers", visible: true, badge: "PRO", badgeColor: "#f97316" },
+          { id: "ov-gifts",        label: "Gifts",         href: "/overlays/gifts",         icon: "Layers", visible: true },
+          { id: "ov-whatsapp",     label: "WhatsApp",      href: "/overlays/whatsapp",      icon: "Layers", visible: true },
+          { id: "ov-mvp",          label: "MVP",           href: "/overlays/mvp",           icon: "Layers", visible: true },
+          { id: "ov-pote",         label: "Pote",          href: "/overlays/pote",          icon: "Layers", visible: true },
+          { id: "ov-notificacoes", label: "Notificações",  href: "/overlays/notificacoes",  icon: "Layers", visible: true },
+          { id: "ov-gamer",        label: "Gamer",         href: "/overlays/gamer",         icon: "Layers", visible: true, badge: "PRO", badgeColor: "#f97316" },
+          { id: "ov-level-up",     label: "Level Up",      href: "/overlays/level-up",      icon: "Layers", visible: true },
+        ],
+      },
+    ],
+  },
+  {
+    id: "ferramentas",
+    label: "FERRAMENTAS",
+    items: [
+      { id: "events",        label: "Eventos",        href: "/events",        icon: "Zap",     matchPrefix: "/events",        visible: true, badge: "PRO", badgeColor: "#f97316" },
+      { id: "sound-alerts",  label: "Alertas Sonoros",href: "/sound-alerts",  icon: "Radio",   matchPrefix: "/sound-alerts",  visible: true },
+      { id: "layout",        label: "Layout OBS",     href: "/layout",        icon: "Monitor", matchPrefix: "/layout",        visible: true, badge: "PRO", badgeColor: "#f97316" },
+      { id: "effect-battle", label: "Effect Battle",  href: "/effect-battle", icon: "Sparkles",matchPrefix: "/effect-battle", visible: true, badge: "PRO", badgeColor: "#f97316" },
+      { id: "troll-gift",    label: "Troll Gift",     href: "/troll-gift",    icon: "Zap",     matchPrefix: "/troll-gift",    visible: true, badge: "APP", badgeColor: "#22d3ee" },
+      { id: "album",         label: "Álbum",          href: "/album",         icon: "Layers",  matchPrefix: "/album",         visible: true },
+    ],
+  },
+  {
+    id: "jogos-section",
+    label: "JOGOS",
+    items: [
+      {
+        id: "minigames", label: "Jogos", href: "/minigames", icon: "Gamepad2", matchPrefix: "/minigames", visible: true,
+        children: [
+          { id: "mg-roleta",    label: "Roleta",          href: "/minigames/roleta",    icon: "Gamepad2", visible: true },
+          { id: "mg-wordbomb",  label: "Word Bomb",       href: "/minigames/word-bomb", icon: "Gamepad2", visible: true },
+          { id: "mg-sentido",   label: "Verdade ou Mito", href: "/minigames/sentido",   icon: "Gamepad2", visible: true },
+          { id: "mg-defender",  label: "Defender",        href: "/minigames/defender",  icon: "Gamepad2", visible: true },
+          { id: "mg-bau",       label: "Baú",             href: "/minigames/bau",       icon: "Gamepad2", visible: true },
+        ],
+      },
+    ],
+  },
+  {
+    id: "integracoes-section",
+    label: "INTEGRAÇÕES",
+    items: [
+      { id: "integracoes", label: "Integrações",   href: "/integracoes", icon: "Zap",      matchPrefix: "/integracoes", visible: true },
+      { id: "pricing",     label: "Planos",         href: "/pricing",    icon: "Tag",       visible: true },
+      { id: "settings",    label: "Configurações",  href: "/settings",   icon: "Settings",  visible: true },
     ],
   },
   {
@@ -66,36 +114,15 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
       { id: "live-counts",    label: "Live Counts",    href: "/live-counts",    icon: "Radio",     matchPrefix: "/live-counts",    requiresPlan: "basic", visible: true },
       { id: "live-captions",  label: "Live Captions",  href: "/live-captions",  icon: "Subtitles", matchPrefix: "/live-captions",  requiresPlan: "pro",   visible: true },
       { id: "live-analytics", label: "Live Analytics", href: "/live-analytics", icon: "BarChart2", matchPrefix: "/live-analytics", requiresPlan: "pro",   visible: true },
-      { id: "webhooks",       label: "Webhooks",       href: "/webhooks",       icon: "Webhook",   matchPrefix: "/webhooks",       requiresPlan: "pro",   visible: true },
     ],
   },
   {
-    id: "streamer",
-    label: "FERRAMENTAS",
-    items: [
-      { id: "lookup",       label: "Lookup",       href: "/streamer/lookup",      icon: "Search",    matchPrefix: "/streamer/lookup",      visible: true },
-      { id: "bulk-check",   label: "Bulk Check",   href: "/streamer/bulk-check",  icon: "Users",     matchPrefix: "/streamer/bulk-check",   requiresPlan: "basic", visible: true },
-      { id: "watchlist",    label: "Watchlist",    href: "/streamer/watchlist",   icon: "Star",      matchPrefix: "/streamer/watchlist",    visible: true },
-      { id: "jwt",          label: "JWT / WebSocket", href: "/streamer/jwt",      icon: "Key",       matchPrefix: "/streamer/jwt",          requiresPlan: "basic", visible: true },
-      { id: "dev-tools",    label: "Dev Tools",    href: "/dev-tools",            icon: "Code2",     matchPrefix: "/dev-tools",            requiresPlan: "pro",   visible: true },
-    ],
-  },
-  {
-    id: "leaderboards",
+    id: "rankings",
     label: "RANKINGS",
     items: [
       { id: "leaderboards",         label: "Leagues", href: "/leaderboards",         icon: "Crown",    matchPrefix: "/leaderboards",         visible: true },
       { id: "leaderboards-country", label: "Country", href: "/leaderboards/country", icon: "Globe",    matchPrefix: "/leaderboards/country", visible: true },
-      { id: "leaderboards-gaming",  label: "Gaming",  href: "/leaderboards/gaming",  icon: "Gamepad2", matchPrefix: "/leaderboards/gaming",  visible: true },
       { id: "gifters",              label: "Gifters", href: "/gifters",               icon: "Diamond",  matchPrefix: "/gifters",              visible: true },
-    ],
-  },
-  {
-    id: "integracoes",
-    label: "INTEGRAÇÕES",
-    items: [
-      { id: "pricing",  label: "Planos & Preços", href: "/pricing",  icon: "Tag",      visible: true },
-      { id: "settings", label: "Configurações",   href: "/settings", icon: "Settings", visible: true },
     ],
   },
   {
@@ -136,6 +163,7 @@ function annTimeAgo(ts: number): string {
 
 // ── Announcement bell popup ───────────────────────────────────────────────────
 function AnnouncementBell() {
+  const { token } = useAuth();
   const [open, setOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -154,23 +182,21 @@ function AnnouncementBell() {
     setUnreadCount(0);
   }
 
-  async function fetchAnnouncements() {
+  const fetchAnnouncements = useCallback(async () => {
     try {
-      const res = await authFetch("/api/announcements");
-      if (!res.ok) return;
-      const data = (await res.json()) as { announcements: Announcement[] };
-      setAnnouncements(data.announcements);
+      const data = await authFetch("/announcements", token) as { announcements: Announcement[] };
+      setAnnouncements(data.announcements ?? []);
       const lastSeen = loadLastSeen();
-      const unread = data.announcements.filter((a) => a.createdAt > lastSeen).length;
+      const unread = (data.announcements ?? []).filter((a) => a.createdAt > lastSeen).length;
       setUnreadCount(unread);
     } catch { /* ignore */ }
-  }
+  }, [token]);
 
   useEffect(() => {
-    fetchAnnouncements();
-    const interval = setInterval(fetchAnnouncements, 60_000);
+    void fetchAnnouncements();
+    const interval = setInterval(() => void fetchAnnouncements(), 60_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchAnnouncements]);
 
   useEffect(() => {
     if (!open) return;
@@ -352,6 +378,141 @@ function NavLinks({
     });
   }, []);
 
+  // Track which expandable parent items are open
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(() => {
+    // Auto-expand parent if current location is a child
+    return {};
+  });
+
+  const toggleExpand = useCallback((id: string) => {
+    setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
+  }, []);
+
+  function renderNavItem(item: NavSectionConfig["items"][number], depth = 0) {
+    const isActive =
+      location === item.href ||
+      (item.matchPrefix && location.startsWith(item.matchPrefix));
+    const locked = !!(item.requiresPlan && !planMeets(userPlan, item.requiresPlan));
+    const showLiveBadge = item.id === "notifications" && liveCount > 0;
+    const isAdminItem = item.adminOnly;
+    const hasChildren = !!(item.children && item.children.length > 0);
+
+    // Auto-expand if any child is active
+    const anyChildActive = hasChildren && item.children!.some(
+      c => location === c.href || (c.matchPrefix && location.startsWith(c.matchPrefix))
+    );
+    const isExpanded = expandedItems[item.id] !== undefined
+      ? expandedItems[item.id]
+      : anyChildActive;
+
+    const itemPaddingLeft = sidebarCollapsed ? "px-2" : depth > 0 ? "pl-8 pr-3" : "px-3";
+
+    if (hasChildren && !sidebarCollapsed) {
+      return (
+        <div key={item.id}>
+          <button
+            onClick={() => toggleExpand(item.id)}
+            className={`w-full flex items-center rounded-lg text-sm font-medium transition-all ${itemPaddingLeft} py-2`}
+            style={{
+              background: isActive || anyChildActive ? "rgba(124,58,237,0.1)" : "transparent",
+              color: isActive || anyChildActive ? "#a78bfa" : "rgba(255,255,255,0.55)",
+              borderLeft: isActive || anyChildActive ? "2px solid #7c3aed" : "2px solid transparent",
+            }}
+          >
+            <NavIcon name={item.icon} className="shrink-0 w-4 h-4 mr-3" />
+            <span className="flex-1 text-left">{item.label}</span>
+            {item.badge && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full mr-1"
+                style={{ background: `${item.badgeColor ?? "#f97316"}20`, color: item.badgeColor ?? "#f97316" }}>
+                {item.badge}
+              </span>
+            )}
+            {isExpanded
+              ? <ChevronDown className="w-3.5 h-3.5 shrink-0" style={{ color: "rgba(255,255,255,0.3)" }} />
+              : <ChevronRight className="w-3.5 h-3.5 shrink-0" style={{ color: "rgba(255,255,255,0.3)" }} />
+            }
+          </button>
+          {isExpanded && (
+            <div className="mt-0.5 space-y-0.5">
+              {item.children!.filter(c => c.visible).map(child => {
+                const childActive = location === child.href || (child.matchPrefix && location.startsWith(child.matchPrefix));
+                return (
+                  <Link
+                    key={child.id}
+                    href={child.href}
+                    onClick={onNavigate}
+                    className="flex items-center rounded-lg text-sm transition-all pl-9 pr-3 py-1.5"
+                    style={{
+                      background: childActive ? "rgba(124,58,237,0.12)" : "transparent",
+                      color: childActive ? "#a78bfa" : "rgba(255,255,255,0.45)",
+                      borderLeft: childActive ? "2px solid #7c3aed" : "2px solid transparent",
+                    }}
+                  >
+                    <span className="flex-1 text-[13px]">{child.label}</span>
+                    {child.badge && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ background: `${child.badgeColor ?? "#f97316"}20`, color: child.badgeColor ?? "#f97316" }}>
+                        {child.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <Link
+        key={item.id}
+        href={locked ? "/pricing" : item.href}
+        onClick={onNavigate}
+        title={sidebarCollapsed ? item.label : undefined}
+        className={`flex items-center rounded-lg text-sm font-medium transition-all group relative ${
+          sidebarCollapsed ? "px-2 py-2.5 justify-center" : `${itemPaddingLeft} py-2`
+        }`}
+        style={{
+          background: isActive ? "rgba(124,58,237,0.15)" : "transparent",
+          color: isActive ? "#a78bfa" : isAdminItem ? "#f87171" : locked ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.55)",
+          borderLeft: isActive ? "2px solid #7c3aed" : "2px solid transparent",
+        }}
+      >
+        <NavIcon name={item.icon} className={`shrink-0 ${sidebarCollapsed ? "w-4.5 h-4.5" : "w-4 h-4 mr-3"}`} />
+        {!sidebarCollapsed && (
+          <>
+            <span className="flex-1">{item.label}</span>
+            {showLiveBadge && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse"
+                style={{ background: "#ef4444", color: "white" }}>
+                {liveCount}
+              </span>
+            )}
+            {item.badge && !showLiveBadge && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{ background: `${item.badgeColor ?? "#f97316"}20`, color: item.badgeColor ?? "#f97316" }}>
+                {item.badge}
+              </span>
+            )}
+            {isAdminItem && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}>
+                Admin
+              </span>
+            )}
+            {locked && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-auto"
+                style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.25)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {item.requiresPlan === "basic" ? "Basic" : "Pro"}
+              </span>
+            )}
+          </>
+        )}
+      </Link>
+    );
+  }
+
   return (
     <div className="space-y-0.5">
       {sections.map((section) => {
@@ -383,56 +544,7 @@ function NavLinks({
 
             {!isCollapsed && (
               <div className="space-y-0.5">
-                {visibleItems.map((item) => {
-                  const isActive =
-                    location === item.href ||
-                    (item.matchPrefix && location.startsWith(item.matchPrefix));
-                  const locked = !!(item.requiresPlan && !planMeets(userPlan, item.requiresPlan));
-                  const showLiveBadge = item.id === "notifications" && liveCount > 0;
-                  const isAdminItem = item.adminOnly;
-
-                  return (
-                    <Link
-                      key={item.id}
-                      href={locked ? "/pricing" : item.href}
-                      onClick={onNavigate}
-                      title={sidebarCollapsed ? item.label : undefined}
-                      className={`flex items-center rounded-lg text-sm font-medium transition-all group relative ${
-                        sidebarCollapsed ? "px-2 py-2.5 justify-center" : "px-3 py-2"
-                      }`}
-                      style={{
-                        background: isActive ? "rgba(124,58,237,0.15)" : "transparent",
-                        color: isActive ? "#a78bfa" : isAdminItem ? "#f87171" : locked ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.55)",
-                        borderLeft: isActive ? "2px solid #7c3aed" : "2px solid transparent",
-                      }}
-                    >
-                      <NavIcon name={item.icon} className={`shrink-0 ${sidebarCollapsed ? "w-4.5 h-4.5" : "w-4 h-4 mr-3"}`} />
-                      {!sidebarCollapsed && (
-                        <>
-                          <span className="flex-1">{item.label}</span>
-                          {showLiveBadge && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse"
-                              style={{ background: "#ef4444", color: "white" }}>
-                              {liveCount}
-                            </span>
-                          )}
-                          {isAdminItem && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                              style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}>
-                              Admin
-                            </span>
-                          )}
-                          {locked && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-auto"
-                              style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.25)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                              {item.requiresPlan === "basic" ? "Basic" : "Pro"}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </Link>
-                  );
-                })}
+                {visibleItems.map((item) => renderNavItem(item))}
               </div>
             )}
           </div>

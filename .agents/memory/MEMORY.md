@@ -1,3 +1,6 @@
 - [Tailwind v4 dark mode](tailwind-v4-dark.md) — custom variant and html.dark class placement; @apply dark fails in v4
 - [Creatools auth system](creatools-auth.md) — custom JWT auth (bcryptjs + jsonwebtoken), no Replit Auth, self-hostable, first user = admin
 - [Creatools visual design](creatools-design.md) — tikscan.live-style: dark purple bg, split login, sidebar with sections, top bar with clock/plan badge/bell
+- [Creatools sidebar expandable children](creatools-sidebar-children.md) — NavItemConfig supports children[] for accordion sub-items; auto-expands when any child URL is active
+- [authFetch usage pattern](creatools-authfetch.md) — authFetch(path, token) prepends BASE+/api; path starts with / e.g. "/announcements"; token from useAuth()
+- [login.tsx tabs TypeScript narrowing](login-tsx-narrowing.md) — mode-switch tabs must live OUTSIDE {mode==="login" && ...} blocks to avoid TS2367 narrowing; fixed by hoisting tabs above the conditional

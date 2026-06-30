@@ -202,6 +202,24 @@ export default function Login() {
           </p>
         </div>
 
+        {/* Entrar / Criar conta tabs — always visible */}
+        <div className="grid grid-cols-2 gap-2 rounded-xl p-1 w-full" style={{ background: "rgba(255,255,255,0.05)" }}>
+          <button
+            onClick={() => switchMode("login")}
+            className="py-2 rounded-lg text-sm font-semibold transition-all"
+            style={{ background: mode === "login" ? "#7c3aed" : "transparent", color: "white" }}
+          >
+            Entrar
+          </button>
+          <button
+            onClick={() => switchMode("register")}
+            className="py-2 rounded-lg text-sm font-semibold transition-all"
+            style={{ background: mode === "register" ? "#7c3aed" : "transparent", color: mode === "register" ? "white" : "rgba(255,255,255,0.4)" }}
+          >
+            Criar conta
+          </button>
+        </div>
+
         {/* ── LOGIN MODE ──────────────────────────────────────────────────── */}
         {mode === "login" && (
           <div className="w-full space-y-4">
@@ -220,24 +238,6 @@ export default function Login() {
               <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
               <span className="text-xs text-purple-400/50 uppercase tracking-widest">OU</span>
               <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-            </div>
-
-            {/* Entrar / Criar conta tabs */}
-            <div className="grid grid-cols-2 gap-2 rounded-xl p-1" style={{ background: "rgba(255,255,255,0.05)" }}>
-              <button
-                onClick={() => switchMode("login")}
-                className="py-2 rounded-lg text-sm font-semibold transition-all"
-                style={{ background: mode === "login" ? "#7c3aed" : "transparent", color: "white" }}
-              >
-                Entrar
-              </button>
-              <button
-                onClick={() => switchMode("register")}
-                className="py-2 rounded-lg text-sm font-semibold transition-all"
-                style={{ background: mode === "register" ? "#7c3aed" : "transparent", color: mode === "register" ? "white" : "rgba(255,255,255,0.4)" }}
-              >
-                Criar conta
-              </button>
             </div>
 
             <form onSubmit={handleLoginSubmit} className="space-y-3">

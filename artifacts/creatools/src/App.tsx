@@ -41,6 +41,30 @@ import OverlayTicker from "./pages/overlay-ticker";
 import Overlays from "./pages/overlays";
 import Scoreboards from "./pages/scoreboards";
 import Minigames from "./pages/minigames";
+import OverlayLikes from "./pages/overlay-likes";
+import OverlayLikesUpgrade from "./pages/overlay-likes-upgrade";
+import OverlayCoins from "./pages/overlay-coins";
+import OverlayShare from "./pages/overlay-share";
+import OverlayBattle from "./pages/overlay-battle";
+import OverlayGifts from "./pages/overlay-gifts";
+import OverlayWhatsapp from "./pages/overlay-whatsapp";
+import OverlayMvp from "./pages/overlay-mvp";
+import OverlayPote from "./pages/overlay-pote";
+import OverlayNotificacoes from "./pages/overlay-notificacoes";
+import OverlayGamer from "./pages/overlay-gamer";
+import OverlayLevelUp from "./pages/overlay-level-up";
+import Events from "./pages/events";
+import SoundAlerts from "./pages/sound-alerts";
+import LayoutEditor from "./pages/layout-editor";
+import EffectBattle from "./pages/effect-battle";
+import TrollGift from "./pages/troll-gift";
+import Integracoes from "./pages/integracoes";
+import Album from "./pages/album";
+import MinigamesRoleta from "./pages/minigames-roleta";
+import MinigamesWordBomb from "./pages/minigames-word-bomb";
+import MinigamesSentido from "./pages/minigames-sentido";
+import MinigamesDefender from "./pages/minigames-defender";
+import MinigamesBau from "./pages/minigames-bau";
 import AppLayout from "./components/layout/app-layout";
 import { AuthProvider, useAuth } from "./context/auth-context";
 import { UIConfigProvider } from "./context/ui-config-context";
@@ -141,8 +165,31 @@ function Router() {
             {/* Developer Tools */}
             <Route path="/dev-tools" component={() => <ProtectedRoute component={DevTools} />} />
 
-            {/* Overlay Studio */}
+            {/* Overlay Studio hub */}
             <Route path="/overlays" component={() => <ProtectedRoute component={Overlays} />} />
+
+            {/* Overlay sub-pages */}
+            <Route path="/overlays/likes" component={() => <ProtectedRoute component={OverlayLikes} />} />
+            <Route path="/overlays/likes-upgrade" component={() => <ProtectedRoute component={OverlayLikesUpgrade} />} />
+            <Route path="/overlays/coins" component={() => <ProtectedRoute component={OverlayCoins} />} />
+            <Route path="/overlays/share" component={() => <ProtectedRoute component={OverlayShare} />} />
+            <Route path="/overlays/battle" component={() => <ProtectedRoute component={OverlayBattle} />} />
+            <Route path="/overlays/gifts" component={() => <ProtectedRoute component={OverlayGifts} />} />
+            <Route path="/overlays/whatsapp" component={() => <ProtectedRoute component={OverlayWhatsapp} />} />
+            <Route path="/overlays/mvp" component={() => <ProtectedRoute component={OverlayMvp} />} />
+            <Route path="/overlays/pote" component={() => <ProtectedRoute component={OverlayPote} />} />
+            <Route path="/overlays/notificacoes" component={() => <ProtectedRoute component={OverlayNotificacoes} />} />
+            <Route path="/overlays/gamer" component={() => <ProtectedRoute component={OverlayGamer} />} />
+            <Route path="/overlays/level-up" component={() => <ProtectedRoute component={OverlayLevelUp} />} />
+
+            {/* Tools */}
+            <Route path="/events" component={() => <ProtectedRoute component={Events} />} />
+            <Route path="/sound-alerts" component={() => <ProtectedRoute component={SoundAlerts} />} />
+            <Route path="/layout" component={() => <ProtectedRoute component={LayoutEditor} />} />
+            <Route path="/effect-battle" component={() => <ProtectedRoute component={EffectBattle} />} />
+            <Route path="/troll-gift" component={() => <ProtectedRoute component={TrollGift} />} />
+            <Route path="/integracoes" component={() => <ProtectedRoute component={Integracoes} />} />
+            <Route path="/album" component={() => <ProtectedRoute component={Album} />} />
 
             {/* Stream Tools — OBS/TikTok Studio overlays */}
             <Route path="/stream-tools" component={() => <ProtectedRoute component={StreamTools} />} />
@@ -150,6 +197,11 @@ function Router() {
             {/* Scoreboards & Minigames */}
             <Route path="/scoreboards" component={() => <ProtectedRoute component={Scoreboards} />} />
             <Route path="/minigames" component={() => <ProtectedRoute component={Minigames} />} />
+            <Route path="/minigames/roleta" component={() => <ProtectedRoute component={MinigamesRoleta} />} />
+            <Route path="/minigames/word-bomb" component={() => <ProtectedRoute component={MinigamesWordBomb} />} />
+            <Route path="/minigames/sentido" component={() => <ProtectedRoute component={MinigamesSentido} />} />
+            <Route path="/minigames/defender" component={() => <ProtectedRoute component={MinigamesDefender} />} />
+            <Route path="/minigames/bau" component={() => <ProtectedRoute component={MinigamesBau} />} />
 
             <Route path="/pricing" component={Pricing} />
             <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
