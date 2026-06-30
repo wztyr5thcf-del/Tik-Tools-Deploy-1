@@ -4,9 +4,9 @@
  */
 import { useState, useCallback } from "react";
 import {
-  Monitor, Copy, CheckCircle2, ExternalLink, Sliders,
+  Monitor, Copy, CheckCircle2, ExternalLink,
   Trophy, Zap, BarChart2, Target, Gamepad2, Gift,
-  ChevronDown, ChevronRight, Eye, Info,
+  ChevronDown, ChevronRight, Eye, Info, Star, MessageSquare, Ticket,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -123,6 +123,8 @@ export default function Overlays() {
   const [alertGifts,   setAlertGifts]   = useState(true);
   const [alertFollows, setAlertFollows] = useState(true);
   const [alertLikes,   setAlertLikes]   = useState(true);
+  const [alertSubs,    setAlertSubs]    = useState(true);
+  const [alertJoins,   setAlertJoins]   = useState(false);
   const [alertPos,     setAlertPos]     = useState("top-center");
   const [alertMin,     setAlertMin]     = useState(0);
 
@@ -131,6 +133,8 @@ export default function Overlays() {
     if (!alertGifts)   p.set("gifts", "0");
     if (!alertFollows) p.set("follows", "0");
     if (alertLikes)    p.set("likes", "1");
+    if (!alertSubs)    p.set("subs", "0");
+    if (alertJoins)    p.set("joins", "1");
     if (alertPos !== "top-center") p.set("pos", alertPos);
     if (alertMin > 0)  p.set("min", String(alertMin));
     const qs = p.toString() ? `?${p}` : "";
@@ -218,6 +222,46 @@ export default function Overlays() {
     return `${origin}/overlay/${username || "SEU_USUARIO"}${qs}`;
   }
 
+  // ── Subscribe overlay config ───────────────────────────────────────────────
+  const [subPos, setSubPos] = useState("top-right");
+
+  function buildSubscribeUrl() {
+    const p = new URLSearchParams();
+    if (subPos !== "top-right") p.set("pos", subPos);
+    const qs = p.toString() ? `?${p}` : "";
+    return `${origin}/overlay/subscribe/${username || "SEU_USUARIO"}${qs}`;
+  }
+
+  // ── Chat Wall overlay config ───────────────────────────────────────────────
+  const [chatMax,  setChatMax]  = useState(8);
+  const [chatPos,  setChatPos]  = useState("bottom-left");
+  const [chatBg,   setChatBg]   = useState(50);
+  const [chatSize, setChatSize] = useState("md");
+
+  function buildChatUrl() {
+    const p = new URLSearchParams();
+    if (chatMax !== 8)           p.set("max", String(chatMax));
+    if (chatPos !== "bottom-left") p.set("pos", chatPos);
+    if (chatBg !== 50)           p.set("bg", String(chatBg));
+    if (chatSize !== "md")       p.set("size", chatSize);
+    const qs = p.toString() ? `?${p}` : "";
+    return `${origin}/overlay/chat/${username || "SEU_USUARIO"}${qs}`;
+  }
+
+  // ── Gift Ticker overlay config ─────────────────────────────────────────────
+  const [tickerPos,   setTickerPos]   = useState("bottom");
+  const [tickerMin,   setTickerMin]   = useState(0);
+  const [tickerSpeed, setTickerSpeed] = useState(40);
+
+  function buildTickerUrl() {
+    const p = new URLSearchParams();
+    if (tickerPos !== "bottom") p.set("pos", tickerPos);
+    if (tickerMin > 0)          p.set("min", String(tickerMin));
+    if (tickerSpeed !== 40)     p.set("speed", String(tickerSpeed));
+    const qs = p.toString() ? `?${p}` : "";
+    return `${origin}/overlay/ticker/${username || "SEU_USUARIO"}${qs}`;
+  }
+
   return (
     <div className="space-y-6 max-w-5xl">
       {/* ── Header ── */}
@@ -274,12 +318,15 @@ export default function Overlays() {
 
       <Tabs defaultValue="alerts" className="space-y-4">
         <TabsList className="bg-card border border-border flex-wrap h-auto gap-1 p-1">
-          <TabsTrigger value="alerts"  className="gap-1.5"><Zap   className="w-3.5 h-3.5"/>Alertas</TabsTrigger>
-          <TabsTrigger value="combo"   className="gap-1.5"><Gamepad2 className="w-3.5 h-3.5"/>Combos</TabsTrigger>
-          <TabsTrigger value="gifters" className="gap-1.5"><Trophy className="w-3.5 h-3.5"/>Top Gifters</TabsTrigger>
-          <TabsTrigger value="stats"   className="gap-1.5"><BarChart2 className="w-3.5 h-3.5"/>Stats Bar</TabsTrigger>
-          <TabsTrigger value="goal"    className="gap-1.5"><Target className="w-3.5 h-3.5"/>Meta</TabsTrigger>
-          <TabsTrigger value="basic"   className="gap-1.5"><Monitor className="w-3.5 h-3.5"/>Chat + Eventos</TabsTrigger>
+          <TabsTrigger value="alerts"    className="gap-1.5"><Zap       className="w-3.5 h-3.5"/>Alertas</TabsTrigger>
+          <TabsTrigger value="combo"     className="gap-1.5"><Gamepad2  className="w-3.5 h-3.5"/>Combos</TabsTrigger>
+          <TabsTrigger value="gifters"   className="gap-1.5"><Trophy    className="w-3.5 h-3.5"/>Top Gifters</TabsTrigger>
+          <TabsTrigger value="stats"     className="gap-1.5"><BarChart2 className="w-3.5 h-3.5"/>Stats Bar</TabsTrigger>
+          <TabsTrigger value="goal"      className="gap-1.5"><Target    className="w-3.5 h-3.5"/>Meta</TabsTrigger>
+          <TabsTrigger value="subscribe" className="gap-1.5"><Star      className="w-3.5 h-3.5"/>Membros</TabsTrigger>
+          <TabsTrigger value="chat"      className="gap-1.5"><MessageSquare className="w-3.5 h-3.5"/>Chat Wall</TabsTrigger>
+          <TabsTrigger value="ticker"    className="gap-1.5"><Ticket    className="w-3.5 h-3.5"/>Gift Ticker</TabsTrigger>
+          <TabsTrigger value="basic"     className="gap-1.5"><Monitor   className="w-3.5 h-3.5"/>Chat + Eventos</TabsTrigger>
         </TabsList>
 
         {/* ── ALERTS ── */}
@@ -296,6 +343,8 @@ export default function Overlays() {
                     { label: "🎁 Gifts", value: alertGifts, set: setAlertGifts },
                     { label: "💙 Follows / Shares", value: alertFollows, set: setAlertFollows },
                     { label: "❤️ Tap Tap (likes burst)", value: alertLikes, set: setAlertLikes },
+                    { label: "⭐ Membros / Subscribe", value: alertSubs, set: setAlertSubs },
+                    { label: "👋 Entradas na live", value: alertJoins, set: setAlertJoins },
                   ].map(({ label, value, set }) => (
                     <div key={label} className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/40 border border-border">
                       <Label className="text-sm">{label}</Label>
@@ -500,6 +549,141 @@ export default function Overlays() {
           </Card>
         </TabsContent>
 
+        {/* ── SUBSCRIBE ── */}
+        <TabsContent value="subscribe" className="space-y-4">
+          <Card>
+            <CardContent className="pt-5 space-y-5">
+              <SectionHeader icon={Star} title="Alerta de Membros / Subscribe" color="bg-gradient-to-br from-violet-500 to-indigo-600"
+                desc="Animação exclusiva quando um viewer assina (se torna membro) da sua live. Aparece automaticamente." />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Posição</Label>
+                  <Select value={subPos} onValueChange={setSubPos}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {["top-center","top-left","top-right","bottom-left","bottom-right","bottom-center"].map(v => (
+                        <SelectItem key={v} value={v}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="rounded-lg bg-muted/30 border border-border p-3 text-xs text-muted-foreground space-y-1.5">
+                  <p className="font-semibold text-foreground">Variações visuais automáticas:</p>
+                  <p>🎉 Novo membro (1º mês)</p>
+                  <p>⭐ Membro veterano (3+ meses)</p>
+                  <p>💎 Membro fiel (12+ meses)</p>
+                </div>
+              </div>
+
+              <UrlBox url={buildSubscribeUrl()} label="URL do Overlay — cole no OBS Browser Source" />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── CHAT WALL ── */}
+        <TabsContent value="chat" className="space-y-4">
+          <Card>
+            <CardContent className="pt-5 space-y-5">
+              <SectionHeader icon={MessageSquare} title="Chat Wall" color="bg-gradient-to-br from-blue-500 to-cyan-600"
+                desc="Feed limpo só com mensagens do chat. Ideal para streams sem poluição visual. Transparente e personalizável." />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <Label className="text-sm">Máximo de mensagens</Label>
+                      <span className="text-xs font-mono text-primary">{chatMax}</span>
+                    </div>
+                    <Slider value={[chatMax]} onValueChange={([v]) => setChatMax(v)} min={3} max={20} step={1} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Posição</Label>
+                    <Select value={chatPos} onValueChange={setChatPos}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["bottom-left","bottom-right","top-left","top-right","bottom-center","top-center"].map(v => (
+                          <SelectItem key={v} value={v}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <Label className="text-sm">Opacidade do fundo</Label>
+                      <span className="text-xs font-mono text-muted-foreground">{chatBg}%</span>
+                    </div>
+                    <Slider value={[chatBg]} onValueChange={([v]) => setChatBg(v)} min={0} max={90} step={5} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Tamanho do texto</Label>
+                    <Select value={chatSize} onValueChange={setChatSize}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sm">Pequeno</SelectItem>
+                        <SelectItem value="md">Médio (padrão)</SelectItem>
+                        <SelectItem value="lg">Grande</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              <UrlBox url={buildChatUrl()} label="URL do Overlay — cole no OBS Browser Source" />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── GIFT TICKER ── */}
+        <TabsContent value="ticker" className="space-y-4">
+          <Card>
+            <CardContent className="pt-5 space-y-5">
+              <SectionHeader icon={Ticket} title="Gift Ticker" color="bg-gradient-to-br from-amber-500 to-orange-600"
+                desc="Faixa horizontal rolante com os últimos gifts recebidos. Aparece na parte inferior ou superior da tela." />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Posição</Label>
+                    <Select value={tickerPos} onValueChange={setTickerPos}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bottom">Inferior (padrão)</SelectItem>
+                        <SelectItem value="top">Superior</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <Label className="text-sm">Mínimo de diamonds</Label>
+                      <span className="text-xs font-mono text-muted-foreground">💎 {tickerMin}</span>
+                    </div>
+                    <Slider value={[tickerMin]} onValueChange={([v]) => setTickerMin(v)} min={0} max={500} step={10} />
+                    <p className="text-xs text-muted-foreground">Gifts abaixo desse valor não aparecem no ticker</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <Label className="text-sm">Velocidade de rolagem</Label>
+                      <span className="text-xs font-mono text-primary">{tickerSpeed} px/s</span>
+                    </div>
+                    <Slider value={[tickerSpeed]} onValueChange={([v]) => setTickerSpeed(v)} min={10} max={120} step={10} />
+                  </div>
+                  <div className="rounded-lg bg-muted/30 border border-border p-3 text-xs text-muted-foreground">
+                    <p className="font-semibold text-foreground mb-1">Dica</p>
+                    <p>Use junto com o overlay de Alertas para uma experiência completa — o Ticker mostra histórico enquanto os Alertas aparecem em destaque.</p>
+                  </div>
+                </div>
+              </div>
+
+              <UrlBox url={buildTickerUrl()} label="URL do Overlay — cole no OBS Browser Source" />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ── BASIC (chat) ── */}
         <TabsContent value="basic" className="space-y-4">
           <Card>
@@ -561,12 +745,15 @@ export default function Overlays() {
         </CardHeader>
         <CardContent className="space-y-2">
           {[
-            { label: "Alertas (gifts, follows, tap-tap)", url: buildAlertsUrl() },
-            { label: "Combos & Luva", url: buildComboUrl() },
+            { label: "Alertas (gifts, follows, tap-tap, sub)", url: buildAlertsUrl() },
+            { label: "Combos & Luva (tap-tap 2x, 3x...)", url: buildComboUrl() },
             { label: "Top Gifters", url: buildTopGiftersUrl() },
             { label: "Stats Bar", url: buildStatsUrl() },
             { label: "Barra de Meta", url: buildGoalUrl() },
-            { label: "Chat + Eventos", url: buildBasicUrl() },
+            { label: "Membros / Subscribe", url: buildSubscribeUrl() },
+            { label: "Chat Wall", url: buildChatUrl() },
+            { label: "Gift Ticker", url: buildTickerUrl() },
+            { label: "Chat + Eventos (completo)", url: buildBasicUrl() },
           ].map(({ label, url }) => (
             <div key={label} className="flex items-center gap-2 py-1">
               <span className="text-xs text-muted-foreground w-44 shrink-0">{label}</span>

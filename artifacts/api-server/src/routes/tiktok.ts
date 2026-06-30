@@ -682,7 +682,7 @@ router.get("/tiktok/live-counts", requireAuth, async (req, res): Promise<void> =
 
 // ── Country Leaderboard ───────────────────────────────────────────────────────
 router.get("/tiktok/leaderboards/country/:slug", requireAuth, async (req, res): Promise<void> => {
-  const { slug } = req.params;
+  const slug = String(req.params.slug);
   try {
     const apiKey = getApiKey();
     const r = await fetch(
@@ -698,7 +698,7 @@ router.get("/tiktok/leaderboards/country/:slug", requireAuth, async (req, res): 
 
 // ── Leaderboards: Legacy League List ─────────────────────────────────────────
 router.get("/tiktok/leaderboards/leagues/:region", requireAuth, async (req, res): Promise<void> => {
-  const { region } = req.params;
+  const region = String(req.params.region);
   if (!region) {
     res.status(400).json({ error: "region param is required" });
     return;
@@ -741,7 +741,8 @@ router.get("/tiktok/leaderboards/leagues/:region", requireAuth, async (req, res)
 
 // ── Leaderboards: Legacy League Entries ───────────────────────────────────────
 router.get("/tiktok/leaderboards/league/:region/:classType", requireAuth, async (req, res): Promise<void> => {
-  const { region, classType } = req.params;
+  const region = String(req.params.region);
+  const classType = String(req.params.classType);
   const classTypeNum = parseInt(classType, 10);
   if (!region || isNaN(classTypeNum)) {
     res.status(400).json({ error: "region and classType params are required" });
@@ -960,7 +961,7 @@ router.post("/tiktok/webhooks", requireAuth, async (req, res): Promise<void> => 
 
 // ── Webhooks: Delete ──────────────────────────────────────────────────────────
 router.delete("/tiktok/webhooks/:id", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   try {
     const apiKey = getApiKey();
     const r = await fetch(`${TIKTOOLS_API}/api/webhooks/${encodeURIComponent(id)}?apiKey=${apiKey}`, {
@@ -976,7 +977,7 @@ router.delete("/tiktok/webhooks/:id", requireAuth, async (req, res): Promise<voi
 
 // ── Webhooks: Test delivery ───────────────────────────────────────────────────
 router.post("/tiktok/webhooks/:id/test", requireAuth, async (req, res): Promise<void> => {
-  const { id } = req.params;
+  const id = String(req.params.id);
   try {
     const apiKey = getApiKey();
     const r = await fetch(`${TIKTOOLS_API}/api/webhooks/${encodeURIComponent(id)}/test?apiKey=${apiKey}`, {

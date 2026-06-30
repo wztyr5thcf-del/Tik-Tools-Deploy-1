@@ -8,13 +8,14 @@ import { useParams, useSearch } from "wouter";
 
 interface AlertItem {
   id: string;
-  kind: "gift" | "follow" | "share" | "sub" | "like_burst";
+  kind: "gift" | "follow" | "share" | "sub" | "like_burst" | "join";
   nickname: string;
   giftName?: string;
   giftIcon?: string;
   diamonds?: number;
   repeatCount?: number;
-  combo?: number; // multiplier computed
+  combo?: number;
+  subMonth?: number;
   ts: number;
 }
 
@@ -89,6 +90,31 @@ function AlertCard({ alert, onDone }: { alert: AlertItem; onDone: (id: string) =
     );
   }
 
+  if (alert.kind === "sub") {
+    const months = alert.subMonth ?? 1;
+    return (
+      <div className={`alert-card sub-card phase-${phase}`}>
+        <span className="text-2xl">{months >= 12 ? "💎" : months >= 3 ? "⭐" : "🎉"}</span>
+        <div className="flex flex-col">
+          <span className="font-extrabold text-violet-300 text-base leading-tight">{alert.nickname}</span>
+          <span className="text-white/70 text-sm">{months > 1 ? `${months} meses de membro!` : "Novo membro!"}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (alert.kind === "join") {
+    return (
+      <div className={`alert-card join-card phase-${phase}`}>
+        <span className="text-2xl">👋</span>
+        <div className="flex flex-col">
+          <span className="font-extrabold text-lime-300 text-base leading-tight">{alert.nickname}</span>
+          <span className="text-white/70 text-sm">entrou na live!</span>
+        </div>
+      </div>
+    );
+  }
+
   // gift
   const visuals = getGiftVisuals(alert.giftName ?? "");
   const combo = alert.repeatCount ?? 1;
@@ -120,8 +146,10 @@ export default function OverlayAlerts() {
   const showGifts   = params.get("gifts")   !== "0";
   const showFollows = params.get("follows") !== "0";
   const showLikes   = params.get("likes")   === "1";
-  const position    = params.get("pos") ?? "top-center"; // top-center | bottom-right | top-left
-  const minDiamonds = Number(params.get("min") ?? "0"); // filter low-value gifts
+  const showSubs    = params.get("subs")    !== "0";
+  const showJoins   = params.get("joins")   === "1";
+  const position    = params.get("pos") ?? "top-center";
+  const minDiamonds = Number(params.get("min") ?? "0");
 
   const [alerts, setAlerts]       = useState<AlertItem[]>([]);
   const counterRef                = useRef(0);
@@ -203,6 +231,16 @@ export default function OverlayAlerts() {
                 likeCountRef.current = 0;
               }, 2000);
             }
+
+            if (type === "subscribe" && showSubs) {
+              const d = data as { nickname?: string; subMonth?: number };
+              addAlert({ kind: "sub", nickname: d.nickname ?? "?", subMonth: d.subMonth ?? 1 });
+            }
+
+            if (type === "join" && showJoins) {
+              const d = data as { nickname?: string };
+              addAlert({ kind: "join", nickname: d.nickname ?? "?" });
+            }
           } catch { /* ignore */ }
         };
       } catch { /* ignore */ }
@@ -257,6 +295,8 @@ export default function OverlayAlerts() {
         .follow-card{ background: linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(6,182,212,0.15) 100%); }
         .share-card { background: linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(16,185,129,0.15) 100%); }
         .like-card  { background: linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(239,68,68,0.15) 100%); }
+        .sub-card   { background: linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(139,92,246,0.20) 100%); border-color: rgba(139,92,246,0.3); }
+        .join-card  { background: linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(132,204,22,0.12) 100%); }
 
         .gift-emoji {
           font-size: 2.2rem; line-height: 1;

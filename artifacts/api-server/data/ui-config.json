@@ -45,8 +45,16 @@
       "label": "Streamer Tools",
       "items": [
         {
+          "id": "overlays",
+          "label": "Overlay Studio",
+          "href": "/overlays",
+          "icon": "Monitor",
+          "matchPrefix": "/overlays",
+          "visible": true
+        },
+        {
           "id": "stream-tools",
-          "label": "Stream Overlay",
+          "label": "Stream Tools",
           "href": "/stream-tools",
           "icon": "Tv2",
           "matchPrefix": "/stream-tools",
@@ -234,5 +242,5 @@
       ]
     }
   ],
-  "updatedAt": "2026-06-30T21:47:52.155Z"
+  "updatedAt": "2026-06-30T22:00:23.425Z"
 }

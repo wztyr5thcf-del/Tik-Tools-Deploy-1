@@ -34,6 +34,9 @@ import OverlayTopGifters from "./pages/overlay-top-gifters";
 import OverlayStats from "./pages/overlay-stats";
 import OverlayGoal from "./pages/overlay-goal";
 import OverlayCombo from "./pages/overlay-combo";
+import OverlaySubscribe from "./pages/overlay-subscribe";
+import OverlayChat from "./pages/overlay-chat";
+import OverlayTicker from "./pages/overlay-ticker";
 import Overlays from "./pages/overlays";
 import Scoreboards from "./pages/scoreboards";
 import Minigames from "./pages/minigames";
@@ -86,6 +89,9 @@ function Router() {
       <Route path="/overlay/stats/:username" component={OverlayStats} />
       <Route path="/overlay/goal/:username" component={OverlayGoal} />
       <Route path="/overlay/combo/:username" component={OverlayCombo} />
+      <Route path="/overlay/subscribe/:username" component={OverlaySubscribe} />
+      <Route path="/overlay/chat/:username" component={OverlayChat} />
+      <Route path="/overlay/ticker/:username" component={OverlayTicker} />
       <Route path="/overlay/:username" component={ObsOverlay} />
       <Route>
         <AppLayout>

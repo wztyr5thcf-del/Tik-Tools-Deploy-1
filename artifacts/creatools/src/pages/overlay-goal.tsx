@@ -2,7 +2,7 @@
  * /overlay/goal/:username
  * Meta de diamonds/viewers com barra de progresso animada
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearch } from "wouter";
 
 function fmt(n: number) {

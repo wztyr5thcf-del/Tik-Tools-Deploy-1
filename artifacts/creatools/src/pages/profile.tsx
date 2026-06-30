@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   User, Lock, Shield, Save, Loader2, CheckCircle2, CreditCard,
-  ExternalLink, Crown, Zap, SiTiktok as TikIcon, Users,
+  ExternalLink, Crown, Zap, Users,
   AlertCircle, XCircle, Search, MessageSquare, TicketCheck,
   ChevronDown, RefreshCw, Send, Clock, CheckCircle, X,
 } from "lucide-react";
