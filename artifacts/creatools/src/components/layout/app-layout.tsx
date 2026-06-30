@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Activity, Settings, Diamond,
   Tag, LogOut, ChevronDown, UserCircle, Shield, Menu, X,
   Lock, Zap, Crown, Search, Users, Star, Key, BarChart2,
-  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell,
+  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2,
   LucideProps,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
@@ -31,7 +31,7 @@ function planMeets(userPlan: PlanLevel, required: string): boolean {
 const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   LayoutDashboard, Activity, Settings, Diamond, Tag, Shield,
   Search, Users, Star, Key, BarChart2, Crown, Zap, Lock,
-  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell,
+  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2,
 };
 function NavIcon({ name }: { name: string }) {
   const Icon = ICON_MAP[name] ?? LayoutDashboard;
@@ -64,6 +64,7 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
       { id: "watchlist",   label: "Watchlist",       href: "/streamer/watchlist",   icon: "Star",      matchPrefix: "/streamer/watchlist",   visible: true },
       { id: "jwt",         label: "JWT / WebSocket", href: "/streamer/jwt",         icon: "Key",       matchPrefix: "/streamer/jwt",         visible: true },
       { id: "rate-limits", label: "Rate Limits",     href: "/streamer/rate-limits", icon: "BarChart2", matchPrefix: "/streamer/rate-limits", visible: true },
+      { id: "dev-tools",   label: "Dev Tools",       href: "/dev-tools",            icon: "Code2",     matchPrefix: "/dev-tools",           visible: true },
     ],
   },
   {
@@ -72,6 +73,7 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
     items: [
       { id: "live-captions",  label: "Live Captions",  href: "/live-captions",  icon: "Subtitles", matchPrefix: "/live-captions",  visible: true },
       { id: "live-analytics", label: "Live Analytics", href: "/live-analytics", icon: "BarChart2", matchPrefix: "/live-analytics", visible: true },
+      { id: "live-counts",    label: "Live Counts",    href: "/live-counts",    icon: "Radio",     matchPrefix: "/live-counts",    visible: true },
       { id: "webhooks",       label: "Webhooks",       href: "/webhooks",       icon: "Webhook",   matchPrefix: "/webhooks",       visible: true },
     ],
   },

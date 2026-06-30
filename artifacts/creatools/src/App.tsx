@@ -25,6 +25,8 @@ import LiveCaptions from "./pages/live-captions";
 import LiveAnalytics from "./pages/live-analytics";
 import Webhooks from "./pages/webhooks";
 import Notifications from "./pages/notifications";
+import LiveCounts from "./pages/live-counts";
+import DevTools from "./pages/dev-tools";
 import AppLayout from "./components/layout/app-layout";
 import { AuthProvider, useAuth } from "./context/auth-context";
 import { UIConfigProvider } from "./context/ui-config-context";
@@ -106,6 +108,12 @@ function Router() {
 
             {/* Gift catalog */}
             <Route path="/gift-gallery" component={() => <ProtectedRoute component={GiftGallery} />} />
+
+            {/* Live Counts */}
+            <Route path="/live-counts" component={() => <ProtectedRoute component={LiveCounts} />} />
+
+            {/* Developer Tools */}
+            <Route path="/dev-tools" component={() => <ProtectedRoute component={DevTools} />} />
 
             <Route path="/pricing" component={Pricing} />
             <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />

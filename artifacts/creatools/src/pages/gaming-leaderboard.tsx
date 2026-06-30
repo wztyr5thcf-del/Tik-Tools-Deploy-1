@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useGetGamingRanklist, useGetGamingMovers, getGetGamingRanklistQueryKey, getGetGamingMoversQueryKey } from "@workspace/api-client-react";
+import { useGetGamingRanklist, useGetGamingMovers, useGetRegionMovers, getGetGamingRanklistQueryKey, getGetGamingMoversQueryKey, getGetRegionMoversQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
-import { Gamepad2, TrendingUp, TrendingDown, Radio, Crown, RefreshCw, Eye } from "lucide-react";
+import { Gamepad2, TrendingUp, TrendingDown, Radio, Crown, RefreshCw, Eye, Globe } from "lucide-react";
 
 const REGIONS = [
   { code: "US+", label: "United States" },
@@ -58,6 +58,40 @@ function RankBadge({ rank }: { rank: number }) {
   if (rank === 2) return <span className="text-slate-300 font-bold text-lg">🥈</span>;
   if (rank === 3) return <span className="text-amber-600 font-bold text-lg">🥉</span>;
   return <span className="text-muted-foreground font-mono text-sm w-8 text-center">{rank}</span>;
+}
+
+function MoverRow({ m }: { m: MoverEntry }) {
+  return (
+    <div className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-accent/40 transition-colors group">
+      <div className="w-8 flex justify-center shrink-0">
+        {m.direction === "up" || !m.direction ? (
+          <TrendingUp className="w-4 h-4 text-green-400" />
+        ) : m.direction === "new" ? (
+          <span className="text-xs text-blue-400 font-bold">NEW</span>
+        ) : (
+          <TrendingDown className="w-4 h-4 text-red-400" />
+        )}
+      </div>
+      <Avatar className="w-8 h-8 shrink-0">
+        <AvatarImage src={m.avatar} />
+        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+          {m.masked ? "?" : (m.nickname?.[0] ?? m.uniqueId?.[0])?.toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-medium truncate ${m.masked ? "italic text-muted-foreground" : ""}`}>
+          {m.masked ? `someone-${m.uniqueId?.slice(-6)}` : (m.nickname ?? m.uniqueId)}
+        </p>
+        {!m.masked && <p className="text-xs text-muted-foreground">@{m.uniqueId}</p>}
+      </div>
+      {m.score !== undefined && (
+        <span className="text-sm font-mono text-foreground shrink-0">{m.score.toLocaleString()}</span>
+      )}
+      {m.rank !== undefined && (
+        <Badge variant="outline" className="text-xs shrink-0">#{m.rank}</Badge>
+      )}
+    </div>
+  );
 }
 
 function EntryRow({ entry, onMonitor }: { entry: RanklistEntry; onMonitor?: (uid: string) => void }) {
@@ -119,11 +153,17 @@ export default function GamingLeaderboard() {
     { region },
     { query: { queryKey: getGetGamingMoversQueryKey({ region }), staleTime: 1000 * 60 * 2 } }
   );
+  const { data: regionMoversData, isLoading: loadingRegionMovers, refetch: refetchRegionMovers } = useGetRegionMovers(
+    { region },
+    { query: { queryKey: getGetRegionMoversQueryKey({ region }), staleTime: 1000 * 60 * 2 } }
+  );
 
   const rawRanklist = ranklistData as { entries?: RanklistEntry[]; region?: string } | undefined;
   const rawMovers = moversData as { entries?: MoverEntry[] } | undefined;
+  const rawRegionMovers = regionMoversData as { entries?: MoverEntry[] } | undefined;
   const entries: RanklistEntry[] = rawRanklist?.entries ?? [];
   const movers: MoverEntry[] = rawMovers?.entries ?? [];
+  const regionMovers: MoverEntry[] = rawRegionMovers?.entries ?? [];
 
   return (
     <div className="space-y-6">
@@ -146,7 +186,7 @@ export default function GamingLeaderboard() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={() => { refetchRank(); refetchMovers(); }}>
+          <Button variant="outline" size="icon" onClick={() => { refetchRank(); refetchMovers(); refetchRegionMovers(); }}>
             <RefreshCw className="w-4 h-4" />
           </Button>
         </div>
@@ -158,7 +198,10 @@ export default function GamingLeaderboard() {
             <Crown className="w-4 h-4 mr-1.5" />Top 99
           </TabsTrigger>
           <TabsTrigger value="movers">
-            <TrendingUp className="w-4 h-4 mr-1.5" />Movers
+            <TrendingUp className="w-4 h-4 mr-1.5" />Gaming Movers
+          </TabsTrigger>
+          <TabsTrigger value="region-movers">
+            <Globe className="w-4 h-4 mr-1.5" />Region Movers
           </TabsTrigger>
         </TabsList>
 
@@ -199,7 +242,7 @@ export default function GamingLeaderboard() {
         <TabsContent value="movers">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Who entered / left the Top 99 today</CardTitle>
+              <CardTitle className="text-base">Gaming creators who entered / left Top 99 today</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {loadingMovers ? (
@@ -217,37 +260,36 @@ export default function GamingLeaderboard() {
               ) : (
                 <div className="py-1">
                   {movers.map((m, i) => (
-                    <div key={i} className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-accent/40 transition-colors group">
-                      <div className="w-8 flex justify-center shrink-0">
-                        {m.direction === "up" || !m.direction ? (
-                          <TrendingUp className="w-4 h-4 text-green-400" />
-                        ) : m.direction === "new" ? (
-                          <span className="text-xs text-blue-400 font-bold">NEW</span>
-                        ) : (
-                          <TrendingDown className="w-4 h-4 text-red-400" />
-                        )}
-                      </div>
-                      <Avatar className="w-8 h-8 shrink-0">
-                        <AvatarImage src={m.avatar} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                          {m.masked ? "?" : (m.nickname?.[0] ?? m.uniqueId?.[0])?.toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${m.masked ? "italic text-muted-foreground" : ""}`}>
-                          {m.masked ? `someone-${m.uniqueId?.slice(-6)}` : (m.nickname ?? m.uniqueId)}
-                        </p>
-                        {!m.masked && <p className="text-xs text-muted-foreground">@{m.uniqueId}</p>}
-                      </div>
-                      {m.score !== undefined && (
-                        <span className="text-sm font-mono text-foreground shrink-0">
-                          {m.score.toLocaleString()}
-                        </span>
-                      )}
-                      {m.rank !== undefined && (
-                        <Badge variant="outline" className="text-xs shrink-0">#{m.rank}</Badge>
-                      )}
-                    </div>
+                    <MoverRow key={i} m={m} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="region-movers">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Regional leaderboard movers — {region}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loadingRegionMovers ? (
+                <div className="space-y-1 p-3">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : regionMovers.length === 0 ? (
+                <div className="py-16 text-center text-muted-foreground">
+                  <Globe className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">No regional movers data available</p>
+                  <p className="text-xs mt-1 opacity-60">Global Agency tier required for unmasked rows</p>
+                </div>
+              ) : (
+                <div className="py-1">
+                  {regionMovers.map((m, i) => (
+                    <MoverRow key={i} m={m} />
                   ))}
                 </div>
               )}

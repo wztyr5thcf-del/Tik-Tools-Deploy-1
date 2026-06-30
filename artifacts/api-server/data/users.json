@@ -45,8 +45,7 @@
       "passwordHash": "$2b$10$3EMCTiUTdoJVYRxJ7qF/UO/QZDDyMakE3ga0lY.HoZXAlygy.3paa",
       "createdAt": "2026-06-29T18:59:14.192Z",
       "plan": "free",
-      "isAdmin": false,
-      "roleId": "role_aawmmmwp8ypmqzkkut2"
+      "isAdmin": false
     }
   ]
 }
