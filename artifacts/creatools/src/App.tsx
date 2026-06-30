@@ -29,6 +29,8 @@ import LiveCounts from "./pages/live-counts";
 import DevTools from "./pages/dev-tools";
 import StreamTools from "./pages/stream-tools";
 import ObsOverlay from "./pages/obs-overlay";
+import Scoreboards from "./pages/scoreboards";
+import Minigames from "./pages/minigames";
 import AppLayout from "./components/layout/app-layout";
 import { AuthProvider, useAuth } from "./context/auth-context";
 import { UIConfigProvider } from "./context/ui-config-context";
@@ -121,6 +123,10 @@ function Router() {
 
             {/* Stream Tools — OBS/TikTok Studio overlays */}
             <Route path="/stream-tools" component={() => <ProtectedRoute component={StreamTools} />} />
+
+            {/* Scoreboards & Minigames */}
+            <Route path="/scoreboards" component={() => <ProtectedRoute component={Scoreboards} />} />
+            <Route path="/minigames" component={() => <ProtectedRoute component={Minigames} />} />
 
             <Route path="/pricing" component={Pricing} />
             <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />

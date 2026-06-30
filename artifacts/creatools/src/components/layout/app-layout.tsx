@@ -1,13 +1,13 @@
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Activity, Settings, Diamond,
-  Tag, LogOut, ChevronDown, UserCircle, Shield, Menu, X,
+  Tag, LogOut, ChevronDown, ChevronRight, UserCircle, Shield, Menu, X,
   Lock, Zap, Crown, Search, Users, Star, Key, BarChart2,
-  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2, Tv2,
+  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2, Tv2, Trophy,
   LucideProps,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useUIConfig } from "@/context/ui-config-context";
 import { useWatchlist } from "@/context/watchlist-context";
@@ -31,7 +31,7 @@ function planMeets(userPlan: PlanLevel, required: string): boolean {
 const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   LayoutDashboard, Activity, Settings, Diamond, Tag, Shield,
   Search, Users, Star, Key, BarChart2, Crown, Zap, Lock,
-  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2, Tv2,
+  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2, Tv2, Trophy,
 };
 function NavIcon({ name }: { name: string }) {
   const Icon = ICON_MAP[name] ?? LayoutDashboard;
@@ -61,6 +61,8 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
     label: "Streamer Tools",
     items: [
       { id: "stream-tools", label: "Stream Overlay",   href: "/stream-tools",         icon: "Tv2",       matchPrefix: "/stream-tools",         visible: true },
+      { id: "scoreboards",  label: "Scoreboards",      href: "/scoreboards",          icon: "Trophy",    matchPrefix: "/scoreboards",          visible: true },
+      { id: "minigames",    label: "Minigames",        href: "/minigames",            icon: "Gamepad2",  matchPrefix: "/minigames",            visible: true },
       { id: "lookup",       label: "Lookup",           href: "/streamer/lookup",      icon: "Search",    matchPrefix: "/streamer/lookup",      visible: true },
       { id: "bulk-check",   label: "Bulk Check",       href: "/streamer/bulk-check",  icon: "Users",     matchPrefix: "/streamer/bulk-check",  requiresPlan: "basic", visible: true },
       { id: "watchlist",    label: "Watchlist",        href: "/streamer/watchlist",   icon: "Star",      matchPrefix: "/streamer/watchlist",   visible: true },
@@ -104,6 +106,15 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
   },
 ];
 
+const SECTION_COLORS: Record<string, string> = {
+  streamer: "text-cyan-400/70",
+  "live-tools": "text-violet-400/70",
+  leaderboards: "text-amber-400/70",
+  analytics: "text-amber-400/70",
+  account: "text-muted-foreground/50",
+  admin: "text-red-400/60",
+};
+
 function NavLinks({
   sections,
   onNavigate,
@@ -119,8 +130,24 @@ function NavLinks({
 }) {
   const { liveCount } = useWatchlist();
 
+  // Collapsible state per section — persisted in localStorage
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem("nav_collapsed");
+      return stored ? (JSON.parse(stored) as Record<string, boolean>) : {};
+    } catch { return {}; }
+  });
+
+  const toggleSection = useCallback((id: string) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try { localStorage.setItem("nav_collapsed", JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-0.5">
       {sections.map((section) => {
         const visibleItems = section.items.filter((item) => {
           if (!item.visible) return false;
@@ -129,70 +156,78 @@ function NavLinks({
         });
         if (!visibleItems.length) return null;
 
-        const SECTION_COLORS: Record<string, string> = {
-          streamer: "text-cyan-400/70",
-          "live-tools": "text-violet-400/70",
-          leaderboards: "text-amber-400/70",
-          analytics: "text-amber-400/70",
-          account: "text-muted-foreground/50",
-          admin: "text-red-400/60",
-        };
         const labelColor = section.id ? (SECTION_COLORS[section.id] ?? "text-muted-foreground/50") : "";
+        const isCollapsed = section.label ? !!collapsed[section.id] : false;
+        const hasActive = visibleItems.some(
+          (item) => location === item.href || (item.matchPrefix && location.startsWith(item.matchPrefix))
+        );
 
         return (
-          <div key={section.id}>
+          <div key={section.id} className="mb-1">
             {section.label && (
-              <p className={`px-3 mb-1 mt-2 text-[10px] font-bold uppercase tracking-widest ${labelColor}`}>
-                {section.label}
-              </p>
+              <button
+                onClick={() => toggleSection(section.id)}
+                className={`w-full flex items-center px-3 py-1.5 rounded-lg mb-0.5 group transition-all hover:bg-accent/40 ${isCollapsed && hasActive ? "bg-accent/20" : ""}`}
+              >
+                <span className={`flex-1 text-left text-[10px] font-bold uppercase tracking-widest ${labelColor}`}>
+                  {section.label}
+                </span>
+                {isCollapsed
+                  ? <ChevronRight className="w-3 h-3 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+                  : <ChevronDown className="w-3 h-3 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+                }
+              </button>
             )}
-            <div className="space-y-0.5">
-              {visibleItems.map((item) => {
-                const isActive =
-                  location === item.href ||
-                  (item.matchPrefix && location.startsWith(item.matchPrefix));
-                const locked = !!(item.requiresPlan && !planMeets(userPlan, item.requiresPlan));
-                const showLiveBadge = item.id === "notifications" && liveCount > 0;
 
-                return (
-                  <Link
-                    key={item.id}
-                    href={locked ? "/pricing" : item.href}
-                    onClick={onNavigate}
-                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all group ${
-                      isActive
-                        ? "bg-primary/12 text-primary nav-item-active border border-primary/15"
-                        : item.adminOnly
-                        ? "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        : locked
-                        ? "text-muted-foreground/40 hover:bg-accent/30 hover:text-muted-foreground/60"
-                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                    }`}
-                  >
-                    <NavIcon name={item.icon} />
-                    <span className="flex-1">{item.label}</span>
-                    {showLiveBadge && (
-                      <Badge className="ml-auto text-[10px] px-1.5 py-0 bg-red-500/15 text-red-400 border-red-500/20 animate-pulse">
-                        {liveCount}
-                      </Badge>
-                    )}
-                    {item.adminOnly && (
-                      <Badge className="ml-auto text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/20">
-                        Admin
-                      </Badge>
-                    )}
-                    {locked && (
-                      <div className="flex items-center gap-1 ml-auto">
-                        <Lock className="w-3 h-3 text-muted-foreground/30" />
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 text-muted-foreground/50 border-muted/30">
-                          {item.requiresPlan === "basic" ? "Basic+" : "Pro"}
+            {!isCollapsed && (
+              <div className="space-y-0.5">
+                {visibleItems.map((item) => {
+                  const isActive =
+                    location === item.href ||
+                    (item.matchPrefix && location.startsWith(item.matchPrefix));
+                  const locked = !!(item.requiresPlan && !planMeets(userPlan, item.requiresPlan));
+                  const showLiveBadge = item.id === "notifications" && liveCount > 0;
+
+                  return (
+                    <Link
+                      key={item.id}
+                      href={locked ? "/pricing" : item.href}
+                      onClick={onNavigate}
+                      className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all group ${
+                        isActive
+                          ? "bg-primary/12 text-primary nav-item-active border border-primary/15"
+                          : item.adminOnly
+                          ? "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          : locked
+                          ? "text-muted-foreground/40 hover:bg-accent/30 hover:text-muted-foreground/60"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      }`}
+                    >
+                      <NavIcon name={item.icon} />
+                      <span className="flex-1">{item.label}</span>
+                      {showLiveBadge && (
+                        <Badge className="ml-auto text-[10px] px-1.5 py-0 bg-red-500/15 text-red-400 border-red-500/20 animate-pulse">
+                          {liveCount}
                         </Badge>
-                      </div>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
+                      )}
+                      {item.adminOnly && (
+                        <Badge className="ml-auto text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/20">
+                          Admin
+                        </Badge>
+                      )}
+                      {locked && (
+                        <div className="flex items-center gap-1 ml-auto">
+                          <Lock className="w-3 h-3 text-muted-foreground/30" />
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 text-muted-foreground/50 border-muted/30">
+                            {item.requiresPlan === "basic" ? "Basic+" : "Pro"}
+                          </Badge>
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
       })}

@@ -55,6 +55,8 @@ const DEFAULT_UI_CONFIG: UIConfig = {
       label: "Streamer Tools",
       items: [
         { id: "stream-tools", label: "Stream Overlay",  href: "/stream-tools",         icon: "Tv2",       matchPrefix: "/stream-tools",         visible: true },
+        { id: "scoreboards",  label: "Scoreboards",     href: "/scoreboards",          icon: "Trophy",    matchPrefix: "/scoreboards",          visible: true },
+        { id: "minigames",    label: "Minigames",       href: "/minigames",            icon: "Gamepad2",  matchPrefix: "/minigames",            visible: true },
         { id: "lookup",       label: "Lookup",          href: "/streamer/lookup",      icon: "Search",    matchPrefix: "/streamer/lookup",      visible: true },
         { id: "bulk-check",   label: "Bulk Check",      href: "/streamer/bulk-check",  icon: "Users",     matchPrefix: "/streamer/bulk-check",  requiresPlan: "basic", visible: true },
         { id: "watchlist",    label: "Watchlist",       href: "/streamer/watchlist",   icon: "Star",      matchPrefix: "/streamer/watchlist",   visible: true },
