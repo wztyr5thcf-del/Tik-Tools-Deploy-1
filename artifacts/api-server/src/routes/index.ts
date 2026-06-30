@@ -11,6 +11,7 @@ import uiConfigRouter from "./ui-config";
 import supportRouter from "./support";
 import setupRouter from "./setup";
 import systemRouter from "./system";
+import announcementsRouter from "./announcements";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(uiConfigRouter);
 router.use(supportRouter);
 router.use(setupRouter);
 router.use(systemRouter);
+router.use(announcementsRouter);
 
 export default router;

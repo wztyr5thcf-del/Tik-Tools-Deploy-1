@@ -4,12 +4,13 @@ import {
   Tag, LogOut, ChevronDown, ChevronRight, UserCircle, Shield, Menu, X,
   Lock, Zap, Crown, Search, Users, Star, Key, BarChart2,
   Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2, Tv2, Trophy,
-  Monitor, Target, Layers, ChevronLeft,
+  Monitor, Target, Layers, ChevronLeft, Megaphone, Pin, Info, Sparkles,
+  AlertTriangle, CheckCircle2,
   LucideProps,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
-import { useState, useCallback, useEffect } from "react";
-import { useAuth } from "@/context/auth-context";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useAuth, authFetch } from "@/context/auth-context";
 import { useUIConfig } from "@/context/ui-config-context";
 import { useWatchlist } from "@/context/watchlist-context";
 import type { NavSectionConfig } from "@/context/ui-config-context";
@@ -104,6 +105,208 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
     ],
   },
 ];
+
+// ── Announcement types ────────────────────────────────────────────────────────
+interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  type: "info" | "warning" | "success" | "new" | "update";
+  pinned: boolean;
+  createdAt: number;
+  emoji?: string;
+}
+
+const ANN_TYPE_CONFIG = {
+  info:    { icon: Info,          color: "#60a5fa", bg: "rgba(96,165,250,0.1)",  label: "Info" },
+  warning: { icon: AlertTriangle, color: "#f97316", bg: "rgba(249,115,22,0.1)",  label: "Aviso" },
+  success: { icon: CheckCircle2,  color: "#22c55e", bg: "rgba(34,197,94,0.1)",   label: "OK" },
+  new:     { icon: Sparkles,      color: "#a78bfa", bg: "rgba(167,139,250,0.1)", label: "Novo" },
+  update:  { icon: Megaphone,     color: "#22d3ee", bg: "rgba(34,211,238,0.1)",  label: "Update" },
+};
+
+function annTimeAgo(ts: number): string {
+  const diff = (Date.now() - ts) / 1000;
+  if (diff < 60) return "agora";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  const d = new Date(ts);
+  return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+}
+
+// ── Announcement bell popup ───────────────────────────────────────────────────
+function AnnouncementBell() {
+  const [open, setOpen] = useState(false);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const LAST_SEEN_KEY = "ann_last_seen";
+
+  function loadLastSeen(): number {
+    try { return Number(localStorage.getItem(LAST_SEEN_KEY) ?? "0"); } catch { return 0; }
+  }
+
+  function markAllRead() {
+    const now = Date.now();
+    try { localStorage.setItem(LAST_SEEN_KEY, String(now)); } catch { /* ignore */ }
+    setUnreadCount(0);
+  }
+
+  async function fetchAnnouncements() {
+    try {
+      const res = await authFetch("/api/announcements");
+      if (!res.ok) return;
+      const data = (await res.json()) as { announcements: Announcement[] };
+      setAnnouncements(data.announcements);
+      const lastSeen = loadLastSeen();
+      const unread = data.announcements.filter((a) => a.createdAt > lastSeen).length;
+      setUnreadCount(unread);
+    } catch { /* ignore */ }
+  }
+
+  useEffect(() => {
+    fetchAnnouncements();
+    const interval = setInterval(fetchAnnouncements, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (
+        panelRef.current && !panelRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  function handleOpen() {
+    setOpen((v) => {
+      if (!v) markAllRead();
+      return !v;
+    });
+  }
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        ref={btnRef}
+        onClick={handleOpen}
+        className="relative p-2 rounded-lg transition-colors hover:bg-white/5"
+        style={{ color: open ? "#a78bfa" : "rgba(255,255,255,0.4)" }}
+        aria-label="Novidades"
+      >
+        <Bell className="w-[18px] h-[18px]" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-pulse"
+            style={{ background: "#ef4444", color: "white" }}>
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div
+          ref={panelRef}
+          className="absolute right-0 top-[calc(100%+8px)] z-50 flex flex-col"
+          style={{
+            width: 340,
+            maxHeight: 480,
+            background: "#120d22",
+            border: "1px solid rgba(124,58,237,0.3)",
+            borderRadius: 14,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,58,237,0.1)",
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 shrink-0"
+            style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center gap-2">
+              <Megaphone className="w-4 h-4" style={{ color: "#a78bfa" }} />
+              <span className="font-semibold text-sm text-white">Novidades</span>
+              {announcements.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+                  style={{ background: "rgba(124,58,237,0.2)", color: "#a78bfa" }}>
+                  {announcements.length}
+                </span>
+              )}
+            </div>
+            <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-white/5 transition-colors"
+              style={{ color: "rgba(255,255,255,0.3)" }}>
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* List */}
+          <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+            {announcements.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-10 text-center px-4">
+                <Bell className="w-8 h-8" style={{ color: "rgba(255,255,255,0.1)" }} />
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>Nenhuma novidade ainda.</p>
+              </div>
+            ) : (
+              <div className="p-2 space-y-1">
+                {announcements.map((ann) => {
+                  const cfg = ANN_TYPE_CONFIG[ann.type] ?? ANN_TYPE_CONFIG.info;
+                  const AnnIcon = cfg.icon;
+                  return (
+                    <div key={ann.id} className="flex gap-3 p-3 rounded-xl transition-colors hover:bg-white/3"
+                      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                      <div className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5"
+                        style={{ background: cfg.bg }}>
+                        {ann.emoji
+                          ? <span className="text-base leading-none">{ann.emoji}</span>
+                          : <AnnIcon className="w-4 h-4" style={{ color: cfg.color }} />
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold text-white leading-snug">
+                            {ann.pinned && <Pin className="w-3 h-3 inline mr-1 opacity-50" />}
+                            {ann.title}
+                          </p>
+                          <span className="text-[10px] shrink-0 mt-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>
+                            {annTimeAgo(ann.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+                          {ann.body}
+                        </p>
+                        <span className="mt-1.5 inline-flex text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
+                          style={{ background: cfg.bg, color: cfg.color }}>
+                          {cfg.label}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-4 py-2.5 shrink-0 flex items-center justify-between"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.2)" }}>
+              Atualizado automaticamente
+            </span>
+            <Link href="/notifications" onClick={() => setOpen(false)}
+              className="text-[11px] font-medium transition-colors hover:opacity-80"
+              style={{ color: "#a78bfa" }}>
+              Ver tudo →
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Live clock component
 function LiveClock() {
@@ -487,15 +690,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div className="flex-1" />
 
-          {/* Notifications */}
-          <Link href="/notifications" className="relative p-2 rounded-lg transition-colors hover:bg-white/5 shrink-0"
-            style={{ color: "rgba(255,255,255,0.4)" }}>
-            <Bell className="w-4.5 h-4.5 w-[18px] h-[18px]" />
-            {liveCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full"
-                style={{ background: "#ef4444", color: "white" }}>{liveCount > 9 ? "9+" : liveCount}</span>
-            )}
-          </Link>
+          {/* Announcements bell */}
+          <AnnouncementBell />
 
           {/* Profile */}
           {user && (
