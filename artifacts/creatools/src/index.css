@@ -76,81 +76,81 @@
   --elevate-2: rgba(255,255,255, .09);
 
   /* Force dark mode colors to root as we only support dark mode */
-  --background: 228 18% 5%;
+  --background: 225 20% 6%;
   --foreground: 210 20% 98%;
 
-  --border: 228 15% 15%;
-  --input: 228 15% 18%;
+  --border: 228 18% 16%;
+  --input: 228 18% 19%;
   --ring: 180 100% 50%;
 
-  --card: 230 17% 8%;
+  --card: 226 20% 9%;
   --card-foreground: 210 20% 98%;
-  --card-border: 228 15% 15%;
+  --card-border: 228 18% 16%;
 
-  --sidebar: 230 17% 7%;
+  --sidebar: 226 22% 8%;
   --sidebar-foreground: 210 20% 98%;
-  --sidebar-border: 228 15% 13%;
+  --sidebar-border: 228 18% 14%;
   --sidebar-primary: 180 100% 50%;
-  --sidebar-primary-foreground: 230 17% 8%;
-  --sidebar-accent: 228 15% 15%;
+  --sidebar-primary-foreground: 226 22% 8%;
+  --sidebar-accent: 228 18% 14%;
   --sidebar-accent-foreground: 210 20% 98%;
   --sidebar-ring: 180 100% 50%;
 
-  --popover: 230 17% 8%;
+  --popover: 226 20% 9%;
   --popover-foreground: 210 20% 98%;
-  --popover-border: 228 15% 15%;
+  --popover-border: 228 18% 16%;
 
   --primary: 180 100% 50%;
-  --primary-foreground: 230 17% 8%;
+  --primary-foreground: 226 22% 8%;
 
-  --secondary: 333 99% 52%;
+  --secondary: 270 80% 65%;
   --secondary-foreground: 210 20% 98%;
 
-  --muted: 228 15% 13%;
-  --muted-foreground: 215 15% 65%;
+  --muted: 228 18% 13%;
+  --muted-foreground: 215 18% 68%;
 
-  --accent: 228 15% 15%;
+  --accent: 228 18% 16%;
   --accent-foreground: 210 20% 98%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 20% 98%;
 
   --chart-1: 180 100% 50%;
-  --chart-2: 333 99% 52%;
-  --chart-3: 142 71% 45%;
-  --chart-4: 28 99% 54%;
-  --chart-5: 280 80% 60%;
+  --chart-2: 270 80% 65%;
+  --chart-3: 142 71% 48%;
+  --chart-4: 28 99% 56%;
+  --chart-5: 333 99% 60%;
 
-  --radius: 0.5rem;
+  --radius: 0.6rem;
 }
 
 .dark {
-  --background: 228 18% 5%;
+  --background: 225 20% 6%;
   --foreground: 210 20% 98%;
-  --border: 228 15% 15%;
-  --input: 228 15% 18%;
+  --border: 228 18% 16%;
+  --input: 228 18% 19%;
   --ring: 180 100% 50%;
-  --card: 230 17% 8%;
+  --card: 226 20% 9%;
   --card-foreground: 210 20% 98%;
-  --card-border: 228 15% 15%;
-  --sidebar: 230 17% 7%;
+  --card-border: 228 18% 16%;
+  --sidebar: 226 22% 8%;
   --sidebar-foreground: 210 20% 98%;
-  --sidebar-border: 228 15% 13%;
+  --sidebar-border: 228 18% 14%;
   --sidebar-primary: 180 100% 50%;
-  --sidebar-primary-foreground: 230 17% 8%;
-  --sidebar-accent: 228 15% 15%;
+  --sidebar-primary-foreground: 226 22% 8%;
+  --sidebar-accent: 228 18% 14%;
   --sidebar-accent-foreground: 210 20% 98%;
   --sidebar-ring: 180 100% 50%;
-  --popover: 230 17% 8%;
+  --popover: 226 20% 9%;
   --popover-foreground: 210 20% 98%;
-  --popover-border: 228 15% 15%;
+  --popover-border: 228 18% 16%;
   --primary: 180 100% 50%;
-  --primary-foreground: 230 17% 8%;
-  --secondary: 333 99% 52%;
+  --primary-foreground: 226 22% 8%;
+  --secondary: 270 80% 65%;
   --secondary-foreground: 210 20% 98%;
-  --muted: 228 15% 13%;
-  --muted-foreground: 215 15% 65%;
-  --accent: 228 15% 15%;
+  --muted: 228 18% 13%;
+  --muted-foreground: 215 18% 68%;
+  --accent: 228 18% 16%;
   --accent-foreground: 210 20% 98%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 210 20% 98%;
@@ -162,8 +162,35 @@
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 20% -10%, hsl(180 100% 50% / 0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 100%, hsl(270 80% 65% / 0.05) 0%, transparent 60%);
   }
 }
+
+/* Sidebar gradient top area */
+.sidebar-gradient-top {
+  background: linear-gradient(135deg, hsl(180 100% 50% / 0.12) 0%, hsl(270 80% 65% / 0.06) 100%);
+}
+
+/* Active nav item glow */
+.nav-item-active {
+  box-shadow: 0 0 12px hsl(180 100% 50% / 0.15), inset 0 0 8px hsl(180 100% 50% / 0.05);
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, hsl(180 100% 55%), hsl(270 80% 70%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Stat card gradient variants */
+.card-glow-cyan  { box-shadow: 0 0 20px hsl(180 100% 50% / 0.08); }
+.card-glow-violet { box-shadow: 0 0 20px hsl(270 80% 65% / 0.08); }
+.card-glow-pink  { box-shadow: 0 0 20px hsl(333 99% 60% / 0.08); }
+.card-glow-green { box-shadow: 0 0 20px hsl(142 71% 48% / 0.08); }
 
 /* Event Feed Animations */
 .animate-in-slide {

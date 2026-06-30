@@ -27,6 +27,8 @@ import Webhooks from "./pages/webhooks";
 import Notifications from "./pages/notifications";
 import LiveCounts from "./pages/live-counts";
 import DevTools from "./pages/dev-tools";
+import StreamTools from "./pages/stream-tools";
+import ObsOverlay from "./pages/obs-overlay";
 import AppLayout from "./components/layout/app-layout";
 import { AuthProvider, useAuth } from "./context/auth-context";
 import { UIConfigProvider } from "./context/ui-config-context";
@@ -69,6 +71,8 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={() => <GuestRoute component={Login} />} />
+      {/* Overlay — no AppLayout, no auth required (runs inside OBS) */}
+      <Route path="/overlay/:username" component={ObsOverlay} />
       <Route>
         <AppLayout>
           <Switch>
@@ -114,6 +118,9 @@ function Router() {
 
             {/* Developer Tools */}
             <Route path="/dev-tools" component={() => <ProtectedRoute component={DevTools} />} />
+
+            {/* Stream Tools — OBS/TikTok Studio overlays */}
+            <Route path="/stream-tools" component={() => <ProtectedRoute component={StreamTools} />} />
 
             <Route path="/pricing" component={Pricing} />
             <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />

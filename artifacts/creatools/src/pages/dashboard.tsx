@@ -54,66 +54,82 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Mission Control</h1>
-          <p className="text-muted-foreground mt-1">Real-time global TikTok LIVE overview</p>
+      {/* Hero header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500/15 via-violet-500/8 to-pink-500/10 border border-white/8 p-6">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,hsl(180_100%_50%/0.08),transparent_60%)] pointer-events-none" />
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-xs font-semibold text-red-400 uppercase tracking-wider">Live Now</span>
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight gradient-text">Mission Control</h1>
+            <p className="text-muted-foreground mt-1 text-sm">Visão global do TikTok LIVE em tempo real</p>
+          </div>
+          <form onSubmit={handleSearch} className="flex gap-2 max-w-md w-full md:w-auto">
+            <Input
+              placeholder="Monitorar um username..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-background/60 border-border font-mono text-sm backdrop-blur-sm"
+            />
+            <Button type="submit" disabled={!searchQuery.trim()} className="bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-white border-0 shadow-lg shadow-cyan-500/20">
+              <Search className="w-4 h-4 mr-2" />
+              Monitor
+            </Button>
+          </form>
         </div>
-        <form onSubmit={handleSearch} className="flex gap-2 max-w-md w-full md:w-auto">
-          <Input
-            placeholder="Monitor a username..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-card border-border font-mono text-sm"
-          />
-          <Button type="submit" disabled={!searchQuery.trim()}>
-            <Search className="w-4 h-4 mr-2" />
-            Monitor
-          </Button>
-        </form>
       </div>
 
       {/* Stats row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-card border-border">
+        <Card className="relative overflow-hidden border-cyan-500/20 bg-gradient-to-br from-cyan-500/8 to-transparent card-glow-cyan">
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-transparent" />
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Streams</CardTitle>
-            <Activity className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Streams Ativos</CardTitle>
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/15 flex items-center justify-center">
+              <Activity className="h-3.5 w-3.5 text-cyan-400" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold font-mono text-primary">
+            <div className="text-3xl font-bold font-mono text-cyan-300">
               {isLoading ? <Skeleton className="h-8 w-16" /> : filtered.length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {filterRegion === "all" ? "Live right now" : `Live in ${REGION_LABELS[filterRegion] ?? filterRegion}`}
+              {filterRegion === "all" ? "Ao vivo agora" : `Ao vivo em ${REGION_LABELS[filterRegion] ?? filterRegion}`}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border">
+        <Card className="relative overflow-hidden border-violet-500/20 bg-gradient-to-br from-violet-500/8 to-transparent card-glow-violet">
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 to-transparent" />
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Viewers</CardTitle>
-            <Users className="h-4 w-4 text-secondary" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total de Viewers</CardTitle>
+            <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center">
+              <Users className="h-3.5 w-3.5 text-violet-400" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold font-mono text-secondary">
+            <div className="text-3xl font-bold font-mono text-violet-300">
               {isLoading ? <Skeleton className="h-8 w-24" /> : totalViewers.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Across top channels</p>
+            <p className="text-xs text-muted-foreground mt-1">Nos canais em destaque</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border">
+        <Card className="relative overflow-hidden border-emerald-500/20 bg-gradient-to-br from-emerald-500/8 to-transparent card-glow-green">
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-500 to-transparent" />
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Regions</CardTitle>
-            <Globe className="h-4 w-4 text-chart-3" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Regiões</CardTitle>
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+              <Globe className="h-3.5 w-3.5 text-emerald-400" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold font-mono text-chart-3">
+            <div className="text-3xl font-bold font-mono text-emerald-300">
               {isLoading ? <Skeleton className="h-8 w-12" /> : regions.length}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Countries broadcasting</p>
+            <p className="text-xs text-muted-foreground mt-1">Países transmitindo</p>
           </CardContent>
         </Card>
       </div>

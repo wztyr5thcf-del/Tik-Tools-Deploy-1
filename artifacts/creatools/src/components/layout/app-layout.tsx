@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Activity, Settings, Diamond,
   Tag, LogOut, ChevronDown, UserCircle, Shield, Menu, X,
   Lock, Zap, Crown, Search, Users, Star, Key, BarChart2,
-  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2,
+  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2, Tv2,
   LucideProps,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
@@ -31,7 +31,7 @@ function planMeets(userPlan: PlanLevel, required: string): boolean {
 const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   LayoutDashboard, Activity, Settings, Diamond, Tag, Shield,
   Search, Users, Star, Key, BarChart2, Crown, Zap, Lock,
-  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2,
+  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2, Tv2,
 };
 function NavIcon({ name }: { name: string }) {
   const Icon = ICON_MAP[name] ?? LayoutDashboard;
@@ -60,12 +60,13 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
     id: "streamer",
     label: "Streamer Tools",
     items: [
-      { id: "lookup",      label: "Lookup",          href: "/streamer/lookup",      icon: "Search",    matchPrefix: "/streamer/lookup",      visible: true },
-      { id: "bulk-check",  label: "Bulk Check",      href: "/streamer/bulk-check",  icon: "Users",     matchPrefix: "/streamer/bulk-check",  requiresPlan: "basic", visible: true },
-      { id: "watchlist",   label: "Watchlist",       href: "/streamer/watchlist",   icon: "Star",      matchPrefix: "/streamer/watchlist",   visible: true },
-      { id: "jwt",         label: "JWT / WebSocket", href: "/streamer/jwt",         icon: "Key",       matchPrefix: "/streamer/jwt",         requiresPlan: "basic", visible: true },
-      { id: "rate-limits", label: "Rate Limits",     href: "/streamer/rate-limits", icon: "BarChart2", matchPrefix: "/streamer/rate-limits", visible: true },
-      { id: "dev-tools",   label: "Dev Tools",       href: "/dev-tools",            icon: "Code2",     matchPrefix: "/dev-tools",            requiresPlan: "pro",   visible: true },
+      { id: "stream-tools", label: "Stream Overlay",   href: "/stream-tools",         icon: "Tv2",       matchPrefix: "/stream-tools",         visible: true },
+      { id: "lookup",       label: "Lookup",           href: "/streamer/lookup",      icon: "Search",    matchPrefix: "/streamer/lookup",      visible: true },
+      { id: "bulk-check",   label: "Bulk Check",       href: "/streamer/bulk-check",  icon: "Users",     matchPrefix: "/streamer/bulk-check",  requiresPlan: "basic", visible: true },
+      { id: "watchlist",    label: "Watchlist",        href: "/streamer/watchlist",   icon: "Star",      matchPrefix: "/streamer/watchlist",   visible: true },
+      { id: "jwt",          label: "JWT / WebSocket",  href: "/streamer/jwt",         icon: "Key",       matchPrefix: "/streamer/jwt",         requiresPlan: "basic", visible: true },
+      { id: "rate-limits",  label: "Rate Limits",      href: "/streamer/rate-limits", icon: "BarChart2", matchPrefix: "/streamer/rate-limits", visible: true },
+      { id: "dev-tools",    label: "Dev Tools",        href: "/dev-tools",            icon: "Code2",     matchPrefix: "/dev-tools",            requiresPlan: "pro",   visible: true },
     ],
   },
   {
@@ -128,10 +129,20 @@ function NavLinks({
         });
         if (!visibleItems.length) return null;
 
+        const SECTION_COLORS: Record<string, string> = {
+          streamer: "text-cyan-400/70",
+          "live-tools": "text-violet-400/70",
+          leaderboards: "text-amber-400/70",
+          analytics: "text-amber-400/70",
+          account: "text-muted-foreground/50",
+          admin: "text-red-400/60",
+        };
+        const labelColor = section.id ? (SECTION_COLORS[section.id] ?? "text-muted-foreground/50") : "";
+
         return (
           <div key={section.id}>
             {section.label && (
-              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+              <p className={`px-3 mb-1 mt-2 text-[10px] font-bold uppercase tracking-widest ${labelColor}`}>
                 {section.label}
               </p>
             )}
@@ -148,20 +159,20 @@ function NavLinks({
                     key={item.id}
                     href={locked ? "/pricing" : item.href}
                     onClick={onNavigate}
-                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors group ${
+                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all group ${
                       isActive
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-primary/12 text-primary nav-item-active border border-primary/15"
                         : item.adminOnly
                         ? "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                         : locked
-                        ? "text-muted-foreground/50 hover:bg-accent/50 hover:text-muted-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        ? "text-muted-foreground/40 hover:bg-accent/30 hover:text-muted-foreground/60"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
                     }`}
                   >
                     <NavIcon name={item.icon} />
                     <span className="flex-1">{item.label}</span>
                     {showLiveBadge && (
-                      <Badge className="ml-auto text-[10px] px-1.5 py-0 bg-red-500/10 text-red-400 border-red-500/20 animate-pulse">
+                      <Badge className="ml-auto text-[10px] px-1.5 py-0 bg-red-500/15 text-red-400 border-red-500/20 animate-pulse">
                         {liveCount}
                       </Badge>
                     )}
@@ -172,8 +183,8 @@ function NavLinks({
                     )}
                     {locked && (
                       <div className="flex items-center gap-1 ml-auto">
-                        <Lock className="w-3 h-3 text-muted-foreground/50" />
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 text-muted-foreground/60 border-muted/50">
+                        <Lock className="w-3 h-3 text-muted-foreground/30" />
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 text-muted-foreground/50 border-muted/30">
                           {item.requiresPlan === "basic" ? "Basic+" : "Pro"}
                         </Badge>
                       </div>
@@ -330,30 +341,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground">
       {/* Desktop Sidebar */}
-      <aside className="w-60 border-r border-border bg-card flex-col hidden md:flex shrink-0">
-        <div className="h-16 flex items-center px-5 border-b border-border shrink-0">
-          {logoUrl ? (
-            <img src={logoUrl} alt={logoText} className="h-8 object-contain mr-3" />
-          ) : (
-            <SiTiktok className="w-6 h-6 text-primary mr-3" />
-          )}
-          <span className="font-bold text-lg tracking-tight">{logoText}</span>
+      <aside className="w-60 border-r border-border bg-sidebar flex-col hidden md:flex shrink-0">
+        <div className="h-16 flex items-center px-5 border-b border-sidebar-border shrink-0 sidebar-gradient-top">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-violet-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+              {logoUrl ? (
+                <img src={logoUrl} alt={logoText} className="h-6 object-contain" />
+              ) : (
+                <SiTiktok className="w-4 h-4 text-white" />
+              )}
+            </div>
+            <span className="font-bold text-lg tracking-tight gradient-text">{logoText}</span>
+          </div>
         </div>
 
-        <nav className="flex-1 py-5 px-3 overflow-y-auto">
+        <nav className="flex-1 py-4 px-3 overflow-y-auto">
           <NavLinks {...navProps} onNavigate={undefined} />
         </nav>
 
         {user && userPlan === "free" && (
           <div className="px-3 pb-3">
             <Link href="/pricing">
-              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-md bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors cursor-pointer">
-                <Zap className="w-4 h-4 text-primary shrink-0" />
+              <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500/10 to-violet-500/10 border border-cyan-500/20 hover:from-cyan-500/15 hover:to-violet-500/15 transition-all cursor-pointer">
+                <Zap className="w-4 h-4 text-cyan-400 shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-primary">Upgrade plan</p>
+                  <p className="text-xs font-semibold text-cyan-300">Upgrade plan</p>
                   <p className="text-[10px] text-muted-foreground leading-tight">Desbloqueie mais ferramentas</p>
                 </div>
-                <Crown className="w-3.5 h-3.5 text-primary/50 ml-auto shrink-0" />
+                <Crown className="w-3.5 h-3.5 text-violet-400/70 ml-auto shrink-0" />
               </div>
             </Link>
           </div>
