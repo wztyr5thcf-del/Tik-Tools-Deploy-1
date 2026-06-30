@@ -1,5 +1,5 @@
 {
-  "navType": "topbar",
+  "navType": "sidebar",
   "primaryColor": "180 100% 50%",
   "secondaryColor": "333 99% 52%",
   "logoText": "Creatools",
@@ -44,6 +44,14 @@
       "id": "streamer",
       "label": "Streamer Tools",
       "items": [
+        {
+          "id": "stream-tools",
+          "label": "Stream Overlay",
+          "href": "/stream-tools",
+          "icon": "Tv2",
+          "matchPrefix": "/stream-tools",
+          "visible": true
+        },
         {
           "id": "lookup",
           "label": "Lookup",
@@ -210,5 +218,5 @@
       ]
     }
   ],
-  "updatedAt": "2026-06-30T00:57:31.137Z"
+  "updatedAt": "2026-06-30T00:57:27.255Z"
 }
