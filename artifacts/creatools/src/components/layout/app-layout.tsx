@@ -45,12 +45,13 @@ const PLAN_CONFIG: Record<PlanLevel, { label: string; color: string; bg: string 
 };
 
 // Default sections used as fallback when UI config not loaded yet
+// MUST stay in sync with DEFAULT_UI_CONFIG in artifacts/api-server/src/lib/ui-config-store.ts
 const DEFAULT_SECTIONS: NavSectionConfig[] = [
   {
     id: "main",
     items: [
       { id: "dashboard",     label: "Dashboard",    href: "/",                icon: "LayoutDashboard", visible: true },
-      { id: "monitor",       label: "Monitor",      href: "/monitor/example", icon: "Activity",        matchPrefix: "/monitor", visible: true },
+      { id: "monitor",       label: "Monitor",      href: "/monitor/example", icon: "Activity",        matchPrefix: "/monitor",       visible: true },
       { id: "notifications", label: "Notificações", href: "/notifications",   icon: "Bell",            matchPrefix: "/notifications", visible: true },
       { id: "gift-gallery",  label: "Gift Gallery", href: "/gift-gallery",    icon: "Diamond",         visible: true },
     ],
@@ -62,29 +63,29 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
       { id: "lookup",      label: "Lookup",          href: "/streamer/lookup",      icon: "Search",    matchPrefix: "/streamer/lookup",      visible: true },
       { id: "bulk-check",  label: "Bulk Check",      href: "/streamer/bulk-check",  icon: "Users",     matchPrefix: "/streamer/bulk-check",  requiresPlan: "basic", visible: true },
       { id: "watchlist",   label: "Watchlist",       href: "/streamer/watchlist",   icon: "Star",      matchPrefix: "/streamer/watchlist",   visible: true },
-      { id: "jwt",         label: "JWT / WebSocket", href: "/streamer/jwt",         icon: "Key",       matchPrefix: "/streamer/jwt",         visible: true },
+      { id: "jwt",         label: "JWT / WebSocket", href: "/streamer/jwt",         icon: "Key",       matchPrefix: "/streamer/jwt",         requiresPlan: "basic", visible: true },
       { id: "rate-limits", label: "Rate Limits",     href: "/streamer/rate-limits", icon: "BarChart2", matchPrefix: "/streamer/rate-limits", visible: true },
-      { id: "dev-tools",   label: "Dev Tools",       href: "/dev-tools",            icon: "Code2",     matchPrefix: "/dev-tools",           visible: true },
+      { id: "dev-tools",   label: "Dev Tools",       href: "/dev-tools",            icon: "Code2",     matchPrefix: "/dev-tools",            requiresPlan: "pro",   visible: true },
     ],
   },
   {
     id: "live-tools",
     label: "Live Tools",
     items: [
-      { id: "live-captions",  label: "Live Captions",  href: "/live-captions",  icon: "Subtitles", matchPrefix: "/live-captions",  visible: true },
-      { id: "live-analytics", label: "Live Analytics", href: "/live-analytics", icon: "BarChart2", matchPrefix: "/live-analytics", visible: true },
-      { id: "live-counts",    label: "Live Counts",    href: "/live-counts",    icon: "Radio",     matchPrefix: "/live-counts",    visible: true },
-      { id: "webhooks",       label: "Webhooks",       href: "/webhooks",       icon: "Webhook",   matchPrefix: "/webhooks",       visible: true },
+      { id: "live-counts",    label: "Live Counts",    href: "/live-counts",    icon: "Radio",     matchPrefix: "/live-counts",    requiresPlan: "basic", visible: true },
+      { id: "live-captions",  label: "Live Captions",  href: "/live-captions",  icon: "Subtitles", matchPrefix: "/live-captions",  requiresPlan: "pro",   visible: true },
+      { id: "live-analytics", label: "Live Analytics", href: "/live-analytics", icon: "BarChart2", matchPrefix: "/live-analytics", requiresPlan: "pro",   visible: true },
+      { id: "webhooks",       label: "Webhooks",       href: "/webhooks",       icon: "Webhook",   matchPrefix: "/webhooks",       requiresPlan: "pro",   visible: true },
     ],
   },
   {
-    id: "analytics",
+    id: "leaderboards",
     label: "Leaderboards",
     items: [
-      { id: "leaderboards",         label: "Leagues",         href: "/leaderboards",          icon: "Crown",    matchPrefix: "/leaderboards",          visible: true },
-      { id: "leaderboards-country", label: "Country",         href: "/leaderboards/country",  icon: "Globe",    matchPrefix: "/leaderboards/country",  visible: true },
-      { id: "leaderboards-gaming",  label: "Gaming",          href: "/leaderboards/gaming",   icon: "Gamepad2", matchPrefix: "/leaderboards/gaming",  visible: true },
-      { id: "gifters",              label: "Gifters",         href: "/gifters",               icon: "Diamond",  matchPrefix: "/gifters",              visible: true },
+      { id: "leaderboards",         label: "Leagues", href: "/leaderboards",         icon: "Crown",    matchPrefix: "/leaderboards",         visible: true },
+      { id: "leaderboards-country", label: "Country", href: "/leaderboards/country", icon: "Globe",    matchPrefix: "/leaderboards/country", visible: true },
+      { id: "leaderboards-gaming",  label: "Gaming",  href: "/leaderboards/gaming",  icon: "Gamepad2", matchPrefix: "/leaderboards/gaming",  visible: true },
+      { id: "gifters",              label: "Gifters", href: "/gifters",               icon: "Diamond",  matchPrefix: "/gifters",              visible: true },
     ],
   },
   {
