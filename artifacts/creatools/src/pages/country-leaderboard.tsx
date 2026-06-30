@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useGetCountryLeaderboard } from "@workspace/api-client-react";
+import { useGetCountryLeaderboard, getGetCountryLeaderboardQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,8 +62,8 @@ export default function CountryLeaderboard() {
   const [, nav] = useLocation();
 
   const { data, isLoading, refetch } = useGetCountryLeaderboard(
-    { slug },
-    { query: { staleTime: 1000 * 60 * 3 } }
+    slug,
+    { query: { queryKey: getGetCountryLeaderboardQueryKey(slug), staleTime: 1000 * 60 * 3 } }
   );
 
   const raw = data as LeaderboardData | undefined;

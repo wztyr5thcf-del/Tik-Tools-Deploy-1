@@ -540,7 +540,7 @@ function PlansTab({ plans, permissions, onRefresh }: { plans: Plan[]; permission
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">Edite permissões, preços e limites de cada plano item por item.</p>
       <div className="grid gap-4">
-        {[...plans].sort((a, b) => a.order - b.order).map((plan) => (
+        {[...plans].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((plan) => (
           <Card key={plan.id} className={plan.isActive ? "" : "opacity-60"}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">

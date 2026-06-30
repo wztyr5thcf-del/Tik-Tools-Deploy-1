@@ -359,8 +359,8 @@ export default function Monitor() {
   const [tapHearts, setTapHearts] = useState<TapHeart[]>([]);
   const [giftFlash, setGiftFlash] = useState<{ key: string; emoji: string; name: string; diamonds: number } | null>(null);
   const [comboAnimKey, setComboAnimKey] = useState(0);
-  const comboTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const giftFlashTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const comboTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const giftFlashTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const likeFloodRef = useRef<{ count: number; timer?: ReturnType<typeof setTimeout> }>({ count: 0 });
 
   // Filter state

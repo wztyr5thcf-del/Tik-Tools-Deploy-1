@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useGetGiftersLeaderboard } from "@workspace/api-client-react";
+import { useGetGiftersLeaderboard, getGetGiftersLeaderboardQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,7 @@ export default function Gifters() {
 
   const { data, isLoading, refetch } = useGetGiftersLeaderboard(
     { region, period, limit: 100 },
-    { query: { staleTime: 1000 * 60 * 5 } }
+    { query: { queryKey: getGetGiftersLeaderboardQueryKey({ region, period, limit: 100 }), staleTime: 1000 * 60 * 5 } }
   );
 
   const raw = data as { gifters?: GifterEntry[]; region?: string; period?: string } | undefined;

@@ -17,6 +17,13 @@ import Login from "./pages/login";
 import Profile from "./pages/profile";
 import Admin from "./pages/admin";
 import Leaderboards from "./pages/leaderboards";
+import CountryLeaderboard from "./pages/country-leaderboard";
+import GamingLeaderboard from "./pages/gaming-leaderboard";
+import Gifters from "./pages/gifters";
+import GifterProfile from "./pages/gifter-profile";
+import LiveCaptions from "./pages/live-captions";
+import LiveAnalytics from "./pages/live-analytics";
+import Webhooks from "./pages/webhooks";
 import AppLayout from "./components/layout/app-layout";
 import { AuthProvider, useAuth } from "./context/auth-context";
 import { UIConfigProvider } from "./context/ui-config-context";
@@ -75,12 +82,29 @@ function Router() {
             <Route path="/bulk-check" component={() => <Redirect to="/streamer/bulk-check" />} />
             <Route path="/streamers" component={() => <Redirect to="/streamer/lookup" />} />
 
+            {/* Leaderboards */}
+            <Route path="/leaderboards" component={() => <ProtectedRoute component={Leaderboards} />} />
+            <Route path="/leaderboards/country" component={() => <ProtectedRoute component={CountryLeaderboard} />} />
+            <Route path="/leaderboards/gaming" component={() => <ProtectedRoute component={GamingLeaderboard} />} />
+
+            {/* Gifters */}
+            <Route path="/gifters" component={() => <ProtectedRoute component={Gifters} />} />
+            <Route path="/gifters/:username" component={() => <ProtectedRoute component={GifterProfile} />} />
+
+            {/* Live tools */}
+            <Route path="/live-captions" component={() => <ProtectedRoute component={LiveCaptions} />} />
+            <Route path="/live-captions/:username" component={() => <ProtectedRoute component={LiveCaptions} />} />
+            <Route path="/live-analytics" component={() => <ProtectedRoute component={LiveAnalytics} />} />
+
+            {/* Webhooks */}
+            <Route path="/webhooks" component={() => <ProtectedRoute component={Webhooks} />} />
+
+            {/* Gift catalog */}
             <Route path="/gift-gallery" component={() => <ProtectedRoute component={GiftGallery} />} />
+
             <Route path="/pricing" component={Pricing} />
             <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
             <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
-
-            <Route path="/leaderboards" component={() => <ProtectedRoute component={Leaderboards} />} />
 
             {/* Admin — hard-gated: non-admins are redirected to / */}
             <Route path="/admin" component={() => <AdminRoute component={Admin} />} />

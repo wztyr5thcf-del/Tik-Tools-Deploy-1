@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useGetLiveAnalyticsVideoList, useGetLiveAnalyticsVideoDetail } from "@workspace/api-client-react";
+import { useGetLiveAnalyticsVideoList, useGetLiveAnalyticsVideoDetail, getGetLiveAnalyticsVideoListQueryKey, getGetLiveAnalyticsVideoDetailQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,12 +81,12 @@ export default function LiveAnalytics() {
 
   const { data: videoListData, isLoading: loadingList, refetch: refetchList, error: listError } = useGetLiveAnalyticsVideoList(
     { unique_id: username, count: 20 },
-    { query: { enabled: !!username, staleTime: 1000 * 60 * 5 } }
+    { query: { queryKey: getGetLiveAnalyticsVideoListQueryKey({ unique_id: username, count: 20 }), enabled: !!username, staleTime: 1000 * 60 * 5 } }
   );
 
   const { data: videoDetailData, isLoading: loadingDetail } = useGetLiveAnalyticsVideoDetail(
     { video_id: selectedVideoId ?? "" },
-    { query: { enabled: !!selectedVideoId, staleTime: 1000 * 60 * 5 } }
+    { query: { queryKey: getGetLiveAnalyticsVideoDetailQueryKey({ video_id: selectedVideoId ?? "" }), enabled: !!selectedVideoId, staleTime: 1000 * 60 * 5 } }
   );
 
   const raw = videoListData as { videos?: VideoEntry[]; status_code?: number; error?: string } | undefined;

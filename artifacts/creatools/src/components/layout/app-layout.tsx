@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Activity, Settings, Diamond,
   Tag, LogOut, ChevronDown, UserCircle, Shield, Menu, X,
   Lock, Zap, Crown, Search, Users, Star, Key, BarChart2,
+  Globe, Gamepad2, Subtitles, Webhook, Radio,
   LucideProps,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
@@ -29,6 +30,7 @@ function planMeets(userPlan: PlanLevel, required: string): boolean {
 const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   LayoutDashboard, Activity, Settings, Diamond, Tag, Shield,
   Search, Users, Star, Key, BarChart2, Crown, Zap, Lock,
+  Globe, Gamepad2, Subtitles, Webhook, Radio,
 };
 function NavIcon({ name }: { name: string }) {
   const Icon = ICON_MAP[name] ?? LayoutDashboard;
@@ -63,10 +65,22 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
     ],
   },
   {
-    id: "analytics",
-    label: "Analytics",
+    id: "live-tools",
+    label: "Live Tools",
     items: [
-      { id: "leaderboards", label: "Leaderboards", href: "/leaderboards", icon: "Crown", matchPrefix: "/leaderboards", visible: true },
+      { id: "live-captions",  label: "Live Captions",  href: "/live-captions",  icon: "Subtitles", matchPrefix: "/live-captions",  visible: true },
+      { id: "live-analytics", label: "Live Analytics", href: "/live-analytics", icon: "BarChart2", matchPrefix: "/live-analytics", visible: true },
+      { id: "webhooks",       label: "Webhooks",       href: "/webhooks",       icon: "Webhook",   matchPrefix: "/webhooks",       visible: true },
+    ],
+  },
+  {
+    id: "analytics",
+    label: "Leaderboards",
+    items: [
+      { id: "leaderboards",         label: "Leagues",         href: "/leaderboards",          icon: "Crown",    matchPrefix: "/leaderboards",          visible: true },
+      { id: "leaderboards-country", label: "Country",         href: "/leaderboards/country",  icon: "Globe",    matchPrefix: "/leaderboards/country",  visible: true },
+      { id: "leaderboards-gaming",  label: "Gaming",          href: "/leaderboards/gaming",   icon: "Gamepad2", matchPrefix: "/leaderboards/gaming",  visible: true },
+      { id: "gifters",              label: "Gifters",         href: "/gifters",               icon: "Diamond",  matchPrefix: "/gifters",              visible: true },
     ],
   },
   {

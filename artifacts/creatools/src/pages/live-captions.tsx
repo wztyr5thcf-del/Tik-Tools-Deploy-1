@@ -37,9 +37,9 @@ export default function LiveCaptions() {
   const [wsState, setWsState] = useState<WsState>("idle");
   const wsRef = useRef<WebSocket | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const reconnectRef = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const { data: config } = useGetConfig();
+  const { data: config } = useGetConfig(undefined);
   const apiKey = (config as { apiKeyMasked?: string; apiKeySet?: boolean } | undefined)?.apiKeySet ? "configured" : null;
 
   const connect = useCallback((uid: string) => {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useGetGamingRanklist, useGetGamingMovers } from "@workspace/api-client-react";
+import { useGetGamingRanklist, useGetGamingMovers, getGetGamingRanklistQueryKey, getGetGamingMoversQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -113,11 +113,11 @@ export default function GamingLeaderboard() {
 
   const { data: ranklistData, isLoading: loadingRank, refetch: refetchRank } = useGetGamingRanklist(
     { region },
-    { query: { staleTime: 1000 * 60 * 2 } }
+    { query: { queryKey: getGetGamingRanklistQueryKey({ region }), staleTime: 1000 * 60 * 2 } }
   );
   const { data: moversData, isLoading: loadingMovers, refetch: refetchMovers } = useGetGamingMovers(
     { region },
-    { query: { staleTime: 1000 * 60 * 2 } }
+    { query: { queryKey: getGetGamingMoversQueryKey({ region }), staleTime: 1000 * 60 * 2 } }
   );
 
   const rawRanklist = ranklistData as { entries?: RanklistEntry[]; region?: string } | undefined;

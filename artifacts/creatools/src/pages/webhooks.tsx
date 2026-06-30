@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListWebhooks, useCreateWebhook, useDeleteWebhook, useTestWebhook } from "@workspace/api-client-react";
+import { useListWebhooks, useCreateWebhook, useDeleteWebhook, useTestWebhook, getListWebhooksQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -271,7 +271,7 @@ function WebhookCard({ wh, onDeleted, onTested }: { wh: WebhookEntry; onDeleted:
 
 export default function Webhooks() {
   const { data, isLoading, refetch } = useListWebhooks({
-    query: { staleTime: 1000 * 30 },
+    query: { queryKey: getListWebhooksQueryKey(), staleTime: 1000 * 30 },
   });
 
   const raw = data as { webhooks?: WebhookEntry[] } | WebhookEntry[] | undefined;
