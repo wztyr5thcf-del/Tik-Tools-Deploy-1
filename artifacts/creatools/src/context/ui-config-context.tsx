@@ -9,6 +9,10 @@ export interface NavItemConfig {
   adminOnly?: boolean;
   requiresPlan?: string;
   visible: boolean;
+  badge?: string;
+  badgeColor?: string;
+  external?: boolean;
+  children?: Omit<NavItemConfig, "children">[];
 }
 
 export interface NavSectionConfig {
