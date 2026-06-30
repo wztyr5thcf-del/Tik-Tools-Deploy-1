@@ -3,13 +3,14 @@ import {
   LayoutDashboard, Activity, Settings, Diamond,
   Tag, LogOut, ChevronDown, UserCircle, Shield, Menu, X,
   Lock, Zap, Crown, Search, Users, Star, Key, BarChart2,
-  Globe, Gamepad2, Subtitles, Webhook, Radio,
+  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell,
   LucideProps,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import { useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useUIConfig } from "@/context/ui-config-context";
+import { useWatchlist } from "@/context/watchlist-context";
 import type { NavSectionConfig, NavItemConfig } from "@/context/ui-config-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +31,7 @@ function planMeets(userPlan: PlanLevel, required: string): boolean {
 const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   LayoutDashboard, Activity, Settings, Diamond, Tag, Shield,
   Search, Users, Star, Key, BarChart2, Crown, Zap, Lock,
-  Globe, Gamepad2, Subtitles, Webhook, Radio,
+  Globe, Gamepad2, Subtitles, Webhook, Radio, Bell,
 };
 function NavIcon({ name }: { name: string }) {
   const Icon = ICON_MAP[name] ?? LayoutDashboard;
@@ -48,9 +49,10 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
   {
     id: "main",
     items: [
-      { id: "dashboard",    label: "Dashboard",    href: "/",                icon: "LayoutDashboard", visible: true },
-      { id: "monitor",      label: "Monitor",      href: "/monitor/example", icon: "Activity",        matchPrefix: "/monitor", visible: true },
-      { id: "gift-gallery", label: "Gift Gallery", href: "/gift-gallery",    icon: "Diamond",         visible: true },
+      { id: "dashboard",     label: "Dashboard",    href: "/",                icon: "LayoutDashboard", visible: true },
+      { id: "monitor",       label: "Monitor",      href: "/monitor/example", icon: "Activity",        matchPrefix: "/monitor", visible: true },
+      { id: "notifications", label: "Notificações", href: "/notifications",   icon: "Bell",            matchPrefix: "/notifications", visible: true },
+      { id: "gift-gallery",  label: "Gift Gallery", href: "/gift-gallery",    icon: "Diamond",         visible: true },
     ],
   },
   {
@@ -111,6 +113,8 @@ function NavLinks({
   isAdmin: boolean;
   location: string;
 }) {
+  const { liveCount } = useWatchlist();
+
   return (
     <div className="space-y-4">
       {sections.map((section) => {
@@ -134,6 +138,7 @@ function NavLinks({
                   location === item.href ||
                   (item.matchPrefix && location.startsWith(item.matchPrefix));
                 const locked = !!(item.requiresPlan && !planMeets(userPlan, item.requiresPlan));
+                const showLiveBadge = item.id === "notifications" && liveCount > 0;
 
                 return (
                   <Link
@@ -152,6 +157,11 @@ function NavLinks({
                   >
                     <NavIcon name={item.icon} />
                     <span className="flex-1">{item.label}</span>
+                    {showLiveBadge && (
+                      <Badge className="ml-auto text-[10px] px-1.5 py-0 bg-red-500/10 text-red-400 border-red-500/20 animate-pulse">
+                        {liveCount}
+                      </Badge>
+                    )}
                     {item.adminOnly && (
                       <Badge className="ml-auto text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/20">
                         Admin

@@ -24,9 +24,11 @@ import GifterProfile from "./pages/gifter-profile";
 import LiveCaptions from "./pages/live-captions";
 import LiveAnalytics from "./pages/live-analytics";
 import Webhooks from "./pages/webhooks";
+import Notifications from "./pages/notifications";
 import AppLayout from "./components/layout/app-layout";
 import { AuthProvider, useAuth } from "./context/auth-context";
 import { UIConfigProvider } from "./context/ui-config-context";
+import { WatchlistProvider } from "./context/watchlist-context";
 import { useEffect } from "react";
 
 const queryClient = new QueryClient();
@@ -99,6 +101,9 @@ function Router() {
             {/* Webhooks */}
             <Route path="/webhooks" component={() => <ProtectedRoute component={Webhooks} />} />
 
+            {/* Notifications / Watchlist */}
+            <Route path="/notifications" component={() => <ProtectedRoute component={Notifications} />} />
+
             {/* Gift catalog */}
             <Route path="/gift-gallery" component={() => <ProtectedRoute component={GiftGallery} />} />
 
@@ -127,10 +132,12 @@ function App() {
       <TooltipProvider>
         <UIConfigProvider>
           <AuthProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <Router />
-            </WouterRouter>
-            <Toaster />
+            <WatchlistProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <Router />
+              </WouterRouter>
+              <Toaster />
+            </WatchlistProvider>
           </AuthProvider>
         </UIConfigProvider>
       </TooltipProvider>
