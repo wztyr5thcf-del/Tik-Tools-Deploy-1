@@ -1,0 +1,203 @@
+/**
+ * Setup wizard endpoints — public routes used during first-time installation.
+ * Once the system has at least one user, the POST /setup/complete route is locked.
+ */
+import { Router, type IRouter } from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import fs from "fs";
+import path from "path";
+import { loadUsers, saveUsers, makeId } from "../lib/users-store";
+
+const router: IRouter = Router();
+
+const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
+  ? path.resolve(process.cwd(), "../..")
+  : process.cwd();
+
+const dataDir = path.resolve(workspaceRoot, "artifacts/api-server/data");
+const configFile = path.resolve(dataDir, "config.json");
+const stripeConfigFile = path.resolve(dataDir, "stripe-config.json");
+
+function loadConfig(): { apiKey?: string } {
+  try {
+    if (fs.existsSync(configFile)) return JSON.parse(fs.readFileSync(configFile, "utf-8")) as { apiKey?: string };
+  } catch { /* ignore */ }
+  return {};
+}
+
+function saveConfigFile(cfg: { apiKey?: string }): void {
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(configFile, JSON.stringify(cfg, null, 2));
+}
+
+function maskKey(key: string): string {
+  if (key.length <= 8) return "***";
+  return key.slice(0, 6) + "..." + key.slice(-4);
+}
+
+// GET /api/setup/status — tells the frontend if the wizard is needed
+router.get("/setup/status", (_req, res): void => {
+  const store = loadUsers();
+  const hasUsers = store.users.length > 0;
+  const apiKey = process.env.TIKTOOLS_API_KEY || loadConfig().apiKey;
+  const hasApiKey = !!apiKey;
+
+  res.json({
+    needsSetup: !hasUsers || !hasApiKey,
+    hasUsers,
+    hasApiKey,
+    apiKeyMasked: apiKey ? maskKey(apiKey) : null,
+  });
+});
+
+const DEFAULT_JWT_SECRET = "creatools-secret-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET ?? DEFAULT_JWT_SECRET;
+
+// POST /api/setup/complete — run wizard completion
+// Only allowed if no users exist yet (first-run gate)
+router.post("/setup/complete", async (req, res): Promise<void> => {
+  const store = loadUsers();
+
+  const {
+    adminName,
+    adminEmail,
+    adminPassword,
+    tiktoolsApiKey,
+    stripePublishableKey,
+    stripeSecretKey,
+    stripeWebhookSecret,
+    stripeBasicPriceId,
+    stripeProPriceId,
+    enablePayments,
+  } = req.body as {
+    adminName?: string;
+    adminEmail?: string;
+    adminPassword?: string;
+    tiktoolsApiKey?: string;
+    stripePublishableKey?: string;
+    stripeSecretKey?: string;
+    stripeWebhookSecret?: string;
+    stripeBasicPriceId?: string;
+    stripeProPriceId?: string;
+    enablePayments?: boolean;
+  };
+
+  // If users already exist, only allow updating config (not creating new admin)
+  const isFirstRun = store.users.length === 0;
+
+  if (isFirstRun) {
+    // Validate required fields for first run
+    if (!adminName?.trim() || !adminEmail?.trim() || !adminPassword?.trim()) {
+      res.status(400).json({ error: "Nome, e-mail e senha do admin são obrigatórios" });
+      return;
+    }
+    if (adminPassword.length < 6) {
+      res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres" });
+      return;
+    }
+  }
+
+  if (!tiktoolsApiKey?.trim()) {
+    res.status(400).json({ error: "A chave da API tik.tools é obrigatória" });
+    return;
+  }
+
+  try {
+    // 1. Save tik.tools API key
+    const cfg = loadConfig();
+    cfg.apiKey = tiktoolsApiKey.trim();
+    saveConfigFile(cfg);
+    process.env.TIKTOOLS_API_KEY = tiktoolsApiKey.trim();
+
+    // 2. Test API key connectivity
+    let apiTestOk = false;
+    let apiTestMessage = "";
+    try {
+      const r = await fetch("https://api.tik.tools/api/live/top-channels", {
+        headers: { "x-api-key": tiktoolsApiKey.trim() },
+        signal: AbortSignal.timeout(8000),
+      });
+      apiTestOk = r.ok;
+      apiTestMessage = r.ok ? "Conexão com tik.tools OK!" : `API retornou status ${r.status}`;
+    } catch (err) {
+      apiTestMessage = err instanceof Error ? err.message : "Erro de conexão";
+    }
+
+    // 3. Save Stripe config if provided
+    if (stripePublishableKey || stripeBasicPriceId || stripeProPriceId || enablePayments !== undefined) {
+      let stripeConfig: Record<string, unknown> = {};
+      try {
+        if (fs.existsSync(stripeConfigFile)) {
+          stripeConfig = JSON.parse(fs.readFileSync(stripeConfigFile, "utf-8")) as Record<string, unknown>;
+        }
+      } catch { /* ignore */ }
+
+      if (stripePublishableKey) stripeConfig.publishableKey = stripePublishableKey;
+      if (stripeSecretKey) process.env.STRIPE_SECRET_KEY = stripeSecretKey;
+      if (stripeWebhookSecret) process.env.STRIPE_WEBHOOK_SECRET = stripeWebhookSecret;
+      if (stripeBasicPriceId) stripeConfig.priceIdBasic = stripeBasicPriceId;
+      if (stripeProPriceId) stripeConfig.priceIdPro = stripeProPriceId;
+      if (enablePayments !== undefined) stripeConfig.paymentsEnabled = enablePayments;
+
+      fs.mkdirSync(dataDir, { recursive: true });
+      fs.writeFileSync(stripeConfigFile, JSON.stringify(stripeConfig, null, 2));
+    }
+
+    // 4. Create first admin user
+    let token: string | null = null;
+    if (isFirstRun && adminName && adminEmail && adminPassword) {
+      const passwordHash = await bcrypt.hash(adminPassword, 10);
+      const now = new Date().toISOString();
+      const newUser = {
+        id: makeId(),
+        email: adminEmail.trim().toLowerCase(),
+        name: adminName.trim(),
+        passwordHash,
+        createdAt: now,
+        plan: "free" as const,
+        isAdmin: true,
+        lastLoginAt: now,
+      };
+      store.users.push(newUser);
+      saveUsers(store);
+      token = jwt.sign({ userId: newUser.id }, JWT_SECRET, { expiresIn: "30d" });
+    }
+
+    res.json({
+      ok: true,
+      token,
+      apiTestOk,
+      apiTestMessage,
+      message: isFirstRun ? "Instalação concluída! Conta admin criada." : "Configuração atualizada.",
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Erro interno" });
+  }
+});
+
+// POST /api/setup/test-api — test a tik.tools API key without saving
+router.post("/setup/test-api", async (req, res): Promise<void> => {
+  const { apiKey } = req.body as { apiKey?: string };
+  if (!apiKey?.trim()) {
+    res.status(400).json({ ok: false, message: "Chave da API não fornecida" });
+    return;
+  }
+  try {
+    const r = await fetch("https://api.tik.tools/api/live/top-channels", {
+      headers: { "x-api-key": apiKey.trim() },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (r.ok) {
+      const json = await r.json() as { channels?: unknown[] };
+      res.json({ ok: true, message: `Conectado! Encontrou ${json.channels?.length ?? 0} canais ao vivo.` });
+    } else {
+      const body = await r.text();
+      res.json({ ok: false, message: `API retornou status ${r.status}: ${body.slice(0, 200)}` });
+    }
+  } catch (err) {
+    res.json({ ok: false, message: err instanceof Error ? err.message : "Erro de conexão" });
+  }
+});
+
+export default router;

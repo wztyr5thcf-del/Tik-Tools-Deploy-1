@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import Setup from "./pages/setup";
 import Dashboard from "./pages/dashboard";
 import Monitor from "./pages/monitor";
 import BulkCheck from "./pages/bulk-check";
@@ -82,6 +83,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={() => <GuestRoute component={Login} />} />
+      <Route path="/setup" component={Setup} />
       {/* Overlays — no AppLayout, no auth required (runs inside OBS/TikTok Studio) */}
       {/* IMPORTANT: specific paths must come BEFORE :username wildcard */}
       <Route path="/overlay/alerts/:username" component={OverlayAlerts} />

@@ -9,6 +9,8 @@ import rolesRouter from "./roles";
 import plansRouter from "./plans";
 import uiConfigRouter from "./ui-config";
 import supportRouter from "./support";
+import setupRouter from "./setup";
+import systemRouter from "./system";
 
 const router: IRouter = Router();
 
@@ -22,5 +24,7 @@ router.use(rolesRouter);
 router.use(plansRouter);
 router.use(uiConfigRouter);
 router.use(supportRouter);
+router.use(setupRouter);
+router.use(systemRouter);
 
 export default router;

@@ -4,6 +4,8 @@ import {
   Settings2, CreditCard, Radio, CheckCircle2, XCircle, Loader2, KeyRound, Eye, EyeOff,
   Plus, Edit2, Palette, Layout, ChevronUp, ChevronDown, ToggleLeft, ToggleRight,
   Star, Save, RotateCcw, PanelLeft, PanelTop, Globe, Lock,
+  Server, Activity, AlertTriangle, MessageSquare, Check, X, Clock,
+  Cpu, HardDrive, Key, ExternalLink, PlugZap,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -995,6 +997,627 @@ function CustomizationTab() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
+// TAB: INTEGRAÇÕES
+// ════════════════════════════════════════════════════════════════════════════════
+function IntegracoesTab() {
+  const { token } = useAuth();
+  const { toast } = useToast();
+  const [tiktoolsKey, setTiktoolsKey] = useState("");
+  const [tiktoolsMasked, setTiktoolsMasked] = useState<string | null>(null);
+  const [showTiktoolsKey, setShowTiktoolsKey] = useState(false);
+  const [savingTiktools, setSavingTiktools] = useState(false);
+  const [testingTiktools, setTestingTiktools] = useState(false);
+  const [tiktoolsResult, setTiktoolsResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const [stripeConfig, setStripeConfig] = useState<StripeConfig | null>(null);
+  const [stripePublishable, setStripePublishable] = useState("");
+  const [stripeBasic, setStripeBasic] = useState("");
+  const [stripePro, setStripePro] = useState("");
+  const [paymentsEnabled, setPaymentsEnabled] = useState(true);
+  const [savingStripe, setSavingStripe] = useState(false);
+  const [testingStripe, setTestingStripe] = useState(false);
+  const [stripeResult, setStripeResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  interface AltApiConfig {
+    enabled: boolean;
+    baseUrl: string;
+    apiKeyHeader: string;
+    apiKey: string;
+    testPath: string;
+    notes: string;
+  }
+  const [altApi, setAltApi] = useState<AltApiConfig>({ enabled: false, baseUrl: "", apiKeyHeader: "x-api-key", apiKey: "", testPath: "/api/live/top-channels", notes: "" });
+  const [savingAlt, setSavingAlt] = useState(false);
+  const [testingAlt, setTestingAlt] = useState(false);
+  const [altResult, setAltResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [sc, ac, tc] = await Promise.all([
+        authFetch("/admin/stripe-config", token!) as Promise<StripeConfig>,
+        authFetch("/admin/alt-api-config", token!) as Promise<AltApiConfig>,
+        authFetch("/admin/tiktools-config", token!) as Promise<{ apiKeySet: boolean; apiKeyMasked: string | null }>,
+      ]);
+      setStripeConfig(sc);
+      setStripePublishable(sc.publishableKey ?? "");
+      setStripeBasic(sc.priceIdBasic ?? "");
+      setStripePro(sc.priceIdPro ?? "");
+      setPaymentsEnabled(sc.paymentsEnabled);
+      setAltApi(ac);
+      setTiktoolsMasked(tc.apiKeyMasked);
+    } catch { /* ignore */ }
+  }, [token]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  async function saveTiktools() {
+    if (!tiktoolsKey.trim()) return;
+    setSavingTiktools(true);
+    try {
+      const r = await authFetch("/admin/tiktools-config", token!, { method: "PATCH", body: JSON.stringify({ apiKey: tiktoolsKey }) }) as { ok: boolean; apiKeyMasked: string };
+      setTiktoolsMasked(r.apiKeyMasked);
+      setTiktoolsKey("");
+      toast({ title: "Chave tik.tools atualizada!" });
+    } catch { toast({ title: "Erro ao salvar", variant: "destructive" }); }
+    setSavingTiktools(false);
+  }
+
+  async function testTiktools() {
+    setTestingTiktools(true);
+    setTiktoolsResult(null);
+    try {
+      const r = await authFetch("/admin/test-tiktools", token!, { method: "POST" }) as { ok: boolean; message: string };
+      setTiktoolsResult(r);
+    } catch { setTiktoolsResult({ ok: false, message: "Erro de conexão" }); }
+    setTestingTiktools(false);
+  }
+
+  async function saveStripe() {
+    setSavingStripe(true);
+    try {
+      await authFetch("/admin/stripe-config", token!, {
+        method: "PATCH",
+        body: JSON.stringify({ publishableKey: stripePublishable || null, priceIdBasic: stripeBasic || null, priceIdPro: stripePro || null, paymentsEnabled }),
+      });
+      toast({ title: "Stripe atualizado!" });
+      void load();
+    } catch { toast({ title: "Erro ao salvar", variant: "destructive" }); }
+    setSavingStripe(false);
+  }
+
+  async function testStripe() {
+    setTestingStripe(true);
+    setStripeResult(null);
+    try {
+      const r = await authFetch("/admin/test-stripe", token!, { method: "POST" }) as { ok: boolean; message: string };
+      setStripeResult(r);
+    } catch { setStripeResult({ ok: false, message: "Erro de conexão" }); }
+    setTestingStripe(false);
+  }
+
+  async function saveAlt() {
+    setSavingAlt(true);
+    try {
+      await authFetch("/admin/alt-api-config", token!, { method: "PATCH", body: JSON.stringify(altApi) });
+      toast({ title: "API alternativa atualizada!" });
+    } catch { toast({ title: "Erro ao salvar", variant: "destructive" }); }
+    setSavingAlt(false);
+  }
+
+  async function testAlt() {
+    setTestingAlt(true);
+    setAltResult(null);
+    try {
+      const r = await authFetch("/admin/test-alt-api", token!, { method: "POST", body: JSON.stringify({ baseUrl: altApi.baseUrl, apiKey: altApi.apiKey, apiKeyHeader: altApi.apiKeyHeader, testPath: altApi.testPath }) }) as { ok: boolean; message: string };
+      setAltResult(r);
+    } catch { setAltResult({ ok: false, message: "Erro de conexão" }); }
+    setTestingAlt(false);
+  }
+
+  const ResultBadge = ({ r }: { r: { ok: boolean; message: string } }) => (
+    <div className={`flex items-start gap-2 text-sm rounded-md px-3 py-2 mt-2 ${r.ok ? "bg-green-500/10 border border-green-500/20 text-green-400" : "bg-destructive/10 border border-destructive/20 text-destructive"}`}>
+      {r.ok ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 shrink-0 mt-0.5" />}
+      {r.message}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* ── tik.tools ── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Key className="w-4 h-4 text-cyan-400" />
+            <CardTitle className="text-sm">API tik.tools</CardTitle>
+            {tiktoolsMasked && <Badge variant="secondary" className="text-xs font-mono">{tiktoolsMasked}</Badge>}
+          </div>
+          <CardDescription>Chave principal para dados de lives do TikTok em tempo real.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Input
+                type={showTiktoolsKey ? "text" : "password"}
+                placeholder="Nova chave (tk_live_...)"
+                value={tiktoolsKey}
+                onChange={(e) => setTiktoolsKey(e.target.value)}
+                className="pr-10 font-mono text-sm"
+              />
+              <button type="button" onClick={() => setShowTiktoolsKey((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                {showTiktoolsKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <Button onClick={saveTiktools} disabled={!tiktoolsKey.trim() || savingTiktools} size="sm">
+              {savingTiktools ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={testTiktools} disabled={testingTiktools}>
+              {testingTiktools ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Testando…</> : <><Radio className="w-3.5 h-3.5 mr-1.5" />Testar conexão</>}
+            </Button>
+            <a href="https://tik.tools/dashboard" target="_blank" rel="noopener noreferrer">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+                <ExternalLink className="w-3.5 h-3.5" />Dashboard tik.tools
+              </Button>
+            </a>
+          </div>
+          {tiktoolsResult && <ResultBadge r={tiktoolsResult} />}
+        </CardContent>
+      </Card>
+
+      {/* ── API Alternativa ── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Server className="w-4 h-4 text-violet-400" />
+            <CardTitle className="text-sm">API Alternativa</CardTitle>
+            <Badge variant="outline" className="text-xs">Backup</Badge>
+            <div className="ml-auto">
+              <Switch checked={altApi.enabled} onCheckedChange={(v) => setAltApi((p) => ({ ...p, enabled: v }))} />
+            </div>
+          </div>
+          <CardDescription>API de backup compatível com tik.tools (qualquer endpoint HTTP). Usada quando a API principal falhar.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">URL Base</Label>
+            <Input value={altApi.baseUrl} onChange={(e) => setAltApi((p) => ({ ...p, baseUrl: e.target.value }))}
+              placeholder="https://minha-api.com" className="font-mono text-sm" disabled={!altApi.enabled} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Header da chave</Label>
+              <Input value={altApi.apiKeyHeader} onChange={(e) => setAltApi((p) => ({ ...p, apiKeyHeader: e.target.value }))}
+                placeholder="x-api-key" className="font-mono text-sm" disabled={!altApi.enabled} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Chave da API</Label>
+              <Input type="password" value={altApi.apiKey} onChange={(e) => setAltApi((p) => ({ ...p, apiKey: e.target.value }))}
+                placeholder="Opcional" className="font-mono text-sm" disabled={!altApi.enabled} />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Endpoint de teste</Label>
+            <Input value={altApi.testPath} onChange={(e) => setAltApi((p) => ({ ...p, testPath: e.target.value }))}
+              placeholder="/api/live/top-channels" className="font-mono text-sm" disabled={!altApi.enabled} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Notas (interno)</Label>
+            <Input value={altApi.notes} onChange={(e) => setAltApi((p) => ({ ...p, notes: e.target.value }))}
+              placeholder="Ex: Self-hosted TikTok Live Connector" disabled={!altApi.enabled} />
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={saveAlt} disabled={savingAlt}>
+              {savingAlt ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}Salvar
+            </Button>
+            <Button variant="outline" size="sm" onClick={testAlt} disabled={testingAlt || !altApi.baseUrl}>
+              {testingAlt ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Testando…</> : <><Radio className="w-3.5 h-3.5 mr-1.5" />Testar</>}
+            </Button>
+          </div>
+          {altResult && <ResultBadge r={altResult} />}
+        </CardContent>
+      </Card>
+
+      {/* ── Stripe ── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-indigo-400" />
+            <CardTitle className="text-sm">Stripe — Pagamentos</CardTitle>
+            {stripeConfig && (
+              <Badge className={`text-xs ${stripeConfig.secretKeySet ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-muted/40 text-muted-foreground"}`}>
+                {stripeConfig.secretKeySet ? "SK configurada" : "SK não configurada"}
+              </Badge>
+            )}
+            <div className="ml-auto flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Pagamentos</Label>
+              <Switch checked={paymentsEnabled} onCheckedChange={setPaymentsEnabled} />
+            </div>
+          </div>
+          <CardDescription>Configure chaves e Price IDs do Stripe para cobrar assinaturas.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="rounded-md bg-muted/20 border border-border px-3 py-2 text-xs text-muted-foreground space-y-1">
+            <p className="font-medium">Configurar via variáveis de ambiente (recomendado):</p>
+            <p className="font-mono">STRIPE_SECRET_KEY · STRIPE_WEBHOOK_SECRET</p>
+            <p>As chaves secretas não podem ser salvas pelo painel por segurança. Use as env vars do Replit.</p>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">Publishable Key (pk_...)</Label>
+            <Input value={stripePublishable} onChange={(e) => setStripePublishable(e.target.value)}
+              placeholder="pk_live_••••••••" className="font-mono text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Price ID — Basic+</Label>
+              <Input value={stripeBasic} onChange={(e) => setStripeBasic(e.target.value)}
+                placeholder="price_••••••••" className="font-mono text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Price ID — Pro</Label>
+              <Input value={stripePro} onChange={(e) => setStripePro(e.target.value)}
+                placeholder="price_••••••••" className="font-mono text-sm" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={saveStripe} disabled={savingStripe}>
+              {savingStripe ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}Salvar
+            </Button>
+            <Button variant="outline" size="sm" onClick={testStripe} disabled={testingStripe}>
+              {testingStripe ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Testando…</> : <><Radio className="w-3.5 h-3.5 mr-1.5" />Testar Stripe</>}
+            </Button>
+          </div>
+          {stripeResult && <ResultBadge r={stripeResult} />}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// TAB: SUPORTE
+// ════════════════════════════════════════════════════════════════════════════════
+interface Ticket {
+  id: string;
+  type: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  status: "pending" | "approved" | "denied" | "cancelled";
+  oldValue?: string;
+  newValue?: string;
+  reason: string;
+  customReason?: string;
+  adminNote?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+function SuporteTab() {
+  const { token } = useAuth();
+  const { toast } = useToast();
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "pending" | "resolved">("pending");
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [noteMap, setNoteMap] = useState<Record<string, string>>({});
+
+  const fetch_ = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await authFetch("/admin/support/tickets", token!) as { tickets: Ticket[] };
+      setTickets(d.tickets ?? []);
+    } finally { setLoading(false); }
+  }, [token]);
+
+  useEffect(() => { void fetch_(); }, [fetch_]);
+
+  async function resolve(id: string, action: "approve" | "deny") {
+    setResolvingId(id);
+    try {
+      await authFetch(`/admin/support/tickets/${id}`, token!, {
+        method: "PATCH",
+        body: JSON.stringify({ action, adminNote: noteMap[id] ?? "" }),
+      });
+      toast({ title: action === "approve" ? "✅ Ticket aprovado!" : "❌ Ticket negado" });
+      void fetch_();
+    } catch { toast({ title: "Erro ao resolver ticket", variant: "destructive" }); }
+    setResolvingId(null);
+  }
+
+  const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+    pending:   { label: "Pendente",  color: "bg-yellow-400/10 text-yellow-400 border-yellow-400/20" },
+    approved:  { label: "Aprovado",  color: "bg-green-400/10 text-green-400 border-green-400/20" },
+    denied:    { label: "Negado",    color: "bg-red-400/10 text-red-400 border-red-400/20" },
+    cancelled: { label: "Cancelado", color: "bg-muted/40 text-muted-foreground border-muted" },
+  };
+
+  const filtered = tickets.filter((t) => {
+    if (filter === "pending") return t.status === "pending";
+    if (filter === "resolved") return t.status !== "pending";
+    return true;
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1">
+          {(["pending", "all", "resolved"] as const).map((f) => (
+            <Button key={f} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => setFilter(f)} className="text-xs h-7">
+              {f === "pending" ? `Pendentes (${tickets.filter((t) => t.status === "pending").length})` : f === "all" ? "Todos" : "Resolvidos"}
+            </Button>
+          ))}
+        </div>
+        <Button variant="outline" size="icon" className="h-7 w-7" onClick={fetch_}>
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="py-10 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="py-14 text-center">
+            <MessageSquare className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">Nenhum ticket {filter === "pending" ? "pendente" : ""} encontrado</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((t) => {
+            const cfg = STATUS_CONFIG[t.status] ?? STATUS_CONFIG.pending;
+            return (
+              <Card key={t.id} className={t.status === "pending" ? "border-yellow-400/20" : ""}>
+                <CardContent className="pt-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className={`text-xs ${cfg.color}`}>{cfg.label}</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {t.type === "tiktok_username_change" ? "🔄 Troca de @TikTok" : t.type}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
+                          <Clock className="w-3 h-3" />{new Date(t.createdAt).toLocaleDateString("pt-BR")}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{t.userName}</p>
+                        <p className="text-xs text-muted-foreground">{t.userEmail}</p>
+                      </div>
+                      {t.type === "tiktok_username_change" && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-mono text-muted-foreground">{t.oldValue ? `@${t.oldValue}` : "(sem @)"}</span>
+                          <span className="text-muted-foreground/50">→</span>
+                          <span className="font-mono text-primary font-medium">@{t.newValue}</span>
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground">Motivo: {t.reason}{t.customReason ? ` — ${t.customReason}` : ""}</p>
+                      {t.adminNote && (
+                        <div className="text-xs bg-muted/20 rounded-md px-2 py-1.5 text-muted-foreground italic">
+                          Nota: {t.adminNote}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {t.status === "pending" && (
+                    <div className="mt-3 space-y-2">
+                      <Input
+                        placeholder="Nota para o usuário (opcional)"
+                        value={noteMap[t.id] ?? ""}
+                        onChange={(e) => setNoteMap((p) => ({ ...p, [t.id]: e.target.value }))}
+                        className="h-7 text-xs"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" className="gap-1.5 bg-green-500 hover:bg-green-600 text-white flex-1"
+                          disabled={resolvingId === t.id} onClick={() => void resolve(t.id, "approve")}>
+                          {resolvingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                          Aprovar
+                        </Button>
+                        <Button size="sm" variant="outline" className="gap-1.5 text-destructive hover:bg-destructive/10 flex-1"
+                          disabled={resolvingId === t.id} onClick={() => void resolve(t.id, "deny")}>
+                          {resolvingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                          Negar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// TAB: SISTEMA
+// ════════════════════════════════════════════════════════════════════════════════
+interface SystemStatus {
+  checks: Record<string, { ok: boolean; message: string; latencyMs?: number }>;
+  server: { nodeVersion: string; platform: string; uptime: number; memoryMb: number; freeMemMb: number; cpus: number };
+  config: { tiktoolsKeySet: boolean; tiktoolsKeyMasked: string | null; stripeKeySet: boolean; jwtSecretIsDefault: boolean };
+  users: { total: number; admins: number; byPlan: Record<string, number> };
+}
+
+function SistemaTab() {
+  const { token } = useAuth();
+  const [status, setStatus] = useState<SystemStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await authFetch("/admin/system-status", token!) as SystemStatus;
+      setStatus(d);
+    } finally { setLoading(false); }
+  }, [token]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  function formatUptime(s: number): string {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  }
+
+  const SERVICE_LABELS: Record<string, string> = { tiktools: "tik.tools API", altApi: "API Alternativa", stripe: "Stripe" };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">Status em tempo real do servidor e integrações.</p>
+        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />Atualizar
+        </Button>
+      </div>
+
+      {loading && !status ? (
+        <div className="py-10 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
+      ) : status ? (
+        <>
+          {/* Service checks */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2"><Activity className="w-4 h-4 text-cyan-400" />Serviços</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {Object.entries(status.checks).map(([key, check]) => (
+                  <div key={key} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${check.ok ? "bg-green-400" : "bg-red-400"}`} />
+                    <span className="text-sm font-medium flex-1">{SERVICE_LABELS[key] ?? key}</span>
+                    <span className="text-xs text-muted-foreground">{check.message}</span>
+                    {check.latencyMs !== undefined && (
+                      <Badge variant="outline" className={`text-xs ${check.latencyMs < 500 ? "text-green-400 border-green-400/20" : "text-yellow-400 border-yellow-400/20"}`}>
+                        {check.latencyMs}ms
+                      </Badge>
+                    )}
+                    {check.ok ? <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" /> : <XCircle className="w-4 h-4 text-red-400 shrink-0" />}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Security alerts */}
+          {(status.config.jwtSecretIsDefault || !status.config.tiktoolsKeySet) && (
+            <Card className="border-yellow-400/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-yellow-400" />Alertas de Segurança</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {status.config.jwtSecretIsDefault && (
+                  <div className="flex items-start gap-2 text-sm text-yellow-400 bg-yellow-400/5 rounded-md px-3 py-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">JWT_SECRET padrão em uso</p>
+                      <p className="text-xs text-yellow-400/60 mt-0.5">Configure a variável de ambiente JWT_SECRET com um valor aleatório seguro para produção.</p>
+                    </div>
+                  </div>
+                )}
+                {!status.config.tiktoolsKeySet && (
+                  <div className="flex items-start gap-2 text-sm text-red-400 bg-red-400/5 rounded-md px-3 py-2">
+                    <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Chave tik.tools não configurada</p>
+                      <p className="text-xs text-red-400/60 mt-0.5">Configure em Admin → Integrações ou rode o wizard de instalação (/setup).</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Server info */}
+          <div className="grid grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2"><Cpu className="w-4 h-4 text-violet-400" />Servidor</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {[
+                  ["Node.js", status.server.nodeVersion],
+                  ["Plataforma", status.server.platform],
+                  ["Uptime", formatUptime(status.server.uptime)],
+                  ["CPUs", String(status.server.cpus)],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <span className="text-muted-foreground text-xs">{label}</span>
+                    <span className="font-mono text-xs">{value}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2"><HardDrive className="w-4 h-4 text-cyan-400" />Memória & Usuários</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {[
+                  ["Heap usada", `${status.server.memoryMb} MB`],
+                  ["RAM livre", `${status.server.freeMemMb} MB`],
+                  ["Usuários", String(status.users.total)],
+                  ["Admins", String(status.users.admins)],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <span className="text-muted-foreground text-xs">{label}</span>
+                    <span className="font-mono text-xs">{value}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Users by plan */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2"><Users2 className="w-4 h-4 text-amber-400" />Usuários por Plano</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-3">
+                {Object.entries(status.users.byPlan).map(([plan, count]) => (
+                  <div key={plan} className="text-center p-3 bg-muted/20 rounded-md">
+                    <p className="text-xs text-muted-foreground capitalize">{plan === "free" ? "Sandbox" : plan === "basic" ? "Basic+" : "Pro"}</p>
+                    <p className="text-2xl font-bold">{count}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Config */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2"><PlugZap className="w-4 h-4 text-green-400" />Configuração</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {[
+                { label: "tik.tools API Key", ok: status.config.tiktoolsKeySet, extra: status.config.tiktoolsKeyMasked },
+                { label: "Stripe Secret Key", ok: status.config.stripeKeySet },
+                { label: "JWT Secret seguro", ok: !status.config.jwtSecretIsDefault },
+              ].map(({ label, ok, extra }) => (
+                <div key={label} className="flex items-center gap-2">
+                  {ok ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
+                  <span className="text-sm flex-1">{label}</span>
+                  {extra && <Badge variant="secondary" className="text-xs font-mono">{extra}</Badge>}
+                  {!ok && <Badge className="text-xs bg-red-500/10 text-red-400 border-red-500/20">Pendente</Badge>}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
 // MAIN ADMIN PAGE
 // ════════════════════════════════════════════════════════════════════════════════
 export default function Admin() {
@@ -1051,6 +1674,15 @@ export default function Admin() {
           <TabsTrigger value="ui" className="gap-1.5">
             <Palette className="w-4 h-4" />Customização
           </TabsTrigger>
+          <TabsTrigger value="integracoes" className="gap-1.5">
+            <PlugZap className="w-4 h-4" />Integrações
+          </TabsTrigger>
+          <TabsTrigger value="suporte" className="gap-1.5">
+            <MessageSquare className="w-4 h-4" />Suporte
+          </TabsTrigger>
+          <TabsTrigger value="sistema" className="gap-1.5">
+            <Activity className="w-4 h-4" />Sistema
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users">
@@ -1075,6 +1707,18 @@ export default function Admin() {
 
         <TabsContent value="ui">
           <CustomizationTab />
+        </TabsContent>
+
+        <TabsContent value="integracoes">
+          <IntegracoesTab />
+        </TabsContent>
+
+        <TabsContent value="suporte">
+          <SuporteTab />
+        </TabsContent>
+
+        <TabsContent value="sistema">
+          <SistemaTab />
         </TabsContent>
       </Tabs>
     </div>
