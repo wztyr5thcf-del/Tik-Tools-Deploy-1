@@ -53,6 +53,22 @@
           "visible": true
         },
         {
+          "id": "scoreboards",
+          "label": "Scoreboards",
+          "href": "/scoreboards",
+          "icon": "Trophy",
+          "matchPrefix": "/scoreboards",
+          "visible": true
+        },
+        {
+          "id": "minigames",
+          "label": "Minigames",
+          "href": "/minigames",
+          "icon": "Gamepad2",
+          "matchPrefix": "/minigames",
+          "visible": true
+        },
+        {
           "id": "lookup",
           "label": "Lookup",
           "href": "/streamer/lookup",
@@ -218,5 +234,5 @@
       ]
     }
   ],
-  "updatedAt": "2026-06-30T00:57:27.255Z"
+  "updatedAt": "2026-06-30T21:47:52.155Z"
 }

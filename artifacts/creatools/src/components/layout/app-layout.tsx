@@ -4,6 +4,7 @@ import {
   Tag, LogOut, ChevronDown, ChevronRight, UserCircle, Shield, Menu, X,
   Lock, Zap, Crown, Search, Users, Star, Key, BarChart2,
   Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2, Tv2, Trophy,
+  Monitor, Target, Layers,
   LucideProps,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
@@ -32,6 +33,7 @@ const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   LayoutDashboard, Activity, Settings, Diamond, Tag, Shield,
   Search, Users, Star, Key, BarChart2, Crown, Zap, Lock,
   Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2, Tv2, Trophy,
+  Monitor, Target, Layers,
 };
 function NavIcon({ name }: { name: string }) {
   const Icon = ICON_MAP[name] ?? LayoutDashboard;
@@ -60,7 +62,8 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
     id: "streamer",
     label: "Streamer Tools",
     items: [
-      { id: "stream-tools", label: "Stream Overlay",   href: "/stream-tools",         icon: "Tv2",       matchPrefix: "/stream-tools",         visible: true },
+      { id: "overlays",     label: "Overlay Studio",   href: "/overlays",             icon: "Monitor",   matchPrefix: "/overlays",             visible: true },
+      { id: "stream-tools", label: "Stream Tools (legado)", href: "/stream-tools",   icon: "Tv2",       matchPrefix: "/stream-tools",         visible: true },
       { id: "scoreboards",  label: "Scoreboards",      href: "/scoreboards",          icon: "Trophy",    matchPrefix: "/scoreboards",          visible: true },
       { id: "minigames",    label: "Minigames",        href: "/minigames",            icon: "Gamepad2",  matchPrefix: "/minigames",            visible: true },
       { id: "lookup",       label: "Lookup",           href: "/streamer/lookup",      icon: "Search",    matchPrefix: "/streamer/lookup",      visible: true },

@@ -7,6 +7,16 @@ export interface AuthUser {
   plan: "free" | "basic" | "pro";
   isAdmin: boolean;
   createdAt: string;
+  tiktokUsername: string | null;
+  tiktokUsernameChangesThisWeek: number;
+  tiktokVerified: boolean;
+  tiktokProfilePicture: string | null;
+  tiktokDisplayName: string | null;
+  tiktokFollowerCount: number | null;
+  tiktokLinkedAt: string | null;
+  hasTiktokOAuth: boolean;
+  roleId: string | null;
+  hasStripe: boolean;
 }
 
 interface AuthState {
@@ -17,7 +27,17 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    name: string,
+    tiktok?: {
+      username: string;
+      profilePicture?: string;
+      displayName?: string;
+      followerCount?: number;
+    }
+  ) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -55,6 +75,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Handle TikTok OAuth redirect — token arrives as ?tiktok_token=...
+    const params = new URLSearchParams(window.location.search);
+    const tiktokToken = params.get("tiktok_token");
+    if (tiktokToken) {
+      localStorage.setItem(TOKEN_KEY, tiktokToken);
+      // Clean URL
+      window.history.replaceState({}, "", window.location.pathname);
+      void fetchMe(tiktokToken);
+      return;
+    }
     const saved = localStorage.getItem(TOKEN_KEY);
     if (saved) void fetchMe(saved);
     else setState((s) => ({ ...s, loading: false }));
@@ -69,10 +99,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user: data.user, token: data.token, loading: false });
   }, []);
 
-  const register = useCallback(async (email: string, password: string, name: string) => {
+  const register = useCallback(async (
+    email: string,
+    password: string,
+    name: string,
+    tiktok?: { username: string; profilePicture?: string; displayName?: string; followerCount?: number }
+  ) => {
     const data = await authFetch("/auth/register", null, {
       method: "POST",
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({
+        email,
+        password,
+        name,
+        ...(tiktok ? {
+          tiktokUsername: tiktok.username,
+          tiktokProfilePicture: tiktok.profilePicture,
+          tiktokDisplayName: tiktok.displayName,
+          tiktokFollowerCount: tiktok.followerCount,
+        } : {}),
+      }),
     }) as { token: string; user: AuthUser };
     localStorage.setItem(TOKEN_KEY, data.token);
     setState({ user: data.user, token: data.token, loading: false });

@@ -19,8 +19,21 @@ export interface StoredUser {
   roleId?: string;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  // TikTok username (manually linked or set at registration)
   tiktokUsername?: string;
-  tiktokUsernameChangeLog?: string[]; // ISO timestamp of each change
+  tiktokUsernameChangeLog?: string[]; // ISO timestamps of each change
+  // TikTok profile snapshot (fetched at link time)
+  tiktokVerified?: boolean;
+  tiktokProfilePicture?: string;
+  tiktokDisplayName?: string;
+  tiktokFollowerCount?: number;
+  tiktokLinkedAt?: string;
+  // TikTok OAuth (when user signs in with TikTok)
+  tiktokOAuthId?: string;
+  tiktokOAuthAccessToken?: string;
+  tiktokOAuthRefreshToken?: string;
+  // Last admin login (used for "is support online" heuristic)
+  lastLoginAt?: string;
 }
 
 export interface UsersStore {
@@ -61,5 +74,11 @@ export function publicUser(u: StoredUser) {
     hasStripe: !!u.stripeCustomerId,
     tiktokUsername: u.tiktokUsername ?? null,
     tiktokUsernameChangesThisWeek: changesThisWeek,
+    tiktokVerified: u.tiktokVerified ?? false,
+    tiktokProfilePicture: u.tiktokProfilePicture ?? null,
+    tiktokDisplayName: u.tiktokDisplayName ?? null,
+    tiktokFollowerCount: u.tiktokFollowerCount ?? null,
+    tiktokLinkedAt: u.tiktokLinkedAt ?? null,
+    hasTiktokOAuth: !!u.tiktokOAuthId,
   };
 }

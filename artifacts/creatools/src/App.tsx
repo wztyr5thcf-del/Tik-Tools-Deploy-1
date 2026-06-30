@@ -29,6 +29,12 @@ import LiveCounts from "./pages/live-counts";
 import DevTools from "./pages/dev-tools";
 import StreamTools from "./pages/stream-tools";
 import ObsOverlay from "./pages/obs-overlay";
+import OverlayAlerts from "./pages/overlay-alerts";
+import OverlayTopGifters from "./pages/overlay-top-gifters";
+import OverlayStats from "./pages/overlay-stats";
+import OverlayGoal from "./pages/overlay-goal";
+import OverlayCombo from "./pages/overlay-combo";
+import Overlays from "./pages/overlays";
 import Scoreboards from "./pages/scoreboards";
 import Minigames from "./pages/minigames";
 import AppLayout from "./components/layout/app-layout";
@@ -73,7 +79,13 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={() => <GuestRoute component={Login} />} />
-      {/* Overlay — no AppLayout, no auth required (runs inside OBS) */}
+      {/* Overlays — no AppLayout, no auth required (runs inside OBS/TikTok Studio) */}
+      {/* IMPORTANT: specific paths must come BEFORE :username wildcard */}
+      <Route path="/overlay/alerts/:username" component={OverlayAlerts} />
+      <Route path="/overlay/top-gifters/:username" component={OverlayTopGifters} />
+      <Route path="/overlay/stats/:username" component={OverlayStats} />
+      <Route path="/overlay/goal/:username" component={OverlayGoal} />
+      <Route path="/overlay/combo/:username" component={OverlayCombo} />
       <Route path="/overlay/:username" component={ObsOverlay} />
       <Route>
         <AppLayout>
@@ -120,6 +132,9 @@ function Router() {
 
             {/* Developer Tools */}
             <Route path="/dev-tools" component={() => <ProtectedRoute component={DevTools} />} />
+
+            {/* Overlay Studio */}
+            <Route path="/overlays" component={() => <ProtectedRoute component={Overlays} />} />
 
             {/* Stream Tools — OBS/TikTok Studio overlays */}
             <Route path="/stream-tools" component={() => <ProtectedRoute component={StreamTools} />} />

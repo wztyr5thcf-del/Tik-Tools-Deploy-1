@@ -53,6 +53,57 @@ router.get("/tiktok/top-channels", async (req, res): Promise<void> => {
   }
 });
 
+// ── Public: verify TikTok username (used during registration, no auth needed) ──
+router.get("/tiktok/verify-username", async (req, res): Promise<void> => {
+  const { uniqueId } = req.query as { uniqueId?: string };
+  if (!uniqueId || uniqueId.trim().length < 2) {
+    res.status(400).json({ error: "uniqueId is required" }); return;
+  }
+  const handle = uniqueId.trim().replace(/^@/, "");
+  try {
+    const apiKey = process.env.TIKTOOLS_API_KEY;
+    if (!apiKey) {
+      // No API key: return minimal "exists" check via live-status (unauthenticated path)
+      res.json({ exists: false, uniqueId: handle, reason: "no_api_key" }); return;
+    }
+    // Use user-profile endpoint for full data
+    const r = await fetch(
+      `${TIKTOOLS_API}/api/user/profile?apiKey=${apiKey}&uniqueId=${encodeURIComponent(handle)}`
+    );
+    if (r.status === 404 || r.status === 400) {
+      res.json({ exists: false, uniqueId: handle }); return;
+    }
+    const json = await r.json() as {
+      uniqueId?: string;
+      nickname?: string;
+      profilePictureUrl?: string | null;
+      followerCount?: number;
+      followingCount?: number;
+      bioDescription?: string | null;
+      verified?: boolean;
+    };
+
+    if (!json.uniqueId) {
+      res.json({ exists: false, uniqueId: handle }); return;
+    }
+
+    res.json({
+      exists: true,
+      uniqueId: json.uniqueId,
+      nickname: json.nickname ?? null,
+      profilePictureUrl: json.profilePictureUrl ?? null,
+      followerCount: json.followerCount ?? 0,
+      followingCount: json.followingCount ?? 0,
+      bioDescription: json.bioDescription ?? null,
+      verified: json.verified ?? false,
+    });
+  } catch (err) {
+    req.log.warn({ err, handle }, "Failed to verify TikTok username");
+    // Soft fail — do not block registration on API errors
+    res.json({ exists: null, uniqueId: handle, error: "lookup_failed" });
+  }
+});
+
 // ── Live Status ───────────────────────────────────────────────────────────────
 router.get("/tiktok/live-status", requireAuth, async (req, res): Promise<void> => {
   const parsed = GetLiveStatusQueryParams.safeParse(req.query);
