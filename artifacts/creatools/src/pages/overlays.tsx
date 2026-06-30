@@ -3,10 +3,11 @@
  * Semelhante ao tikfinity: cada overlay tem URL copiável e preview.
  */
 import { useState, useCallback } from "react";
+import { useAuth } from "@/context/auth-context";
 import {
   Monitor, Copy, CheckCircle2, ExternalLink,
   Trophy, Zap, BarChart2, Target, Gamepad2, Gift,
-  ChevronDown, ChevronRight, Eye, Info, Star, MessageSquare, Ticket,
+  ChevronDown, ChevronRight, Eye, Info, Star, MessageSquare, Ticket, Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -113,10 +114,12 @@ function ObsHowTo() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Overlays() {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const { user } = useAuth();
+  const defaultUser = user?.tiktokUsername ?? "";
 
-  // Shared username
-  const [inputUser, setInputUser] = useState("");
-  const [username,  setUsername]  = useState("");
+  // Shared username — auto-fill from logged-in account
+  const [inputUser, setInputUser] = useState(defaultUser);
+  const [username,  setUsername]  = useState(defaultUser);
   const apply = useCallback(() => setUsername(inputUser.trim().replace(/^@/, "")), [inputUser]);
 
   // ── Alerts overlay config ──────────────────────────────────────────────────

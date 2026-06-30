@@ -27,7 +27,8 @@
       "passwordHash": "$2b$10$SkgPpD/bVQlJRq3GhYPL/uaOEaIuh6dG7Nfod9f7LWBDd0TnRBXRq",
       "createdAt": "2026-06-29T15:32:07.750Z",
       "plan": "free",
-      "isAdmin": false
+      "isAdmin": false,
+      "lastLoginAt": "2026-06-30T22:14:33.282Z"
     },
     {
       "id": "0c889q458eomqzf7sfc",

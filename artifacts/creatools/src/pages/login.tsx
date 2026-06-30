@@ -17,6 +17,7 @@ type RegStep = "account" | "tiktok";
 interface TikProfile {
   exists: boolean | null;
   uniqueId: string;
+  reason?: string;
   nickname?: string | null;
   profilePictureUrl?: string | null;
   followerCount?: number;
@@ -104,13 +105,14 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
+      // Accept the typed handle even when verification is unavailable (no_api_key)
       const tiktok =
-        !skipTiktok && tikProfile?.exists && tikProfile.uniqueId
+        !skipTiktok && tiktokHandle.trim().length > 1 && !isHandleNotFound
           ? {
-              username: tikProfile.uniqueId,
-              profilePicture: tikProfile.profilePictureUrl ?? undefined,
-              displayName: tikProfile.nickname ?? undefined,
-              followerCount: tikProfile.followerCount,
+              username: tikProfile?.uniqueId ?? tiktokHandle.trim().replace(/^@/, ""),
+              profilePicture: tikProfile?.profilePictureUrl ?? undefined,
+              displayName: tikProfile?.nickname ?? undefined,
+              followerCount: tikProfile?.followerCount,
             }
           : undefined;
       await register(email, password, name, tiktok);
@@ -147,7 +149,9 @@ export default function Login() {
   }
 
   const isHandleValid = tikProfile?.exists === true;
-  const isHandleNotFound = tikProfile?.exists === false;
+  // "no_api_key" means the server can't verify — not that the user doesn't exist
+  const isHandleNotFound = tikProfile?.exists === false && tikProfile?.reason !== "no_api_key";
+  const isUnverified = tikProfile?.reason === "no_api_key";
 
   return (
     <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center px-4">
@@ -420,6 +424,13 @@ export default function Login() {
                   </div>
                 )}
 
+                {isUnverified && tiktokHandle.trim().length > 1 && (
+                  <div className="flex items-center gap-2 text-sm text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-md px-3 py-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    Verificação automática indisponível — seu @ será salvo e você pode confirmar no perfil depois.
+                  </div>
+                )}
+
                 {tikProfile?.error === "lookup_failed" && (
                   <div className="flex items-center gap-2 text-sm text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-md px-3 py-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
@@ -445,7 +456,7 @@ export default function Login() {
                   </Button>
                   <Button
                     onClick={() => void handleRegisterFinish(false)}
-                    disabled={loading || (!isHandleValid && tiktokHandle.trim().length > 0 && tikProfile?.exists !== null)}
+                    disabled={loading || isHandleNotFound}
                   >
                     {loading
                       ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Criando…</>
