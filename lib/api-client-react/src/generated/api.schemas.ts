@@ -313,6 +313,63 @@ export interface LeaderboardLeague {
  */
 export interface WebhookTestPayload { [key: string]: unknown }
 
+export interface OkResponse {
+  ok: boolean;
+}
+
+export type RuleActionParams = { [key: string]: unknown };
+
+/**
+ * A single action to execute when a rule fires
+ */
+export interface RuleAction {
+  id: string;
+  /** play_sound | tts | overlay_alert | overlay_color | display_message | http_webhook | discord_webhook | delay */
+  type: string;
+  params: RuleActionParams;
+}
+
+export type EventRuleTriggerFilters = { [key: string]: unknown };
+
+export interface EventRule {
+  id: string;
+  userId: string;
+  name: string;
+  enabled: boolean;
+  /** any_gift | gift_min_coins | gift_specific | follow | like_count | share | subscribe | chat_word | viewer_count | top_gifter_changed | first_chat | member_join */
+  triggerType: string;
+  triggerFilters: EventRuleTriggerFilters;
+  actions: RuleAction[];
+  cooldownSeconds: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type EventRuleInputTriggerFilters = { [key: string]: unknown };
+
+export interface EventRuleInput {
+  name: string;
+  enabled?: boolean;
+  triggerType: string;
+  triggerFilters?: EventRuleInputTriggerFilters;
+  actions?: RuleAction[];
+  cooldownSeconds?: number;
+}
+
+export interface EventRuleListResponse {
+  rules: EventRule[];
+}
+
+export type EventRuleImportRequestRulesItem = { [key: string]: unknown };
+
+export interface EventRuleImportRequest {
+  rules: EventRuleImportRequestRulesItem[];
+}
+
+export interface EventRuleImportResponse {
+  imported: number;
+}
+
 export type GetLiveStatusParams = {
 /**
  * TikTok username (without @)

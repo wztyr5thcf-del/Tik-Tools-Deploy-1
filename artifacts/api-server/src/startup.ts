@@ -29,6 +29,19 @@ if (dbUrl) {
       ADD COLUMN IF NOT EXISTS featured_slides jsonb;
     ALTER TABLE IF EXISTS announcements
       ADD COLUMN IF NOT EXISTS image_url text;
+    CREATE TABLE IF NOT EXISTS event_rules (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      enabled BOOLEAN NOT NULL DEFAULT true,
+      trigger_type TEXT NOT NULL,
+      trigger_filters JSONB NOT NULL DEFAULT '{}',
+      actions JSONB NOT NULL DEFAULT '[]',
+      cooldown_seconds INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS event_rules_user_id_idx ON event_rules(user_id);
   `).catch(() => { /* ignore — table may not exist yet on first boot */ })
     .finally(() => pool.end());
 }

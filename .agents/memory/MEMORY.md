@@ -7,3 +7,4 @@
 - [TikTok profile scraping](tiktok-profile-scraping.md) — free scrape via __UNIVERSAL_DATA_FOR_REHYDRATION__ JSON; no API key; avatar URLs expire
 - [Drizzle PostgreSQL migration](drizzle-pg-migration.md) — all JSON stores replaced with async Drizzle DB; requireAdmin pattern changed to requireAdminMiddleware; seedDefaultPlans on startup
 - [Orval codegen quirk](orval-codegen-quirk.md) — orval 8.18 silently fails on certain path combinations; /landing path breaks input resolution; use PassthroughResponse for new schemas
+- [DB schema migration pattern](db-migration-pattern.md) — drizzle-kit push unusable from bash (DB not reachable outside running server); use startup.ts additive CREATE TABLE IF NOT EXISTS instead

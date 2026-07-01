@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { useTTSEngine } from "@/hooks/use-tts-engine";
 import { useSoundAlertsEngine } from "@/hooks/use-sound-alerts-engine";
+import { useEventsEngine, type OverlayAlertState } from "@/hooks/use-events-engine";
+import { authFetch, useAuth } from "@/context/auth-context";
 
 // ─── Event types ────────────────────────────────────────────────────────────
 type EventType =
@@ -390,6 +392,57 @@ export default function Monitor() {
   const soundHandleRef = useRef(soundEngine.handleEvent);
   soundHandleRef.current = soundEngine.handleEvent;
 
+  // Events engine (automation rules) — must be declared before stable ref
+  const { token: authToken } = useAuth();
+  const [eventsAlert, setEventsAlert] = useState<OverlayAlertState | null>(null);
+  const [eventsMessage, setEventsMessage] = useState<{ text: string; until: number } | null>(null);
+  const eventsAlertTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const eventsMessageTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const [eventsOverlayColor, setEventsOverlayColor] = useState<string | null>(null);
+  const eventsOverlayColorTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const eventsEngine = useEventsEngine({
+    onOverlayAlert: (alert) => {
+      setEventsAlert(alert);
+      clearTimeout(eventsAlertTimerRef.current);
+      eventsAlertTimerRef.current = setTimeout(() => setEventsAlert(null), alert.duration);
+    },
+    onDisplayMessage: (msg, duration) => {
+      setEventsMessage({ text: msg, until: Date.now() + duration });
+      clearTimeout(eventsMessageTimerRef.current);
+      eventsMessageTimerRef.current = setTimeout(() => setEventsMessage(null), duration);
+    },
+    onOverlayColor: (color) => {
+      setEventsOverlayColor(color);
+      clearTimeout(eventsOverlayColorTimerRef.current);
+      eventsOverlayColorTimerRef.current = setTimeout(() => setEventsOverlayColor(null), 3000);
+    },
+  });
+
+  // Stable ref for events engine handler (must be after eventsEngine)
+  const eventsEngineHandleRef = useRef(eventsEngine.handleEvent);
+  eventsEngineHandleRef.current = eventsEngine.handleEvent;
+  const viewerCountRef = useRef<number | null>(null);
+
+  // Load rules whenever monitor mounts and user is authenticated
+  useEffect(() => {
+    if (!authToken) return;
+    authFetch("/events/rules", authToken)
+      .then((data: unknown) => {
+        const d = data as { rules?: import("@/hooks/use-events-engine").EventRule[] };
+        if (d.rules) eventsEngine.setRules(d.rules);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authToken]);
+
+  // Reset first-chat tracking on new session
+  useEffect(() => {
+    eventsEngine.resetSession();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeUsername]);
+
   const mintJwt = useMintJwt();
   const roomInfo = useGetRoomInfo();
   const { data: giftCatalog } = useGetGiftCatalog({ query: { queryKey: getGetGiftCatalogQueryKey() } });
@@ -418,6 +471,7 @@ export default function Monitor() {
   }, [connStatus]);
 
   useEffect(() => {
+    viewerCountRef.current = viewerCount;
     if (viewerCount !== null && viewerCount > peakViewers) setPeakViewers(viewerCount);
   }, [viewerCount, peakViewers]);
 
@@ -479,9 +533,15 @@ export default function Monitor() {
         const msg = JSON.parse(e.data as string) as { event: string; data?: Record<string, unknown> };
         const d = (msg.data || {}) as Record<string, unknown>;
 
-        // Silent metadata events
+        // Silent metadata events — viewer count update fires engine for viewer_count trigger
         if (msg.event === "roomUserSeq") {
-          setViewerCount((d.viewerCount as number) ?? null);
+          const newCount = (d.viewerCount as number) ?? null;
+          setViewerCount(newCount);
+          viewerCountRef.current = newCount;
+          eventsEngineHandleRef.current({
+            event: "roomUserSeq",
+            viewerCount: newCount,
+          }).catch(() => {});
           return;
         }
         if (SILENT_EVENTS.has(msg.event)) return;
@@ -573,6 +633,19 @@ export default function Monitor() {
           message: ev.comment || "",
         });
         soundHandleRef.current(ev.event, ev.diamondCount || 0);
+
+        // Events engine (automation rules)
+        eventsEngineHandleRef.current({
+          event: ev.event,
+          user: ev.user,
+          comment: ev.comment,
+          giftName: ev.giftName,
+          giftImageUrl: (d.giftPictureUrl as string) || (d.giftImageUrl as string) || undefined,
+          diamondCount: ev.diamondCount,
+          repeatCount: ev.repeatCount,
+          likeCount: ev.likeCount,
+          viewerCount: viewerCountRef.current,
+        }).catch(() => {});
       } catch {}
     };
 
@@ -680,6 +753,37 @@ export default function Monitor() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
+      {/* Events engine overlay color flash */}
+      {eventsOverlayColor && (
+        <div
+          className="fixed inset-0 z-40 pointer-events-none animate-in fade-in duration-150"
+          style={{ boxShadow: `inset 0 0 80px 20px ${eventsOverlayColor}55`, border: `2px solid ${eventsOverlayColor}88` }}
+        />
+      )}
+      {/* Events engine overlay alerts */}
+      {eventsAlert && (
+        <div
+          className="fixed top-6 right-6 z-50 flex items-start gap-3 px-4 py-3 rounded-xl shadow-2xl animate-in slide-in-from-right-4 duration-300 max-w-sm"
+          style={{ background: "#1a1625", border: `1px solid ${eventsAlert.color}40`, boxShadow: `0 0 24px ${eventsAlert.color}20` }}
+        >
+          <span className="text-2xl shrink-0 mt-0.5">{eventsAlert.icon}</span>
+          <div>
+            <p className="text-sm font-semibold text-white">{eventsAlert.title}</p>
+            {eventsAlert.message && <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.6)" }}>{eventsAlert.message}</p>}
+          </div>
+          <button onClick={() => setEventsAlert(null)} className="shrink-0 p-1 rounded hover:bg-white/10" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+      {eventsMessage && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl animate-in fade-in duration-200 text-sm font-medium text-white text-center shadow-2xl max-w-md"
+          style={{ background: "rgba(26,22,37,0.95)", border: "1px solid rgba(168,85,247,0.3)" }}
+        >
+          {eventsMessage.text}
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center gap-4">
         <Button variant="ghost" size="sm" onClick={() => setLocation("/")} className="w-fit">

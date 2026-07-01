@@ -14,6 +14,8 @@ tags:
     description: TikTok LIVE operations
   - name: config
     description: Configuration operations
+  - name: events
+    description: Automation rules (Events Engine)
 
 paths:
   /healthz:
@@ -696,6 +698,151 @@ paths:
               schema:
                 $ref: "#/components/schemas/PassthroughResponse"
 
+  /events/rules:
+    get:
+      operationId: listEventRules
+      tags: [events]
+      summary: List automation rules for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventRuleListResponse"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: createEventRule
+      tags: [events]
+      summary: Create a new automation rule
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventRuleInput"
+      responses:
+        "201":
+          description: Created rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventRule"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+    delete:
+      operationId: deleteAllEventRules
+      tags: [events]
+      summary: Delete all rules for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /events/rules/import:
+    post:
+      operationId: importEventRules
+      tags: [events]
+      summary: Import rules from JSON (replaces all existing rules)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventRuleImportRequest"
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventRuleImportResponse"
+
+  /events/rules/{id}:
+    put:
+      operationId: updateEventRule
+      tags: [events]
+      summary: Full update of a rule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventRuleInput"
+      responses:
+        "200":
+          description: Updated rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventRule"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteEventRule
+      tags: [events]
+      summary: Delete a rule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "404":
+          description: Not found
+
+  /events/rules/{id}/toggle:
+    patch:
+      operationId: toggleEventRule
+      tags: [events]
+      summary: Toggle enabled/disabled for a rule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventRule"
+
   /landing:
     get:
       operationId: getLandingContent
@@ -1263,4 +1410,100 @@ components:
       type: object
       description: Optional payload for webhook test delivery
       additionalProperties: true
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+
+    RuleAction:
+      type: object
+      description: A single action to execute when a rule fires
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: "play_sound | tts | overlay_alert | overlay_color | display_message | http_webhook | discord_webhook | delay"
+        params:
+          type: object
+          additionalProperties: true
+      required: [id, type, params]
+
+    EventRule:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        enabled:
+          type: boolean
+        triggerType:
+          type: string
+          description: "any_gift | gift_min_coins | gift_specific | follow | like_count | share | subscribe | chat_word | viewer_count | top_gifter_changed | first_chat | member_join"
+        triggerFilters:
+          type: object
+          additionalProperties: true
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/RuleAction"
+        cooldownSeconds:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, userId, name, enabled, triggerType, triggerFilters, actions, cooldownSeconds, createdAt, updatedAt]
+
+    EventRuleInput:
+      type: object
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        triggerType:
+          type: string
+        triggerFilters:
+          type: object
+          additionalProperties: true
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/RuleAction"
+        cooldownSeconds:
+          type: integer
+      required: [name, triggerType]
+
+    EventRuleListResponse:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventRule"
+      required: [rules]
+
+    EventRuleImportRequest:
+      type: object
+      properties:
+        rules:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      required: [rules]
+
+    EventRuleImportResponse:
+      type: object
+      properties:
+        imported:
+          type: integer
+      required: [imported]
 

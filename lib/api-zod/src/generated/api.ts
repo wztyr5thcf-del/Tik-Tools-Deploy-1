@@ -468,6 +468,158 @@ export const TestWebhookResponse = zod.record(zod.string(), zod.unknown()).descr
 
 
 /**
+ * @summary List automation rules for the authenticated user
+ */
+export const ListEventRulesResponse = zod.object({
+  "rules": zod.array(zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "name": zod.string(),
+  "enabled": zod.boolean(),
+  "triggerType": zod.string().describe('any_gift | gift_min_coins | gift_specific | follow | like_count | share | subscribe | chat_word | viewer_count | top_gifter_changed | first_chat | member_join'),
+  "triggerFilters": zod.record(zod.string(), zod.unknown()),
+  "actions": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string().describe('play_sound | tts | overlay_alert | overlay_color | display_message | http_webhook | discord_webhook | delay'),
+  "params": zod.record(zod.string(), zod.unknown())
+}).describe('A single action to execute when a rule fires')),
+  "cooldownSeconds": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Create a new automation rule
+ */
+export const CreateEventRuleBody = zod.object({
+  "name": zod.string(),
+  "enabled": zod.boolean().optional(),
+  "triggerType": zod.string(),
+  "triggerFilters": zod.record(zod.string(), zod.unknown()).optional(),
+  "actions": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string().describe('play_sound | tts | overlay_alert | overlay_color | display_message | http_webhook | discord_webhook | delay'),
+  "params": zod.record(zod.string(), zod.unknown())
+}).describe('A single action to execute when a rule fires')).optional(),
+  "cooldownSeconds": zod.number().optional()
+})
+
+export const CreateEventRuleResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "name": zod.string(),
+  "enabled": zod.boolean(),
+  "triggerType": zod.string().describe('any_gift | gift_min_coins | gift_specific | follow | like_count | share | subscribe | chat_word | viewer_count | top_gifter_changed | first_chat | member_join'),
+  "triggerFilters": zod.record(zod.string(), zod.unknown()),
+  "actions": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string().describe('play_sound | tts | overlay_alert | overlay_color | display_message | http_webhook | discord_webhook | delay'),
+  "params": zod.record(zod.string(), zod.unknown())
+}).describe('A single action to execute when a rule fires')),
+  "cooldownSeconds": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete all rules for the authenticated user
+ */
+export const DeleteAllEventRulesResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Import rules from JSON (replaces all existing rules)
+ */
+export const ImportEventRulesBody = zod.object({
+  "rules": zod.array(zod.record(zod.string(), zod.unknown()))
+})
+
+export const ImportEventRulesResponse = zod.object({
+  "imported": zod.number()
+})
+
+
+/**
+ * @summary Full update of a rule
+ */
+export const UpdateEventRuleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateEventRuleBody = zod.object({
+  "name": zod.string(),
+  "enabled": zod.boolean().optional(),
+  "triggerType": zod.string(),
+  "triggerFilters": zod.record(zod.string(), zod.unknown()).optional(),
+  "actions": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string().describe('play_sound | tts | overlay_alert | overlay_color | display_message | http_webhook | discord_webhook | delay'),
+  "params": zod.record(zod.string(), zod.unknown())
+}).describe('A single action to execute when a rule fires')).optional(),
+  "cooldownSeconds": zod.number().optional()
+})
+
+export const UpdateEventRuleResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "name": zod.string(),
+  "enabled": zod.boolean(),
+  "triggerType": zod.string().describe('any_gift | gift_min_coins | gift_specific | follow | like_count | share | subscribe | chat_word | viewer_count | top_gifter_changed | first_chat | member_join'),
+  "triggerFilters": zod.record(zod.string(), zod.unknown()),
+  "actions": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string().describe('play_sound | tts | overlay_alert | overlay_color | display_message | http_webhook | discord_webhook | delay'),
+  "params": zod.record(zod.string(), zod.unknown())
+}).describe('A single action to execute when a rule fires')),
+  "cooldownSeconds": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a rule
+ */
+export const DeleteEventRuleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteEventRuleResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Toggle enabled/disabled for a rule
+ */
+export const ToggleEventRuleParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ToggleEventRuleResponse = zod.object({
+  "id": zod.string(),
+  "userId": zod.string(),
+  "name": zod.string(),
+  "enabled": zod.boolean(),
+  "triggerType": zod.string().describe('any_gift | gift_min_coins | gift_specific | follow | like_count | share | subscribe | chat_word | viewer_count | top_gifter_changed | first_chat | member_join'),
+  "triggerFilters": zod.record(zod.string(), zod.unknown()),
+  "actions": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string().describe('play_sound | tts | overlay_alert | overlay_color | display_message | http_webhook | discord_webhook | delay'),
+  "params": zod.record(zod.string(), zod.unknown())
+}).describe('A single action to execute when a rule fires')),
+  "cooldownSeconds": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
  * Returns the landing page content including hero, features, plan config and CTA. Public endpoint.
  * @summary Get landing page content (public)
  */

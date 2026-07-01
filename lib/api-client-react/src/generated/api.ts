@@ -27,6 +27,11 @@ import type {
   CheckAliveParams,
   ConfigInput,
   CreateWebhookRequest,
+  EventRule,
+  EventRuleImportRequest,
+  EventRuleImportResponse,
+  EventRuleInput,
+  EventRuleListResponse,
   GetGamingMoversParams,
   GetGamingRanklistParams,
   GetGifterProfileParams,
@@ -52,6 +57,7 @@ import type {
   LiveConnectParams,
   LiveCountsResponse,
   LiveStatus,
+  OkResponse,
   PassthroughResponse,
   RateLimits,
   RegionalRanklistRequest,
@@ -2707,6 +2713,504 @@ export const useTestWebhook = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getTestWebhookMutationOptions(options));
+    }
+
+export const getListEventRulesUrl = () => {
+
+
+
+
+  return `/api/events/rules`
+}
+
+/**
+ * @summary List automation rules for the authenticated user
+ */
+export const listEventRules = async ( options?: RequestInit): Promise<EventRuleListResponse> => {
+
+  return customFetch<EventRuleListResponse>(getListEventRulesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEventRulesQueryKey = () => {
+    return [
+    `/api/events/rules`
+    ] as const;
+    }
+
+
+export const getListEventRulesQueryOptions = <TData = Awaited<ReturnType<typeof listEventRules>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEventRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEventRulesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEventRules>>> = ({ signal }) => listEventRules({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEventRules>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEventRulesQueryResult = NonNullable<Awaited<ReturnType<typeof listEventRules>>>
+export type ListEventRulesQueryError = ErrorType<void>
+
+
+/**
+ * @summary List automation rules for the authenticated user
+ */
+
+export function useListEventRules<TData = Awaited<ReturnType<typeof listEventRules>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEventRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEventRulesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateEventRuleUrl = () => {
+
+
+
+
+  return `/api/events/rules`
+}
+
+/**
+ * @summary Create a new automation rule
+ */
+export const createEventRule = async (eventRuleInput: EventRuleInput, options?: RequestInit): Promise<EventRule> => {
+
+  return customFetch<EventRule>(getCreateEventRuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(eventRuleInput)
+  }
+);}
+
+
+
+
+export const getCreateEventRuleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEventRule>>, TError,{data: BodyType<EventRuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createEventRule>>, TError,{data: BodyType<EventRuleInput>}, TContext> => {
+
+const mutationKey = ['createEventRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createEventRule>>, {data: BodyType<EventRuleInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createEventRule(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateEventRuleMutationResult = NonNullable<Awaited<ReturnType<typeof createEventRule>>>
+    export type CreateEventRuleMutationBody = BodyType<EventRuleInput>
+    export type CreateEventRuleMutationError = ErrorType<void>
+
+    /**
+ * @summary Create a new automation rule
+ */
+export const useCreateEventRule = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEventRule>>, TError,{data: BodyType<EventRuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createEventRule>>,
+        TError,
+        {data: BodyType<EventRuleInput>},
+        TContext
+      > => {
+      return useMutation(getCreateEventRuleMutationOptions(options));
+    }
+
+export const getDeleteAllEventRulesUrl = () => {
+
+
+
+
+  return `/api/events/rules`
+}
+
+/**
+ * @summary Delete all rules for the authenticated user
+ */
+export const deleteAllEventRules = async ( options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getDeleteAllEventRulesUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAllEventRulesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAllEventRules>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAllEventRules>>, TError,void, TContext> => {
+
+const mutationKey = ['deleteAllEventRules'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAllEventRules>>, void> = () => {
+
+
+          return  deleteAllEventRules(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAllEventRulesMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAllEventRules>>>
+
+    export type DeleteAllEventRulesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete all rules for the authenticated user
+ */
+export const useDeleteAllEventRules = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAllEventRules>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAllEventRules>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeleteAllEventRulesMutationOptions(options));
+    }
+
+export const getImportEventRulesUrl = () => {
+
+
+
+
+  return `/api/events/rules/import`
+}
+
+/**
+ * @summary Import rules from JSON (replaces all existing rules)
+ */
+export const importEventRules = async (eventRuleImportRequest: EventRuleImportRequest, options?: RequestInit): Promise<EventRuleImportResponse> => {
+
+  return customFetch<EventRuleImportResponse>(getImportEventRulesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(eventRuleImportRequest)
+  }
+);}
+
+
+
+
+export const getImportEventRulesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importEventRules>>, TError,{data: BodyType<EventRuleImportRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importEventRules>>, TError,{data: BodyType<EventRuleImportRequest>}, TContext> => {
+
+const mutationKey = ['importEventRules'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importEventRules>>, {data: BodyType<EventRuleImportRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  importEventRules(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportEventRulesMutationResult = NonNullable<Awaited<ReturnType<typeof importEventRules>>>
+    export type ImportEventRulesMutationBody = BodyType<EventRuleImportRequest>
+    export type ImportEventRulesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Import rules from JSON (replaces all existing rules)
+ */
+export const useImportEventRules = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importEventRules>>, TError,{data: BodyType<EventRuleImportRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importEventRules>>,
+        TError,
+        {data: BodyType<EventRuleImportRequest>},
+        TContext
+      > => {
+      return useMutation(getImportEventRulesMutationOptions(options));
+    }
+
+export const getUpdateEventRuleUrl = (id: string,) => {
+
+
+
+
+  return `/api/events/rules/${id}`
+}
+
+/**
+ * @summary Full update of a rule
+ */
+export const updateEventRule = async (id: string,
+    eventRuleInput: EventRuleInput, options?: RequestInit): Promise<EventRule> => {
+
+  return customFetch<EventRule>(getUpdateEventRuleUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(eventRuleInput)
+  }
+);}
+
+
+
+
+export const getUpdateEventRuleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEventRule>>, TError,{id: string;data: BodyType<EventRuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateEventRule>>, TError,{id: string;data: BodyType<EventRuleInput>}, TContext> => {
+
+const mutationKey = ['updateEventRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateEventRule>>, {id: string;data: BodyType<EventRuleInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateEventRule(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateEventRuleMutationResult = NonNullable<Awaited<ReturnType<typeof updateEventRule>>>
+    export type UpdateEventRuleMutationBody = BodyType<EventRuleInput>
+    export type UpdateEventRuleMutationError = ErrorType<void>
+
+    /**
+ * @summary Full update of a rule
+ */
+export const useUpdateEventRule = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateEventRule>>, TError,{id: string;data: BodyType<EventRuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateEventRule>>,
+        TError,
+        {id: string;data: BodyType<EventRuleInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateEventRuleMutationOptions(options));
+    }
+
+export const getDeleteEventRuleUrl = (id: string,) => {
+
+
+
+
+  return `/api/events/rules/${id}`
+}
+
+/**
+ * @summary Delete a rule
+ */
+export const deleteEventRule = async (id: string, options?: RequestInit): Promise<OkResponse> => {
+
+  return customFetch<OkResponse>(getDeleteEventRuleUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteEventRuleMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEventRule>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteEventRule>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteEventRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteEventRule>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteEventRule(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteEventRuleMutationResult = NonNullable<Awaited<ReturnType<typeof deleteEventRule>>>
+
+    export type DeleteEventRuleMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete a rule
+ */
+export const useDeleteEventRule = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteEventRule>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteEventRule>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteEventRuleMutationOptions(options));
+    }
+
+export const getToggleEventRuleUrl = (id: string,) => {
+
+
+
+
+  return `/api/events/rules/${id}/toggle`
+}
+
+/**
+ * @summary Toggle enabled/disabled for a rule
+ */
+export const toggleEventRule = async (id: string, options?: RequestInit): Promise<EventRule> => {
+
+  return customFetch<EventRule>(getToggleEventRuleUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getToggleEventRuleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleEventRule>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof toggleEventRule>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['toggleEventRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof toggleEventRule>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  toggleEventRule(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ToggleEventRuleMutationResult = NonNullable<Awaited<ReturnType<typeof toggleEventRule>>>
+
+    export type ToggleEventRuleMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Toggle enabled/disabled for a rule
+ */
+export const useToggleEventRule = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof toggleEventRule>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof toggleEventRule>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getToggleEventRuleMutationOptions(options));
     }
 
 export const getGetLandingContentUrl = () => {

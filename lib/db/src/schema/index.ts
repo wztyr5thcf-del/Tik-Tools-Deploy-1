@@ -4,3 +4,4 @@ export * from "./roles";
 export * from "./support";
 export * from "./announcements";
 export * from "./ui_config";
+export * from "./event_rules";

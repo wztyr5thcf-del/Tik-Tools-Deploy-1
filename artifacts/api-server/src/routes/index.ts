@@ -13,6 +13,7 @@ import setupRouter from "./setup";
 import systemRouter from "./system";
 import announcementsRouter from "./announcements";
 import landingRouter from "./landing";
+import eventsRouter from "./events";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(setupRouter);
 router.use(systemRouter);
 router.use(announcementsRouter);
 router.use(landingRouter);
+router.use(eventsRouter);
 
 export default router;
