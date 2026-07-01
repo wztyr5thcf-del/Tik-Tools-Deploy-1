@@ -12,6 +12,7 @@ import supportRouter from "./support";
 import setupRouter from "./setup";
 import systemRouter from "./system";
 import announcementsRouter from "./announcements";
+import landingRouter from "./landing";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(supportRouter);
 router.use(setupRouter);
 router.use(systemRouter);
 router.use(announcementsRouter);
+router.use(landingRouter);
 
 export default router;

@@ -4,3 +4,4 @@
 - [Creatools sidebar expandable children](creatools-sidebar-children.md) — NavItemConfig supports children[] for accordion sub-items; auto-expands when any child URL is active
 - [authFetch usage pattern](creatools-authfetch.md) — authFetch(path, token) prepends BASE+/api; path starts with / e.g. "/announcements"; token from useAuth()
 - [login.tsx tabs TypeScript narrowing](login-tsx-narrowing.md) — mode-switch tabs must live OUTSIDE {mode==="login" && ...} blocks to avoid TS2367 narrowing; fixed by hoisting tabs above the conditional
+- [TikTok profile scraping](tiktok-profile-scraping.md) — free scrape via __UNIVERSAL_DATA_FOR_REHYDRATION__ JSON; no API key; avatar URLs expire

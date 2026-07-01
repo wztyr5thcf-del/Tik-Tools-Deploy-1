@@ -5,15 +5,17 @@ import {
   Plus, Edit2, Palette, Layout, ChevronUp, ChevronDown, ToggleLeft, ToggleRight,
   Star, Save, RotateCcw, Globe, Lock,
   Server, Activity, AlertTriangle, MessageSquare, Check, X, Clock,
-  Cpu, Key, PlugZap, Megaphone, Pin, Info, Sparkles,
+  Cpu, HardDrive, Key, PlugZap, Megaphone, Pin, Info, Sparkles,
   BookOpen, Building2, Users, Bell, BarChart2, LayoutDashboard,
-  AlertCircle, Wrench, ChevronRight, FileText, Image,
+  AlertCircle, Wrench, ChevronRight, FileText, Image, ExternalLink, UserPlus, Pencil,
 } from "lucide-react";
+import { SiTiktok } from "react-icons/si";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1332,9 +1334,623 @@ function CustomizacaoSection() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// SEÇÃO: LANDING PAGE
+// ════════════════════════════════════════════════════════════════════════════
+
+interface LandingFeature {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  imageUrl: string;
+  demoUrl: string;
+  order: number;
+}
+
+interface LandingContent {
+  enabled: boolean;
+  hero: { headline: string; subheadline: string; ctaLabel: string; backgroundGradient: string };
+  features: LandingFeature[];
+  plans: { visiblePlanIds: string[]; recommendedPlanId: string };
+  cta: { text: string; subtext: string; buttonLabel: string };
+}
+
+const EMPTY_FEATURE: LandingFeature = { id: "", title: "", description: "", icon: "LayoutDashboard", imageUrl: "", demoUrl: "", order: 0 };
+const LUCIDE_ICONS = ["LayoutDashboard","Activity","Users","Trophy","Monitor","Key","Star","Zap","Shield","Globe","BarChart2","Radio","Diamond","Search","Settings","Bell","Heart","Tv2","Gamepad2","Code2"];
+
+// ── Partner types (for admin) ─────────────────────────────────────────────────
+interface LandingPartner {
+  id: string;
+  tiktokHandle: string;
+  displayName: string;
+  avatarUrl: string;
+  followers: number;
+  addedAt: string;
+  isLive?: boolean;
+  viewerCount?: number;
+}
+function fmtNum(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+// ── Partners admin section ─────────────────────────────────────────────────────
+function EditPartnerDialog({ partner, token, toast, onSaved }: {
+  partner: LandingPartner;
+  token: string;
+  toast: ReturnType<typeof useToast>["toast"];
+  onSaved: (updated: LandingPartner) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [displayName, setDisplayName] = useState(partner.displayName);
+  const [avatarUrl, setAvatarUrl] = useState(partner.avatarUrl);
+  const [followers, setFollowers] = useState(String(partner.followers));
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/landing/partners/${partner.id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName, avatarUrl, followers: Number(followers) || 0 }),
+      });
+      if (!res.ok) { toast({ title: "Erro ao salvar", variant: "destructive" }); return; }
+      const updated = await res.json() as LandingPartner;
+      onSaved(updated);
+      setOpen(false);
+      toast({ title: "Parceiro atualizado!" });
+    } catch { toast({ title: "Erro ao salvar", variant: "destructive" }); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <>
+      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white/30 hover:text-white"
+        title="Editar dados manualmente" onClick={() => { setDisplayName(partner.displayName); setAvatarUrl(partner.avatarUrl); setFollowers(String(partner.followers)); setOpen(true); }}>
+        <Pencil className="w-3.5 h-3.5" />
+      </Button>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)}>
+          <div className="w-full max-w-md rounded-2xl p-6 space-y-4" style={{ background: "#100c28", border: "1px solid rgba(255,255,255,0.1)" }} onClick={e => e.stopPropagation()}>
+            <div>
+              <h3 className="font-bold text-white text-base">Editar @{partner.tiktokHandle}</h3>
+              <p className="text-xs text-white/35 mt-1">Insira os dados manualmente. A foto pode ser uma URL de imagem do perfil do TikTok.</p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Nome de exibição</label>
+                <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Nome do streamer" />
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">URL da foto de perfil</label>
+                <Input value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://..." />
+                {avatarUrl && <img src={avatarUrl} alt="" className="mt-2 w-12 h-12 rounded-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+              </div>
+              <div>
+                <label className="text-xs text-white/50 mb-1 block">Seguidores</label>
+                <Input type="text" inputMode="numeric" value={followers} onChange={e => setFollowers(e.target.value)} placeholder="Ex: 2500000" />
+                <p className="text-[10px] text-white/25 mt-1">Só dígitos — não use pontos nem vírgulas</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setOpen(false)} className="text-white/50">Cancelar</Button>
+              <Button onClick={() => void save()} disabled={saving} className="gap-2">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function PartnersAdminSection({ token, toast }: { token: string; toast: ReturnType<typeof useToast>["toast"] }) {
+  const [partners, setPartners] = useState<LandingPartner[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [handle, setHandle] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+
+  const loadPartners = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/landing/partners", { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json() as { partners: LandingPartner[] };
+      setPartners(data.partners ?? []);
+    } catch { toast({ title: "Erro ao carregar parceiros", variant: "destructive" }); }
+    finally { setLoading(false); }
+  }, [token, toast]);
+
+  useEffect(() => { void loadPartners(); }, [loadPartners]);
+
+  const addPartner = async () => {
+    const h = handle.trim().replace(/^@/, "");
+    if (!h) return;
+    setAdding(true);
+    try {
+      const res = await fetch("/api/landing/partners", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ tiktokHandle: h }),
+      });
+      if (res.status === 409) { toast({ title: "Parceiro já adicionado", variant: "destructive" }); return; }
+      if (!res.ok) { toast({ title: "Erro ao adicionar", variant: "destructive" }); return; }
+      const partner = await res.json() as LandingPartner;
+      setPartners(prev => [...prev, partner]);
+      setHandle("");
+      toast({ title: `@${partner.tiktokHandle} adicionado!` });
+    } catch { toast({ title: "Erro ao adicionar parceiro", variant: "destructive" }); }
+    finally { setAdding(false); }
+  };
+
+  const removePartner = async (id: string, h: string) => {
+    try {
+      await fetch(`/api/landing/partners/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      setPartners(prev => prev.filter(p => p.id !== id));
+      toast({ title: `@${h} removido` });
+    } catch { toast({ title: "Erro ao remover", variant: "destructive" }); }
+  };
+
+  const refreshPartner = async (id: string) => {
+    setRefreshingId(id);
+    try {
+      const res = await fetch(`/api/landing/partners/${id}/refresh`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) { toast({ title: "Erro ao atualizar perfil", variant: "destructive" }); return; }
+      const updated = await res.json() as LandingPartner;
+      setPartners(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p));
+      toast({ title: "Perfil atualizado!" });
+    } catch { toast({ title: "Erro ao atualizar", variant: "destructive" }); }
+    finally { setRefreshingId(null); }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Add partner */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <UserPlus className="w-4 h-4 text-amber-400" /> Adicionar Parceiro
+          </CardTitle>
+          <CardDescription>
+            Digite o @ do TikTok para buscar e adicionar o streamer como parceiro.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">@</span>
+              <Input
+                className="pl-7"
+                placeholder="nomeDoStreamer"
+                value={handle}
+                onChange={e => setHandle(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && void addPartner()}
+                disabled={adding}
+              />
+            </div>
+            <Button onClick={() => void addPartner()} disabled={adding || !handle.trim()} className="gap-2 shrink-0">
+              {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              {adding ? "Buscando…" : "Adicionar"}
+            </Button>
+          </div>
+          <p className="text-xs text-white/30 mt-2">Após adicionar, clique no lápis (✏️) para inserir a foto e dados manualmente. Auto-busca requer plano Pro da tik.tools.</p>
+        </CardContent>
+      </Card>
+
+      {/* Partners list */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Parceiros ({partners.length})</CardTitle>
+            <Button size="sm" variant="ghost" className="h-7 gap-1 text-white/50" onClick={() => void loadPartners()} disabled={loading}>
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Recarregar
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-white/30" /></div>
+          ) : partners.length === 0 ? (
+            <div className="py-10 text-center text-white/30 text-sm">
+              <SiTiktok className="w-8 h-8 mx-auto mb-2 opacity-20" />
+              Nenhum parceiro adicionado ainda.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {partners.map(p => (
+                <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 flex items-center justify-center"
+                    style={{ border: p.isLive ? "2px solid #f59e0b" : "2px solid rgba(255,255,255,0.1)", background: "rgba(124,58,237,0.2)" }}>
+                    {p.avatarUrl ? (
+                      <img src={p.avatarUrl} alt={p.displayName} className="w-full h-full object-cover"
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    ) : (
+                      <SiTiktok className="w-4 h-4 text-white/30" />
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-semibold text-white truncate">{p.displayName}</span>
+                      {p.isLive && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                          <span className="w-1 h-1 rounded-full bg-red-400 animate-pulse" /> AO VIVO
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <span className="text-xs text-white/40">@{p.tiktokHandle}</span>
+                      {p.followers > 0 && (
+                        <span className="text-xs font-semibold" style={{ color: "#f59e0b" }}>
+                          {fmtNum(p.followers)} seguidores
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <EditPartnerDialog partner={p} token={token} toast={toast}
+                      onSaved={updated => setPartners(prev => prev.map(x => x.id === updated.id ? { ...x, ...updated } : x))} />
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-white/30 hover:text-white"
+                      title="Atualizar perfil via tik.tools (requer Pro)"
+                      onClick={() => void refreshPartner(p.id)}
+                      disabled={refreshingId === p.id}>
+                      <RefreshCw className={`w-3.5 h-3.5 ${refreshingId === p.id ? "animate-spin" : ""}`} />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400/50 hover:text-red-400"
+                      title="Remover parceiro"
+                      onClick={() => void removePartner(p.id, p.tiktokHandle)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function LandingPageTab({ allPlans }: { allPlans: Plan[] }) {
+  const { token } = useAuth();
+  const { toast } = useToast();
+  const [landing, setLanding] = useState<LandingContent | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [activeSection, setActiveSection] = useState<"general" | "features" | "plans" | "cta" | "partners">("general");
+  const [featureDialogOpen, setFeatureDialogOpen] = useState(false);
+  const [editFeature, setEditFeature] = useState<LandingFeature>(EMPTY_FEATURE);
+  const [editIsNew, setEditIsNew] = useState(true);
+
+  const fetchLanding = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/landing", { headers: { Authorization: `Bearer ${token}` } });
+      setLanding(await res.json() as LandingContent);
+    } catch { toast({ title: "Erro ao carregar landing page", variant: "destructive" }); }
+    finally { setLoading(false); }
+  }, [token, toast]);
+
+  useEffect(() => { void fetchLanding(); }, [fetchLanding]);
+
+  const save = async (patch: Partial<LandingContent>) => {
+    if (!landing) return;
+    setSaving(true);
+    try {
+      const updated = { ...landing, ...patch };
+      const res = await fetch("/api/landing", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+      const data = await res.json() as LandingContent;
+      setLanding(data);
+      toast({ title: "Salvo!" });
+    } catch { toast({ title: "Erro ao salvar", variant: "destructive" }); }
+    finally { setSaving(false); }
+  };
+
+  const openAddFeature = () => {
+    const nextOrder = landing ? Math.max(0, ...landing.features.map(f => f.order)) + 1 : 0;
+    setEditFeature({ ...EMPTY_FEATURE, id: crypto.randomUUID(), order: nextOrder });
+    setEditIsNew(true);
+    setFeatureDialogOpen(true);
+  };
+
+  const openEditFeature = (f: LandingFeature) => {
+    setEditFeature({ ...f });
+    setEditIsNew(false);
+    setFeatureDialogOpen(true);
+  };
+
+  const saveFeature = () => {
+    if (!landing || !editFeature.title.trim()) return;
+    const features = editIsNew
+      ? [...landing.features, editFeature]
+      : landing.features.map(f => f.id === editFeature.id ? editFeature : f);
+    void save({ features });
+    setFeatureDialogOpen(false);
+  };
+
+  const deleteFeature = (id: string) => {
+    if (!landing) return;
+    void save({ features: landing.features.filter(f => f.id !== id) });
+  };
+
+  const moveFeature = (id: string, dir: -1 | 1) => {
+    if (!landing) return;
+    const sorted = [...landing.features].sort((a, b) => a.order - b.order);
+    const idx = sorted.findIndex(f => f.id === id);
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    const newOrder = sorted[swapIdx]!.order;
+    const swapOrder = sorted[idx]!.order;
+    const features = landing.features.map(f => {
+      if (f.id === id) return { ...f, order: newOrder };
+      if (f.id === sorted[swapIdx]!.id) return { ...f, order: swapOrder };
+      return f;
+    });
+    void save({ features });
+  };
+
+  const togglePlanVisibility = (planId: string, checked: boolean) => {
+    if (!landing) return;
+    const ids = checked
+      ? [...landing.plans.visiblePlanIds, planId]
+      : landing.plans.visiblePlanIds.filter(id => id !== planId);
+    void save({ plans: { ...landing.plans, visiblePlanIds: ids } });
+  };
+
+  if (loading || !landing) {
+    return <div className="py-10 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>;
+  }
+
+  const sorted = [...landing.features].sort((a, b) => a.order - b.order);
+
+  return (
+    <div className="space-y-4">
+      {/* Sub-navigation */}
+      <div className="flex items-center gap-1 flex-wrap">
+        {(["general","features","plans","cta","partners"] as const).map(sec => (
+          <Button
+            key={sec}
+            variant={activeSection === sec ? "secondary" : "ghost"}
+            size="sm"
+            className="capitalize h-7"
+            onClick={() => setActiveSection(sec)}
+          >
+            {sec === "general" ? "Geral" : sec === "features" ? "Funcionalidades" : sec === "plans" ? "Planos" : sec === "cta" ? "CTA / Rodapé" : "⭐ Parceiros"}
+          </Button>
+        ))}
+        <Button size="sm" variant="outline" className="h-7 ml-auto gap-1" onClick={() => window.open("/landing", "_blank")}>
+          <ExternalLink className="w-3.5 h-3.5" /> Prévia
+        </Button>
+      </div>
+
+      {/* GENERAL */}
+      {activeSection === "general" && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Configurações Gerais</CardTitle></CardHeader>
+          <CardContent className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">Landing Page Ativa</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Quando desativada, visitantes são redirecionados ao login.</p>
+              </div>
+              <Switch checked={landing.enabled} onCheckedChange={(v) => void save({ enabled: v })} />
+            </div>
+            <Separator />
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Título Principal</Label>
+                <Input value={landing.hero.headline} onChange={e => setLanding(l => l ? ({ ...l, hero: { ...l.hero, headline: e.target.value } }) : l)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Subtítulo</Label>
+                <Textarea rows={2} value={landing.hero.subheadline} onChange={e => setLanding(l => l ? ({ ...l, hero: { ...l.hero, subheadline: e.target.value } }) : l)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Texto do Botão CTA</Label>
+                <Input value={landing.hero.ctaLabel} onChange={e => setLanding(l => l ? ({ ...l, hero: { ...l.hero, ctaLabel: e.target.value } }) : l)} />
+              </div>
+            </div>
+            <Button onClick={() => void save({ hero: landing.hero })} disabled={saving} size="sm">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+              Salvar Geral
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* FEATURES */}
+      {activeSection === "features" && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Gerencie os cards de funcionalidades exibidos na landing page.</p>
+            <Button size="sm" onClick={openAddFeature}>
+              <Plus className="w-4 h-4 mr-2" /> Adicionar
+            </Button>
+          </div>
+          {sorted.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Globe className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">Nenhuma funcionalidade adicionada.</p>
+                <Button size="sm" variant="outline" className="mt-4" onClick={openAddFeature}><Plus className="w-4 h-4 mr-2" />Adicionar</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {sorted.map((feat, i) => (
+                <Card key={feat.id}>
+                  <CardContent className="pt-4 flex items-center gap-3">
+                    <div className="flex flex-col gap-1">
+                      <Button size="icon" variant="ghost" className="h-5 w-5" disabled={i === 0} onClick={() => moveFeature(feat.id, -1)}>
+                        <ChevronUp className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-5 w-5" disabled={i === sorted.length - 1} onClick={() => moveFeature(feat.id, 1)}>
+                        <ChevronDown className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{feat.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{feat.description}</p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">{feat.icon}</Badge>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => openEditFeature(feat)}>
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remover funcionalidade?</AlertDialogTitle>
+                            <AlertDialogDescription>O card <strong>{feat.title}</strong> será removido da landing page.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteFeature(feat.id)} className="bg-destructive text-white">Remover</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* PLANS */}
+      {activeSection === "plans" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Exibição de Planos</CardTitle>
+            <CardDescription>Escolha quais planos aparecem na landing page e qual é o recomendado.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {allPlans.filter(p => p.isActive).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(plan => (
+              <div key={plan.id} className="flex items-center gap-4">
+                <Checkbox
+                  id={`vis-${plan.id}`}
+                  checked={landing.plans.visiblePlanIds.includes(plan.id)}
+                  onCheckedChange={v => togglePlanVisibility(plan.id, !!v)}
+                />
+                <label htmlFor={`vis-${plan.id}`} className="flex-1 text-sm font-medium cursor-pointer">{plan.name}</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="recommended"
+                    id={`rec-${plan.id}`}
+                    checked={landing.plans.recommendedPlanId === plan.id}
+                    onChange={() => void save({ plans: { ...landing.plans, recommendedPlanId: plan.id } })}
+                    className="cursor-pointer"
+                  />
+                  <label htmlFor={`rec-${plan.id}`} className="text-xs text-muted-foreground cursor-pointer">Recomendado</label>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* CTA */}
+      {activeSection === "cta" && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Faixa CTA / Rodapé</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Título da Faixa CTA</Label>
+              <Input value={landing.cta.text} onChange={e => setLanding(l => l ? ({ ...l, cta: { ...l.cta, text: e.target.value } }) : l)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Subtexto</Label>
+              <Input value={landing.cta.subtext} onChange={e => setLanding(l => l ? ({ ...l, cta: { ...l.cta, subtext: e.target.value } }) : l)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Texto do Botão</Label>
+              <Input value={landing.cta.buttonLabel} onChange={e => setLanding(l => l ? ({ ...l, cta: { ...l.cta, buttonLabel: e.target.value } }) : l)} />
+            </div>
+            <Button onClick={() => void save({ cta: landing.cta })} disabled={saving} size="sm">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+              Salvar CTA
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* PARTNERS */}
+      {activeSection === "partners" && (
+        <PartnersAdminSection token={token ?? ""} toast={toast} />
+      )}
+
+      {/* Feature Dialog */}
+      <Dialog open={featureDialogOpen} onOpenChange={setFeatureDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editIsNew ? "Nova Funcionalidade" : "Editar Funcionalidade"}</DialogTitle>
+            <DialogDescription>Preencha os detalhes do card de funcionalidade.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>Título *</Label>
+              <Input value={editFeature.title} onChange={e => setEditFeature(f => ({ ...f, title: e.target.value }))} placeholder="Ex: Monitor em Tempo Real" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Descrição</Label>
+              <Textarea rows={2} value={editFeature.description} onChange={e => setEditFeature(f => ({ ...f, description: e.target.value }))} placeholder="Descrição da funcionalidade..." />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Ícone (Lucide)</Label>
+              <Select value={editFeature.icon} onValueChange={v => setEditFeature(f => ({ ...f, icon: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LUCIDE_ICONS.map(ic => <SelectItem key={ic} value={ic}>{ic}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>URL da Imagem (opcional)</Label>
+              <Input value={editFeature.imageUrl} onChange={e => setEditFeature(f => ({ ...f, imageUrl: e.target.value }))} placeholder="https://..." />
+            </div>
+            <div className="space-y-1.5">
+              <Label>URL do Demo Animado (GIF/MP4, opcional)</Label>
+              <Input value={editFeature.demoUrl} onChange={e => setEditFeature(f => ({ ...f, demoUrl: e.target.value }))} placeholder="https://...demo.mp4" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFeatureDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={saveFeature} disabled={saving || !editFeature.title.trim()}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // MAIN ADMIN PAGE
 // ════════════════════════════════════════════════════════════════════════════
-type AdminSection = "overview" | "users" | "roles" | "plans" | "announcements" | "content" | "customization" | "sistema";
+type AdminSection = "overview" | "users" | "roles" | "plans" | "announcements" | "content" | "customization" | "landing" | "sistema";
 
 const ADMIN_NAV: Array<{ id: AdminSection; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }> = [
   { id: "overview",      label: "Visão Geral",       icon: LayoutDashboard },
@@ -1344,6 +1960,7 @@ const ADMIN_NAV: Array<{ id: AdminSection; label: string; icon: React.ComponentT
   { id: "announcements", label: "Anúncios",           icon: Bell,           badge: "Novo" },
   { id: "content",       label: "Conteúdo",           icon: BookOpen },
   { id: "customization", label: "Customização",       icon: Palette },
+  { id: "landing",       label: "Landing Page",       icon: Globe },
   { id: "sistema",       label: "Sistema",            icon: Server },
 ];
 
@@ -1439,6 +2056,7 @@ export default function Admin() {
         {activeSection === "announcements" && <AnunciosSection />}
         {activeSection === "content"       && <ConteudoSection />}
         {activeSection === "customization" && <CustomizacaoSection />}
+        {activeSection === "landing"       && <LandingPageTab allPlans={plans} />}
         {activeSection === "sistema"       && <SistemaSection />}
       </div>
     </div>

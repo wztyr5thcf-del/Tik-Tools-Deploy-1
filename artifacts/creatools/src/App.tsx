@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Setup from "./pages/setup";
+import LandingPage from "./pages/landing";
 import Dashboard from "./pages/dashboard";
 import Monitor from "./pages/monitor";
 import BulkCheck from "./pages/bulk-check";
@@ -103,11 +104,26 @@ function GuestRoute({ component: Component }: { component: React.ComponentType }
   return <Component />;
 }
 
+function HomeRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return <Spinner />;
+  if (!user) return <LandingPage />;
+  return (
+    <AppLayout>
+      <Dashboard />
+    </AppLayout>
+  );
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/login" component={() => <GuestRoute component={Login} />} />
       <Route path="/setup" component={Setup} />
+      {/* Public landing page — handles auth check internally */}
+      <Route path="/" component={HomeRoute} />
+      {/* /landing — admin preview route (accessible while logged in, bypasses enabled check) */}
+      <Route path="/landing" component={() => <LandingPage isPreview />} />
       {/* Overlays — no AppLayout, no auth required (runs inside OBS/TikTok Studio) */}
       {/* IMPORTANT: specific paths must come BEFORE :username wildcard */}
       <Route path="/overlay/alerts/:username" component={OverlayAlerts} />
@@ -122,7 +138,6 @@ function Router() {
       <Route>
         <AppLayout>
           <Switch>
-            <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />
             <Route path="/monitor/:username" component={() => <ProtectedRoute component={Monitor} />} />
 
             {/* Streamer tools — each as its own page */}

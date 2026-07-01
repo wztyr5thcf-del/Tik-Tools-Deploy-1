@@ -468,6 +468,99 @@ export const TestWebhookResponse = zod.record(zod.string(), zod.unknown()).descr
 
 
 /**
+ * Returns the landing page content including hero, features, plan config and CTA. Public endpoint.
+ * @summary Get landing page content (public)
+ */
+export const GetLandingContentResponse = zod.object({
+  "enabled": zod.boolean(),
+  "hero": zod.object({
+  "headline": zod.string(),
+  "subheadline": zod.string(),
+  "ctaLabel": zod.string(),
+  "backgroundGradient": zod.string()
+}),
+  "features": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "icon": zod.string(),
+  "imageUrl": zod.string(),
+  "demoUrl": zod.string(),
+  "order": zod.number()
+})),
+  "plans": zod.object({
+  "visiblePlanIds": zod.array(zod.string()),
+  "recommendedPlanId": zod.string()
+}),
+  "cta": zod.object({
+  "text": zod.string(),
+  "subtext": zod.string(),
+  "buttonLabel": zod.string()
+})
+})
+
+
+/**
+ * @summary Update landing page content (admin only)
+ */
+export const UpdateLandingContentBody = zod.object({
+  "enabled": zod.boolean(),
+  "hero": zod.object({
+  "headline": zod.string(),
+  "subheadline": zod.string(),
+  "ctaLabel": zod.string(),
+  "backgroundGradient": zod.string()
+}),
+  "features": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "icon": zod.string(),
+  "imageUrl": zod.string(),
+  "demoUrl": zod.string(),
+  "order": zod.number()
+})),
+  "plans": zod.object({
+  "visiblePlanIds": zod.array(zod.string()),
+  "recommendedPlanId": zod.string()
+}),
+  "cta": zod.object({
+  "text": zod.string(),
+  "subtext": zod.string(),
+  "buttonLabel": zod.string()
+})
+})
+
+export const UpdateLandingContentResponse = zod.object({
+  "enabled": zod.boolean(),
+  "hero": zod.object({
+  "headline": zod.string(),
+  "subheadline": zod.string(),
+  "ctaLabel": zod.string(),
+  "backgroundGradient": zod.string()
+}),
+  "features": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "icon": zod.string(),
+  "imageUrl": zod.string(),
+  "demoUrl": zod.string(),
+  "order": zod.number()
+})),
+  "plans": zod.object({
+  "visiblePlanIds": zod.array(zod.string()),
+  "recommendedPlanId": zod.string()
+}),
+  "cta": zod.object({
+  "text": zod.string(),
+  "subtext": zod.string(),
+  "buttonLabel": zod.string()
+})
+})
+
+
+/**
  * Returns current app configuration (API key is masked)
  * @summary Get configuration
  */

@@ -9,6 +9,42 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface LandingFeature {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  imageUrl: string;
+  demoUrl: string;
+  order: number;
+}
+
+export type LandingContentHero = {
+  headline: string;
+  subheadline: string;
+  ctaLabel: string;
+  backgroundGradient: string;
+};
+
+export type LandingContentPlans = {
+  visiblePlanIds: string[];
+  recommendedPlanId: string;
+};
+
+export type LandingContentCta = {
+  text: string;
+  subtext: string;
+  buttonLabel: string;
+};
+
+export interface LandingContent {
+  enabled: boolean;
+  hero: LandingContentHero;
+  features: LandingFeature[];
+  plans: LandingContentPlans;
+  cta: LandingContentCta;
+}
+
 /**
  * Raw passthrough response from tik.tools API
  */
