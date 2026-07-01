@@ -3330,6 +3330,12 @@ function SuporteSection() {
 
   useEffect(() => { void load(); }, [load]);
 
+  // Auto-refresh every 15s so admin sees new tickets without manual refresh
+  useEffect(() => {
+    const interval = setInterval(() => { void load(); }, 15000);
+    return () => clearInterval(interval);
+  }, [load]);
+
   async function loadMessages(ticketId: string) {
     if (messages[ticketId]) return;
     try {

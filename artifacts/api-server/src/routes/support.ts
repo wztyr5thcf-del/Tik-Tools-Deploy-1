@@ -17,17 +17,48 @@ router.get("/support/tickets", requireAuth, async (req, res): Promise<void> => {
   res.json({ tickets, messages: messages.flat() });
 });
 
-// POST /support/tickets — create TikTok username change request
+// POST /support/tickets — create ticket (tiktok_username_change or general)
 router.post("/support/tickets", requireAuth, async (req, res): Promise<void> => {
   const userId = (req as AuthReq).userId;
-  const { newTiktokUsername, reason, customReason } = req.body as { newTiktokUsername?: string; reason?: string; customReason?: string };
-
-  if (!newTiktokUsername || !reason) {
-    res.status(400).json({ error: "newTiktokUsername and reason are required" }); return;
-  }
+  const body = req.body as {
+    type?: string;
+    newTiktokUsername?: string; reason?: string; customReason?: string;
+    subject?: string; message?: string;
+  };
 
   const user = await getUserById(userId);
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  // ── General support ticket ────────────────────────────────────────────────
+  if (body.type === "general") {
+    const subject = body.subject?.trim();
+    const message = body.message?.trim();
+    if (!subject) { res.status(400).json({ error: "subject é obrigatório" }); return; }
+
+    const ticket = await createTicket({
+      type: "general",
+      userId,
+      userEmail: user.email,
+      userName: user.name,
+      newValue: subject,
+      reason: "general",
+      customReason: message ?? undefined,
+    });
+
+    if (message) {
+      await addMessage({ ticketId: ticket.id, fromAdmin: false, authorName: user.name, text: message });
+    }
+
+    req.log.info({ userId, ticketId: ticket.id, type: "general" }, "General support ticket created");
+    res.status(201).json({ ticket });
+    return;
+  }
+
+  // ── TikTok username change ────────────────────────────────────────────────
+  const { newTiktokUsername, reason, customReason } = body;
+  if (!newTiktokUsername || !reason) {
+    res.status(400).json({ error: "newTiktokUsername and reason are required" }); return;
+  }
 
   const pending = await getPendingTicketByUser(userId, "tiktok_username_change");
   if (pending) { res.status(409).json({ error: "Você já possui uma solicitação pendente.", ticketId: pending.id }); return; }

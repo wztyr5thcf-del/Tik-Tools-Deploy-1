@@ -1,3 +1,4 @@
+import SupportWidget from "@/components/support-widget";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, Activity, Settings, Diamond,
@@ -1013,6 +1014,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
+
+      {/* Floating support widget */}
+      <SupportWidget />
     </div>
   );
 }
