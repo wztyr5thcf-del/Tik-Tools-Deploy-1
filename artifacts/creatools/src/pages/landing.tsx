@@ -4,12 +4,14 @@ import { SiTiktok } from "react-icons/si";
 import {
   LayoutDashboard, Activity, Users, Trophy, Monitor, type LucideProps,
   ArrowRight, Menu, X, Gamepad2, Bell, Diamond, Webhook,
-  Code2, Eye, Heart, Gift, BarChart3, Zap, Star, Shield,
+  Code2, Eye, EyeOff, Heart, Gift, BarChart3, Zap, Star, Shield,
   MessageCircle, TrendingUp, Sparkles, Play, ChevronRight,
+  Loader2, AlertCircle, CheckCircle2, XCircle, Search, UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PricingTable, type PricingPlan } from "@/components/pricing-table";
 import { useUIConfig } from "@/context/ui-config-context";
+import { useAuth } from "@/context/auth-context";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface LandingFeature { id: string; title: string; description: string; icon: string; imageUrl: string; demoUrl: string; order: number }
@@ -613,6 +615,293 @@ function Footer({ logo }: { logo: string }) {
   );
 }
 
+// ── Auth Modal ────────────────────────────────────────────────────────────────
+type AuthMode = "login" | "register";
+type RegStep = "account" | "tiktok";
+interface TikProfile {
+  exists: boolean | null; uniqueId: string; reason?: string;
+  nickname?: string | null; profilePictureUrl?: string | null; followerCount?: number;
+}
+
+function AuthErrorBox({ msg }: { msg: string }) {
+  return (
+    <div className="flex items-start gap-2 text-sm rounded-xl px-3 py-2.5"
+      style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#fca5a5" }}>
+      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />{msg}
+    </div>
+  );
+}
+
+function AuthModal({ open, initialMode, onClose }: { open: boolean; initialMode: AuthMode; onClose: () => void }) {
+  const { login, register } = useAuth();
+  const [, setLocation] = useLocation();
+  const [mode, setMode] = useState<AuthMode>(initialMode);
+  const [regStep, setRegStep] = useState<RegStep>("account");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [tiktokHandle, setTiktokHandle] = useState("");
+  const [tikProfile, setTikProfile] = useState<TikProfile | null>(null);
+  const [tikLooking, setTikLooking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setMode(initialMode); setRegStep("account");
+      setEmail(""); setPassword(""); setName(""); setShowPw(false);
+      setTiktokHandle(""); setTikProfile(null); setError(null); setLoading(false);
+    }
+  }, [open, initialMode]);
+
+  useEffect(() => {
+    const handle = tiktokHandle.trim().replace(/^@/, "");
+    if (!handle || handle.length < 2) { setTikProfile(null); return; }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setTikLooking(true);
+      try {
+        const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+        const r = await fetch(`${BASE}/api/tiktok/verify-username?uniqueId=${encodeURIComponent(handle)}`);
+        const data = await r.json() as TikProfile;
+        setTikProfile({ ...data, uniqueId: handle });
+      } catch {
+        setTikProfile({ exists: null, uniqueId: handle });
+      } finally { setTikLooking(false); }
+    }, 700);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [tiktokHandle]);
+
+  function switchMode(m: AuthMode) {
+    setMode(m); setRegStep("account"); setError(null);
+    setEmail(""); setPassword(""); setName(""); setTiktokHandle(""); setTikProfile(null);
+  }
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault(); setError(null); setLoading(true);
+    try { await login(email, password); onClose(); setLocation("/"); }
+    catch (err) { setError(err instanceof Error ? err.message : "Algo deu errado"); }
+    finally { setLoading(false); }
+  }
+
+  async function handleRegisterStep1(e: React.FormEvent) {
+    e.preventDefault(); setError(null);
+    if (password.length < 6) { setError("A senha deve ter pelo menos 6 caracteres"); return; }
+    setRegStep("tiktok");
+  }
+
+  async function handleRegisterFinish() {
+    const handle = tiktokHandle.trim().replace(/^@/, "");
+    if (!handle || handle.length < 2) { setError("Informe seu @ do TikTok (obrigatório)"); return; }
+    setError(null); setLoading(true);
+    try {
+      await register(email, password, name, {
+        username: tikProfile?.uniqueId ?? handle,
+        profilePicture: tikProfile?.profilePictureUrl ?? undefined,
+        displayName: tikProfile?.nickname ?? undefined,
+        followerCount: tikProfile?.followerCount,
+      });
+      onClose(); setLocation("/");
+    } catch (err) { setError(err instanceof Error ? err.message : "Algo deu errado"); }
+    finally { setLoading(false); }
+  }
+
+  if (!open) return null;
+
+  const isHandleValid = tikProfile?.exists === true;
+  const isHandleNotFound = tikProfile?.exists === false && tikProfile?.reason !== "no_api_key";
+  const handle = tiktokHandle.trim().replace(/^@/, "");
+  const canFinish = handle.length >= 2 && !tikLooking;
+
+  const inputStyle: React.CSSProperties = {
+    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)",
+    color: "white", width: "100%", padding: "12px 16px", borderRadius: "12px",
+    fontSize: "14px", outline: "none",
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={onClose}
+      style={{ background: "rgba(6,4,16,0.88)", backdropFilter: "blur(14px)" }}>
+      <div className="relative w-full max-w-md rounded-2xl overflow-hidden"
+        style={{ background: "rgba(10,8,28,0.98)", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 30px 90px rgba(0,0,0,0.75), 0 0 0 1px rgba(124,58,237,0.1)" }}
+        onClick={(e) => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg,#06b6d4,#7c3aed)" }}>
+              <SiTiktok className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <div className="font-bold text-sm text-white leading-none">Creatools</div>
+              <div className="text-[9px] text-purple-400/60 uppercase tracking-widest">TikTok Live Studio</div>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-white/30 hover:text-white transition-colors"
+            style={{ background: "transparent" }}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          {/* Mode tabs */}
+          <div className="grid grid-cols-2 gap-1 rounded-xl p-1" style={{ background: "rgba(255,255,255,0.05)" }}>
+            {(["login", "register"] as const).map((m) => (
+              <button key={m} onClick={() => switchMode(m)}
+                className="py-2 rounded-lg text-sm font-semibold transition-all"
+                style={{ background: mode === m ? "#7c3aed" : "transparent", color: mode === m ? "white" : "rgba(255,255,255,0.35)" }}>
+                {m === "login" ? "Entrar" : "Criar conta"}
+              </button>
+            ))}
+          </div>
+
+          {/* Title */}
+          <div>
+            <h2 className="text-lg font-bold text-white mb-0.5">
+              {mode === "login" ? "Bem-vindo de volta" : regStep === "account" ? "Criar sua conta" : "Vincular TikTok"}
+            </h2>
+            <p className="text-xs text-purple-300/45">
+              {mode === "login" ? "Entre para acessar seus overlays e ferramentas"
+               : regStep === "account" ? "Preencha seus dados para começar"
+               : "Obrigatório — seu @ do TikTok fica vinculado à conta"}
+            </p>
+          </div>
+
+          {/* ── LOGIN ── */}
+          {mode === "login" && (
+            <form onSubmit={handleLogin} className="space-y-3">
+              <input type="email" placeholder="Seu email" value={email} onChange={(e) => setEmail(e.target.value)}
+                required autoComplete="email" style={inputStyle}
+                className="placeholder:text-purple-400/30 focus:border-purple-500/40" />
+              <div className="relative">
+                <input type={showPw ? "text" : "password"} placeholder="Sua senha" value={password}
+                  onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password"
+                  style={{ ...inputStyle, paddingRight: "40px" }}
+                  className="placeholder:text-purple-400/30 focus:border-purple-500/40" />
+                <button type="button" onClick={() => setShowPw(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-400/40 hover:text-purple-300 transition-colors">
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {error && <AuthErrorBox msg={error} />}
+              <button type="submit" disabled={loading}
+                className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 disabled:opacity-60 transition-all hover:opacity-90"
+                style={{ background: "linear-gradient(90deg,#ec4899,#8b5cf6,#06b6d4)", backgroundSize: "200% 100%" }}>
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Entrando…</> : <><ArrowRight className="w-4 h-4" />Entrar</>}
+              </button>
+              <p className="text-center text-xs text-purple-300/30">
+                Não tem conta?{" "}
+                <button type="button" onClick={() => switchMode("register")} className="font-semibold hover:underline" style={{ color: "#a78bfa" }}>
+                  Criar conta grátis
+                </button>
+              </p>
+            </form>
+          )}
+
+          {/* ── REGISTER STEP 1: ACCOUNT ── */}
+          {mode === "register" && regStep === "account" && (
+            <form onSubmit={handleRegisterStep1} className="space-y-3">
+              <input type="text" placeholder="Seu nome completo" value={name}
+                onChange={(e) => setName(e.target.value)} required autoComplete="name"
+                style={inputStyle} className="placeholder:text-purple-400/30 focus:border-purple-500/40" />
+              <input type="email" placeholder="Seu email" value={email}
+                onChange={(e) => setEmail(e.target.value)} required autoComplete="email"
+                style={inputStyle} className="placeholder:text-purple-400/30 focus:border-purple-500/40" />
+              <div className="relative">
+                <input type={showPw ? "text" : "password"} placeholder="Senha (mínimo 6 caracteres)"
+                  value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password"
+                  style={{ ...inputStyle, paddingRight: "40px" }}
+                  className="placeholder:text-purple-400/30 focus:border-purple-500/40" />
+                <button type="button" onClick={() => setShowPw(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-400/40 hover:text-purple-300 transition-colors">
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {error && <AuthErrorBox msg={error} />}
+              <button type="submit"
+                className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 hover:opacity-90 transition-all"
+                style={{ background: "linear-gradient(90deg,#ec4899,#8b5cf6)" }}>
+                Próximo — vincular TikTok <ArrowRight className="w-4 h-4" />
+              </button>
+              <p className="text-center text-xs text-purple-300/30">
+                Já tem conta?{" "}
+                <button type="button" onClick={() => switchMode("login")} className="font-semibold hover:underline" style={{ color: "#a78bfa" }}>
+                  Entrar
+                </button>
+              </p>
+            </form>
+          )}
+
+          {/* ── REGISTER STEP 2: TIKTOK ── */}
+          {mode === "register" && regStep === "tiktok" && (
+            <div className="space-y-3">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400/60 text-sm font-mono">@</span>
+                <input type="text" placeholder="seuusuario" value={tiktokHandle}
+                  onChange={(e) => setTiktokHandle(e.target.value.replace(/^@/, ""))}
+                  autoComplete="off" autoFocus
+                  style={{ ...inputStyle, paddingLeft: "32px", paddingRight: "40px",
+                    borderColor: isHandleValid ? "rgba(34,197,94,0.45)" : isHandleNotFound ? "rgba(245,158,11,0.35)" : "rgba(255,255,255,0.08)" }}
+                  className="placeholder:text-purple-400/30" />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {tikLooking && <Loader2 className="w-4 h-4 animate-spin text-purple-400" />}
+                  {!tikLooking && isHandleValid && <CheckCircle2 className="w-4 h-4 text-green-400" />}
+                  {!tikLooking && isHandleNotFound && <XCircle className="w-4 h-4 text-orange-400" />}
+                  {!tikLooking && !tikProfile && handle.length < 2 && <Search className="w-4 h-4 text-purple-400/30" />}
+                </div>
+              </div>
+
+              {isHandleValid && tikProfile && (
+                <div className="flex items-center gap-3 p-3 rounded-xl"
+                  style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                  {tikProfile.profilePictureUrl ? (
+                    <img src={tikProfile.profilePictureUrl} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(124,58,237,0.3)" }}>
+                      <SiTiktok className="w-4 h-4 text-purple-400" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-white truncate">{tikProfile.nickname ?? tikProfile.uniqueId}</p>
+                    {tikProfile.followerCount ? <p className="text-xs text-green-400/70">{tikProfile.followerCount.toLocaleString("pt-BR")} seguidores</p> : null}
+                  </div>
+                  <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
+                </div>
+              )}
+
+              {/* Not found → warning only, does NOT block registration */}
+              {isHandleNotFound && handle.length > 1 && (
+                <div className="flex items-start gap-2 text-xs rounded-xl px-3 py-2.5"
+                  style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#fcd34d" }}>
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>@ não encontrado no TikTok — você pode criar a conta assim mesmo. O @ será salvo e poderá ser verificado depois.</span>
+                </div>
+              )}
+
+              {error && <AuthErrorBox msg={error} />}
+              <p className="text-[11px] text-purple-300/30 leading-relaxed">
+                O @ do TikTok é obrigatório e ficará permanentemente vinculado à sua conta. Não poderá ser alterado nas páginas de análise — apenas no perfil.
+              </p>
+
+              <button onClick={() => void handleRegisterFinish()} disabled={loading || !canFinish}
+                className="w-full py-3 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 disabled:opacity-40 transition-all hover:opacity-90"
+                style={{ background: "linear-gradient(90deg,#ec4899,#8b5cf6)" }}>
+                {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Criando conta…</> : <><UserPlus className="w-4 h-4" />Criar conta</>}
+              </button>
+              <button type="button" onClick={() => setRegStep("account")}
+                className="w-full text-center text-xs text-purple-300/30 hover:text-purple-300/50 transition-colors">
+                ← Voltar
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function LandingPage({ isPreview = false }: { isPreview?: boolean }) {
   const [, setLocation] = useLocation();
@@ -621,6 +910,8 @@ export default function LandingPage({ isPreview = false }: { isPreview?: boolean
   const [partners, setPartners] = useState<LandingPartner[]>([]);
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
 
   const logo = config?.logoText ?? "Creatools";
   const logoUrl = config?.logoUrl ?? "";
@@ -643,7 +934,7 @@ export default function LandingPage({ isPreview = false }: { isPreview?: boolean
 
   useEffect(() => { void load(); }, [load]);
 
-  const go = (path: string) => () => setLocation(path);
+  function openAuth(mode: AuthMode) { setAuthMode(mode); setShowAuth(true); }
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#060410" }}>
@@ -652,7 +943,7 @@ export default function LandingPage({ isPreview = false }: { isPreview?: boolean
   );
   if (!landing) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#060410" }}>
-      <Button variant="ghost" className="text-white/40" onClick={go("/login")}>Ir para o login</Button>
+      <Button variant="ghost" className="text-white/40" onClick={() => setLocation("/login")}>Ir para o login</Button>
     </div>
   );
   if (!landing.enabled && !isPreview) return <Redirect to="/login" />;
@@ -673,15 +964,16 @@ export default function LandingPage({ isPreview = false }: { isPreview?: boolean
         @keyframes lp-btn-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,0.5),0 0 40px rgba(124,58,237,0.3)} 50%{box-shadow:0 0 0 8px rgba(124,58,237,0),0 0 60px rgba(124,58,237,0.45)} }
       `}</style>
 
-      <Nav logo={logo} logoUrl={logoUrl} onLogin={go("/login")} onSignup={go("/login")} />
-      <Hero hero={landing.hero} onCTA={go("/login")} />
+      <AuthModal open={showAuth} initialMode={authMode} onClose={() => setShowAuth(false)} />
+      <Nav logo={logo} logoUrl={logoUrl} onLogin={() => openAuth("login")} onSignup={() => openAuth("register")} />
+      <Hero hero={landing.hero} onCTA={() => openAuth("register")} />
       <ToolTicker />
       {landing.features.length > 0 && <Features features={landing.features} />}
       <StatsBand />
       {partners.length > 0 && <Partners partners={partners} />}
       <Testimonials />
-      {visiblePlans.length > 0 && <Pricing plans={visiblePlans} recommended={landing.plans.recommendedPlanId} onSelect={go("/login")} />}
-      <CTA cta={landing.cta} onCTA={go("/login")} />
+      {visiblePlans.length > 0 && <Pricing plans={visiblePlans} recommended={landing.plans.recommendedPlanId} onSelect={() => openAuth("register")} />}
+      <CTA cta={landing.cta} onCTA={() => openAuth("register")} />
       <Footer logo={logo} />
     </div>
   );

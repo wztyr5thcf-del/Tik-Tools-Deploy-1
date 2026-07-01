@@ -397,11 +397,13 @@ router.get("/auth/users", requireAdmin, (_req, res): void => {
 // ── Admin: update user ────────────────────────────────────────────────────────
 router.patch("/auth/users/:id", requireAdmin, async (req, res): Promise<void> => {
   const { id } = req.params as { id: string };
-  const { plan, isAdmin, name, email } = req.body as {
+  const { plan, isAdmin, name, email, tiktokUsername, newPassword } = req.body as {
     plan?: "free" | "basic" | "pro";
     isAdmin?: boolean;
     name?: string;
     email?: string;
+    tiktokUsername?: string | null;
+    newPassword?: string;
   };
 
   const store = loadUsers();
@@ -416,8 +418,21 @@ router.patch("/auth/users/:id", requireAdmin, async (req, res): Promise<void> =>
     if (conflict) { res.status(409).json({ error: "E-mail já em uso" }); return; }
     store.users[idx].email = email.toLowerCase().trim();
   }
+  if (tiktokUsername !== undefined) {
+    const handle = typeof tiktokUsername === "string" ? tiktokUsername.trim().replace(/^@/, "") || undefined : undefined;
+    if (handle) {
+      const conflict = store.users.find((u) => u.tiktokUsername?.toLowerCase() === handle.toLowerCase() && u.id !== id);
+      if (conflict) { res.status(409).json({ error: "Este @ do TikTok já está vinculado a outra conta" }); return; }
+    }
+    store.users[idx].tiktokUsername = handle;
+  }
+  if (newPassword) {
+    if (newPassword.length < 6) { res.status(400).json({ error: "Senha mínima de 6 caracteres" }); return; }
+    store.users[idx].passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  }
 
   saveUsers(store);
+  req.log.info({ adminAction: "update_user", targetId: id }, "Admin updated user");
   res.json({ user: publicUser(store.users[idx]) });
 });
 

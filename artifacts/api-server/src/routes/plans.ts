@@ -53,6 +53,56 @@ router.patch("/admin/plans/:id", requireAdmin, (req, res): void => {
   res.json({ plan: store.plans[idx] });
 });
 
+// POST /admin/plans — create a new plan
+router.post("/admin/plans", requireAdmin, (req, res): void => {
+  const body = req.body as Partial<Plan> & { id?: string; name?: string };
+  if (!body.id || !body.name) { res.status(400).json({ error: "id e name são obrigatórios" }); return; }
+
+  const store = loadPlans();
+  if (store.plans.find((p) => p.id === body.id)) {
+    res.status(409).json({ error: "Já existe um plano com este ID" }); return;
+  }
+
+  const newPlan: Plan = {
+    id: body.id,
+    name: body.name,
+    description: body.description ?? "",
+    price: Number(body.price ?? 0),
+    currency: body.currency ?? "BRL",
+    billingPeriod: body.billingPeriod ?? "monthly",
+    permissions: Array.isArray(body.permissions) ? body.permissions : [],
+    tiktokUsernameChangesPerWeek: Number(body.tiktokUsernameChangesPerWeek ?? 1),
+    maxConcurrentWs: Number(body.maxConcurrentWs ?? 1),
+    maxApiCallsPerWindow: Number(body.maxApiCallsPerWindow ?? 50),
+    maxLiveHoursPerMonth: Number(body.maxLiveHoursPerMonth ?? 10),
+    maxLiveAnalyses: Number(body.maxLiveAnalyses ?? 50),
+    maxWebhooks: Number(body.maxWebhooks ?? 0),
+    features: Array.isArray(body.features) ? body.features : [],
+    color: body.color ?? "gray",
+    order: Number(body.order ?? store.plans.length),
+    isActive: body.isActive ?? false,
+  };
+
+  store.plans.push(newPlan);
+  savePlans(store);
+  res.status(201).json({ plan: newPlan });
+});
+
+// DELETE /admin/plans/:id — remove a custom plan (cannot delete free/basic/pro)
+router.delete("/admin/plans/:id", requireAdmin, (req, res): void => {
+  const { id } = req.params as { id: string };
+  const PROTECTED = ["free", "basic", "pro"];
+  if (PROTECTED.includes(id)) { res.status(403).json({ error: "Os planos padrão não podem ser removidos" }); return; }
+
+  const store = loadPlans();
+  const idx = store.plans.findIndex((p) => p.id === id);
+  if (idx === -1) { res.status(404).json({ error: "Plan not found" }); return; }
+
+  store.plans.splice(idx, 1);
+  savePlans(store);
+  res.json({ ok: true });
+});
+
 // GET /admin/plans/:id/username-change-stats — see how many users hit the limit
 router.get("/admin/plans/:id/username-change-stats", requireAdmin, (req, res): void => {
   const { id } = req.params as { id: string };

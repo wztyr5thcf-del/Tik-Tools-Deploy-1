@@ -257,6 +257,12 @@ function VisaoGeralSection() {
 // ════════════════════════════════════════════════════════════════════════════
 // SEÇÃO: USUÁRIOS
 // ════════════════════════════════════════════════════════════════════════════
+interface EditUserDraft {
+  id: string; name: string; email: string; plan: string; isAdmin: boolean;
+  tiktokUsername: string; roleId: string;
+  newPassword: string; newPasswordConfirm: string;
+}
+
 function UsuariosSection({ roles }: { roles: Role[] }) {
   const { user: me, token } = useAuth();
   const { toast } = useToast();
@@ -264,7 +270,10 @@ function UsuariosSection({ roles }: { roles: Role[] }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterPlan, setFilterPlan] = useState("all");
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [filterAdmin, setFilterAdmin] = useState("all");
+  const [editDraft, setEditDraft] = useState<EditUserDraft | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   const fetchUsers = useCallback(() => {
     setLoading(true);
@@ -272,19 +281,46 @@ function UsuariosSection({ roles }: { roles: Role[] }) {
   }, [token]);
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
-  const updateUser = (id: string, patch: Record<string, unknown>) => {
-    setUpdatingId(id);
-    authFetch(`/auth/users/${id}`, token!, { method: "PATCH", body: JSON.stringify(patch) })
-      .then(() => { fetchUsers(); toast({ title: "Usuário atualizado!" }); })
-      .catch(() => toast({ title: "Erro ao atualizar", variant: "destructive" }))
-      .finally(() => setUpdatingId(null));
-  };
+  function openEdit(u: AuthUser) {
+    setEditDraft({
+      id: u.id, name: u.name, email: u.email,
+      plan: u.plan, isAdmin: u.isAdmin,
+      tiktokUsername: u.tiktokUsername ?? "",
+      roleId: u.roleId ?? "",
+      newPassword: "", newPasswordConfirm: "",
+    });
+    setShowPw(false);
+  }
 
-  const assignRole = (userId: string, roleId: string | "") => {
-    authFetch(`/admin/users/${userId}/role`, token!, { method: "PATCH", body: JSON.stringify({ roleId: roleId || null }) })
-      .then(() => fetchUsers())
-      .catch(() => toast({ title: "Erro ao atribuir função", variant: "destructive" }));
-  };
+  async function saveEdit() {
+    if (!editDraft) return;
+    if (editDraft.newPassword && editDraft.newPassword !== editDraft.newPasswordConfirm) {
+      toast({ title: "As senhas não coincidem", variant: "destructive" }); return;
+    }
+    if (editDraft.newPassword && editDraft.newPassword.length < 6) {
+      toast({ title: "Senha mínima de 6 caracteres", variant: "destructive" }); return;
+    }
+    setSaving(true);
+    try {
+      const patch: Record<string, unknown> = {
+        name: editDraft.name, email: editDraft.email,
+        plan: editDraft.plan, isAdmin: editDraft.isAdmin,
+        tiktokUsername: editDraft.tiktokUsername || null,
+      };
+      if (editDraft.newPassword) patch.newPassword = editDraft.newPassword;
+      await authFetch(`/auth/users/${editDraft.id}`, token!, { method: "PATCH", body: JSON.stringify(patch) });
+      if (editDraft.roleId !== (users.find(u => u.id === editDraft.id)?.roleId ?? "")) {
+        await authFetch(`/admin/users/${editDraft.id}/role`, token!, {
+          method: "PATCH", body: JSON.stringify({ roleId: editDraft.roleId || null }),
+        });
+      }
+      toast({ title: "Usuário atualizado com sucesso!" });
+      setEditDraft(null);
+      fetchUsers();
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "Erro ao salvar", variant: "destructive" });
+    } finally { setSaving(false); }
+  }
 
   const deleteUser = (id: string) => {
     authFetch(`/auth/users/${id}`, token!, { method: "DELETE" })
@@ -293,33 +329,72 @@ function UsuariosSection({ roles }: { roles: Role[] }) {
   };
 
   const filtered = users.filter((u) => {
-    const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      || (u.tiktokUsername ?? "").toLowerCase().includes(q);
     const matchPlan = filterPlan === "all" || u.plan === filterPlan;
-    return matchSearch && matchPlan;
+    const matchAdmin = filterAdmin === "all" || (filterAdmin === "admin" ? u.isAdmin : !u.isAdmin);
+    return matchSearch && matchPlan && matchAdmin;
   });
+
+  const stats = {
+    total: users.length,
+    admins: users.filter(u => u.isAdmin).length,
+    byPlan: { free: users.filter(u => u.plan === "free").length, basic: users.filter(u => u.plan === "basic").length, pro: users.filter(u => u.plan === "pro").length },
+    withTiktok: users.filter(u => !!u.tiktokUsername).length,
+  };
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-xl font-bold text-white mb-1">Usuários</h2>
-        <p className="text-sm text-muted-foreground">Gerencie todas as contas da plataforma.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-white mb-1">Usuários</h2>
+          <p className="text-sm text-muted-foreground">Gerencie contas, planos, funções e permissões.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={fetchUsers}>
+          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />Atualizar
+        </Button>
       </div>
 
+      {/* Quick stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {[
+          { label: "Total", value: stats.total, color: "#a78bfa" },
+          { label: "Admins", value: stats.admins, color: "#f97316" },
+          { label: "Gratuito", value: stats.byPlan.free, color: "#6b7280" },
+          { label: "Basic", value: stats.byPlan.basic, color: "#22d3ee" },
+          { label: "PRO", value: stats.byPlan.pro, color: "#ec4899" },
+        ].map((s) => (
+          <div key={s.label} className="rounded-xl border border-white/6 p-3 text-center" style={{ background: "rgba(255,255,255,0.02)" }}>
+            <p className="text-2xl font-black" style={{ color: s.color }}>{s.value}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar nome ou email..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input placeholder="Buscar nome, email ou @TikTok..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <Select value={filterPlan} onValueChange={setFilterPlan}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="Filtrar plano" /></SelectTrigger>
+          <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os planos</SelectItem>
+            <SelectItem value="all">Todos planos</SelectItem>
             <SelectItem value="free">Gratuito</SelectItem>
             <SelectItem value="basic">Basic</SelectItem>
             <SelectItem value="pro">PRO</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline" size="icon" onClick={fetchUsers}><RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /></Button>
+        <Select value={filterAdmin} onValueChange={setFilterAdmin}>
+          <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="admin">Admins</SelectItem>
+            <SelectItem value="user">Usuários</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>
@@ -331,8 +406,8 @@ function UsuariosSection({ roles }: { roles: Role[] }) {
                 <TableHead>TikTok</TableHead>
                 <TableHead>Plano</TableHead>
                 <TableHead>Função</TableHead>
-                <TableHead>Admin</TableHead>
-                <TableHead>Criado em</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Cadastro</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -344,62 +419,68 @@ function UsuariosSection({ roles }: { roles: Role[] }) {
               ) : filtered.map((u) => (
                 <TableRow key={u.id} className={u.id === me?.id ? "bg-primary/5" : ""}>
                   <TableCell>
-                    <div>
-                      <p className="font-medium text-sm">{u.name}</p>
-                      <p className="text-xs text-muted-foreground">{u.email}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                        style={{ background: u.isAdmin ? "rgba(249,115,22,0.15)" : "rgba(124,58,237,0.15)", color: u.isAdmin ? "#f97316" : "#a78bfa" }}>
+                        {u.name[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm leading-tight">{u.name}{u.id === me?.id && <span className="ml-1.5 text-[10px] text-purple-400/50">(você)</span>}</p>
+                        <p className="text-xs text-muted-foreground leading-tight">{u.email}</p>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     {u.tiktokUsername ? (
                       <div className="flex items-center gap-1">
+                        {u.tiktokProfilePicture && <img src={u.tiktokProfilePicture} alt="" className="w-5 h-5 rounded-full object-cover" />}
                         <span className="text-sm font-mono text-purple-300">@{u.tiktokUsername}</span>
                         {u.tiktokVerified && <CheckCircle2 className="w-3 h-3 text-green-400 shrink-0" />}
                       </div>
                     ) : <span className="text-xs text-muted-foreground">—</span>}
+                    {u.tiktokFollowerCount ? <p className="text-[11px] text-muted-foreground mt-0.5">{u.tiktokFollowerCount.toLocaleString("pt-BR")} seg.</p> : null}
                   </TableCell>
                   <TableCell>
-                    <Select value={u.plan} onValueChange={(v) => updateUser(u.id, { plan: v })} disabled={updatingId === u.id || u.id === me?.id}>
-                      <SelectTrigger className="h-7 text-xs w-24"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="free">Gratuito</SelectItem>
-                        <SelectItem value="basic">Basic</SelectItem>
-                        <SelectItem value="pro">PRO</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${PLAN_COLORS[u.plan] ?? ""}`}>
+                      {PLAN_LABEL[u.plan] ?? u.plan}
+                    </span>
                   </TableCell>
                   <TableCell>
-                    <Select value={(u as AuthUser & { roleId?: string }).roleId ?? "none"} onValueChange={(v) => assignRole(u.id, v === "none" ? "" : v)} disabled={u.id === me?.id}>
-                      <SelectTrigger className="h-7 text-xs w-28"><SelectValue placeholder="Sem função" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">— Sem função —</SelectItem>
-                        {roles.map((r) => <SelectItem key={r.id} value={r.id}><span className="flex items-center gap-1.5"><span className="inline-block w-2 h-2 rounded-full" style={{ background: r.color }} />{r.name}</span></SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    {u.roleId ? (
+                      <span className="text-xs text-muted-foreground">{roles.find(r => r.id === u.roleId)?.name ?? u.roleId}</span>
+                    ) : <span className="text-xs text-muted-foreground/40">—</span>}
                   </TableCell>
                   <TableCell>
-                    <Switch checked={u.isAdmin} onCheckedChange={(v) => updateUser(u.id, { isAdmin: v })} disabled={u.id === me?.id} />
+                    <div className="flex items-center gap-1.5">
+                      {u.isAdmin && <Badge className="text-[10px] px-1.5 py-0 h-4 bg-orange-500/15 text-orange-400 border-orange-400/20">Admin</Badge>}
+                    </div>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                     {new Date(u.createdAt).toLocaleDateString("pt-BR")}
                   </TableCell>
                   <TableCell className="text-right">
-                    {u.id !== me?.id && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Deletar {u.name}?</AlertDialogTitle>
-                            <AlertDialogDescription>Esta ação é irreversível. Todos os dados do usuário serão perdidos.</AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction className="bg-destructive hover:bg-destructive/80" onClick={() => deleteUser(u.id)}>Deletar</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-white" onClick={() => openEdit(u)}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      {u.id !== me?.id && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10"><Trash2 className="w-3.5 h-3.5" /></Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Deletar {u.name}?</AlertDialogTitle>
+                              <AlertDialogDescription>Esta ação é irreversível. Todos os dados do usuário serão perdidos.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction className="bg-destructive hover:bg-destructive/80" onClick={() => deleteUser(u.id)}>Deletar</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -407,6 +488,105 @@ function UsuariosSection({ roles }: { roles: Role[] }) {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Edit User Dialog */}
+      <Dialog open={!!editDraft} onOpenChange={(o) => !o && setEditDraft(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><UserCog className="w-5 h-5 text-purple-400" />Editar usuário</DialogTitle>
+            <DialogDescription>Edite os dados, plano, função e permissões do usuário.</DialogDescription>
+          </DialogHeader>
+          {editDraft && (
+            <div className="space-y-4 py-1">
+              {/* Basic info */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nome</Label>
+                  <Input value={editDraft.name} onChange={(e) => setEditDraft(d => d ? { ...d, name: e.target.value } : d)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Email</Label>
+                  <Input type="email" value={editDraft.email} onChange={(e) => setEditDraft(d => d ? { ...d, email: e.target.value } : d)} />
+                </div>
+              </div>
+
+              {/* TikTok */}
+              <div className="space-y-1.5">
+                <Label className="text-xs flex items-center gap-1.5"><SiTiktok className="w-3 h-3" />@ TikTok</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">@</span>
+                  <Input className="pl-7" value={editDraft.tiktokUsername} placeholder="seuusuario"
+                    onChange={(e) => setEditDraft(d => d ? { ...d, tiktokUsername: e.target.value.replace(/^@/, "") } : d)} />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Plan & role */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Plano</Label>
+                  <Select value={editDraft.plan} onValueChange={(v) => setEditDraft(d => d ? { ...d, plan: v } : d)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="free">Gratuito</SelectItem>
+                      <SelectItem value="basic">Basic</SelectItem>
+                      <SelectItem value="pro">PRO</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Função (Role)</Label>
+                  <Select value={editDraft.roleId || "none"} onValueChange={(v) => setEditDraft(d => d ? { ...d, roleId: v === "none" ? "" : v } : d)}>
+                    <SelectTrigger><SelectValue placeholder="Sem função" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Sem função —</SelectItem>
+                      {roles.map((r) => <SelectItem key={r.id} value={r.id}><span className="flex items-center gap-1.5"><span className="inline-block w-2 h-2 rounded-full" style={{ background: r.color }} />{r.name}</span></SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Admin toggle */}
+              <div className="flex items-center gap-3 p-3 rounded-lg border border-white/8" style={{ background: "rgba(255,255,255,0.02)" }}>
+                <Switch checked={editDraft.isAdmin} onCheckedChange={(v) => setEditDraft(d => d ? { ...d, isAdmin: v } : d)}
+                  disabled={editDraft.id === me?.id} />
+                <div>
+                  <p className="text-sm font-medium">Acesso administrativo</p>
+                  <p className="text-xs text-muted-foreground">Permite acesso ao painel admin completo</p>
+                </div>
+                {editDraft.isAdmin && <Shield className="w-4 h-4 text-orange-400 ml-auto shrink-0" />}
+              </div>
+
+              <Separator />
+
+              {/* Password reset */}
+              <div className="space-y-2">
+                <Label className="text-xs flex items-center gap-1.5"><KeyRound className="w-3 h-3" />Redefinir senha (opcional)</Label>
+                <div className="relative">
+                  <Input type={showPw ? "text" : "password"} placeholder="Nova senha (deixe em branco para não alterar)"
+                    value={editDraft.newPassword} onChange={(e) => setEditDraft(d => d ? { ...d, newPassword: e.target.value } : d)}
+                    className="pr-9" />
+                  <button type="button" onClick={() => setShowPw(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white">
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {editDraft.newPassword && (
+                  <Input type={showPw ? "text" : "password"} placeholder="Confirmar nova senha"
+                    value={editDraft.newPasswordConfirm} onChange={(e) => setEditDraft(d => d ? { ...d, newPasswordConfirm: e.target.value } : d)} />
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDraft(null)}>Cancelar</Button>
+            <Button onClick={saveEdit} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}Salvar alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -420,6 +600,10 @@ function PlanosSection({ plans, permissions, onRefresh }: { plans: Plan[]; permi
   const [editPlan, setEditPlan] = useState<Plan | null>(null);
   const [saving, setSaving] = useState(false);
   const [newFeature, setNewFeature] = useState("");
+  const [showNewPlan, setShowNewPlan] = useState(false);
+  const [newPlanId, setNewPlanId] = useState("");
+  const [newPlanName, setNewPlanName] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const savePlan = async () => {
     if (!editPlan) return;
@@ -433,12 +617,69 @@ function PlanosSection({ plans, permissions, onRefresh }: { plans: Plan[]; permi
     setSaving(false);
   };
 
+  const createPlan = async () => {
+    if (!newPlanId.trim() || !newPlanName.trim()) {
+      toast({ title: "ID e nome são obrigatórios", variant: "destructive" }); return;
+    }
+    setCreating(true);
+    try {
+      const created = await authFetch("/admin/plans", token!, {
+        method: "POST",
+        body: JSON.stringify({ id: newPlanId.trim().toLowerCase().replace(/\s+/g, "_"), name: newPlanName.trim(), order: plans.length }),
+      }) as { plan: Plan };
+      toast({ title: "Plano criado!" });
+      onRefresh();
+      setShowNewPlan(false);
+      setNewPlanId(""); setNewPlanName("");
+      setEditPlan(created.plan);
+    } catch (err) { toast({ title: err instanceof Error ? err.message : "Erro ao criar plano", variant: "destructive" }); }
+    setCreating(false);
+  };
+
+  const deletePlan = async (id: string) => {
+    try {
+      await authFetch(`/admin/plans/${id}`, token!, { method: "DELETE" });
+      toast({ title: "Plano removido" });
+      onRefresh();
+    } catch (err) { toast({ title: err instanceof Error ? err.message : "Erro ao remover", variant: "destructive" }); }
+  };
+
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-xl font-bold text-white mb-1">Planos</h2>
-        <p className="text-sm text-muted-foreground">Configure preços, limites e permissões de cada plano. Use -1 para ilimitado, 0 para bloqueado.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-white mb-1">Planos</h2>
+          <p className="text-sm text-muted-foreground">Configure preços, limites e permissões de cada plano. Use -1 para ilimitado, 0 para bloqueado.</p>
+        </div>
+        <Button size="sm" onClick={() => setShowNewPlan(true)}>
+          <Plus className="w-4 h-4 mr-1.5" />Criar Plano
+        </Button>
       </div>
+
+      {/* Create new plan inline form */}
+      {showNewPlan && (
+        <Card className="border-dashed border-purple-500/30">
+          <CardContent className="p-4">
+            <p className="text-sm font-semibold mb-3">Novo plano</p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="space-y-1">
+                <Label className="text-xs">ID único (ex: premium)</Label>
+                <Input value={newPlanId} onChange={(e) => setNewPlanId(e.target.value)} placeholder="premium" className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Nome</Label>
+                <Input value={newPlanName} onChange={(e) => setNewPlanName(e.target.value)} placeholder="Premium" className="h-8 text-sm" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={createPlan} disabled={creating}>
+                {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Plus className="w-3.5 h-3.5 mr-1.5" />}Criar
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setShowNewPlan(false); setNewPlanId(""); setNewPlanName(""); }}>Cancelar</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4">
         {plans.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((plan) => (
@@ -478,9 +719,30 @@ function PlanosSection({ plans, permissions, onRefresh }: { plans: Plan[]; permi
                     </div>
                   </div>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => setEditPlan({ ...plan })}>
-                  <Edit2 className="w-3.5 h-3.5 mr-1.5" />Editar
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setEditPlan({ ...plan })}>
+                    <Edit2 className="w-3.5 h-3.5 mr-1.5" />Editar
+                  </Button>
+                  {!["free", "basic", "pro"].includes(plan.id) && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 h-8 w-8 p-0">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remover plano "{plan.name}"?</AlertDialogTitle>
+                          <AlertDialogDescription>Usuários neste plano manterão o acesso — apenas o plano em si será removido da lista.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction className="bg-destructive hover:bg-destructive/80" onClick={() => void deletePlan(plan.id)}>Remover</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
