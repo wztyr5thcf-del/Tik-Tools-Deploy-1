@@ -6,7 +6,7 @@ import {
   Lock, Zap, Crown, Search, Users, Star, Key, BarChart2,
   Globe, Gamepad2, Subtitles, Webhook, Radio, Bell, Code2, Tv2, Trophy,
   Monitor, Target, Layers, ChevronLeft, Megaphone, Pin, Info, Sparkles,
-  AlertTriangle, CheckCircle2, ExternalLink, Wifi,
+  AlertTriangle, CheckCircle2, ExternalLink, Wifi, MessageSquare,
   LucideProps,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
@@ -740,6 +740,11 @@ function TopBar({ user, logout, isAdmin, userPlan, planCfg, initials, onMobileMe
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
+                    <Link href="/atendimento" className="cursor-pointer text-violet-400 focus:text-violet-400">
+                      <MessageSquare className="w-4 h-4 mr-2" />Atendimento
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link href="/admin" className="cursor-pointer text-red-400 focus:text-red-400">
                       <Shield className="w-4 h-4 mr-2" />Admin Panel
                     </Link>
@@ -934,6 +939,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {isAdmin && (
                 <>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/atendimento" className="cursor-pointer text-violet-400 focus:text-violet-400">
+                      <MessageSquare className="w-4 h-4 mr-2" />Atendimento
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/admin" className="cursor-pointer text-red-400 focus:text-red-400">
                       <Shield className="w-4 h-4 mr-2" />Admin Panel

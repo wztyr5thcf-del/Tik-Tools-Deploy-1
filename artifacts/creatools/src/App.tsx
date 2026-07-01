@@ -18,6 +18,7 @@ import Pricing from "./pages/pricing";
 import Login from "./pages/login";
 import Profile from "./pages/profile";
 import Admin from "./pages/admin";
+import Atendimento from "./pages/atendimento";
 import Leaderboards from "./pages/leaderboards";
 import CountryLeaderboard from "./pages/country-leaderboard";
 import GamingLeaderboard from "./pages/gaming-leaderboard";
@@ -238,6 +239,7 @@ function Router() {
 
             {/* Admin — hard-gated: non-admins are redirected to / */}
             <Route path="/admin" component={() => <AdminRoute component={Admin} />} />
+            <Route path="/atendimento" component={() => <AdminRoute component={Atendimento} />} />
 
             <Route component={NotFound} />
           </Switch>

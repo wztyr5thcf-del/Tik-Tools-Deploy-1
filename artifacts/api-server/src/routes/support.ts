@@ -165,11 +165,24 @@ router.patch("/admin/support/tickets/:id", requireAuth, async (req, res): Promis
   res.json({ ticket: updated });
 });
 
-// GET /support/online — heuristic: any admin logged in last 15 min
+// In-memory heartbeat map: userId → last heartbeat timestamp
+const supportHeartbeats = new Map<string, number>();
+const HEARTBEAT_TTL = 2 * 60 * 1000; // 2 minutes
+
+// POST /support/heartbeat — called every 30s from the atendimento page
+router.post("/support/heartbeat", requireAuth, async (req, res): Promise<void> => {
+  const userId = (req as AuthReq).userId;
+  supportHeartbeats.set(userId, Date.now());
+  res.json({ ok: true });
+});
+
+// GET /support/online — true if any support agent heartbeated in the last 2 min
 router.get("/support/online", async (_req, res): Promise<void> => {
-  const users = await getAllUsers();
-  const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
-  const isOnline = users.some((u) => u.isAdmin && u.lastLoginAt && new Date(u.lastLoginAt).getTime() > fifteenMinutesAgo);
+  const now = Date.now();
+  let isOnline = false;
+  for (const [, ts] of supportHeartbeats) {
+    if (now - ts < HEARTBEAT_TTL) { isOnline = true; break; }
+  }
   res.json({ online: isOnline });
 });
 
