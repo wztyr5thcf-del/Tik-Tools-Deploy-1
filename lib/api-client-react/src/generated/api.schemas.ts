@@ -256,6 +256,23 @@ export interface GiftItem {
   iconUrl: string;
   diamondCount: number;
   valueUsd: number;
+  valueBrl: number;
+  /** Position index in the source list (lower = appears earlier in catalog; use for popularity sort) */
+  rank: number;
+}
+
+export interface GiftSettings {
+  brlPerUsd: number;
+}
+
+export interface CustomGift {
+  id: string;
+  name: string;
+  iconUrl: string;
+  diamondCount: number;
+  source: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface UserProfile {

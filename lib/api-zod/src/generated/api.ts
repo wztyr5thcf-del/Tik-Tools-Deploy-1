@@ -171,7 +171,9 @@ export const GetGiftCatalogResponseItem = zod.object({
   "name": zod.string(),
   "iconUrl": zod.string(),
   "diamondCount": zod.number(),
-  "valueUsd": zod.number()
+  "valueUsd": zod.number(),
+  "valueBrl": zod.number(),
+  "rank": zod.number().describe('Position index in the source list (lower = appears earlier in catalog; use for popularity sort)')
 })
 export const GetGiftCatalogResponse = zod.array(GetGiftCatalogResponseItem)
 

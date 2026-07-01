@@ -9,7 +9,7 @@ import {
   BookOpen, Building2, Users, Bell, BarChart2, LayoutDashboard,
   AlertCircle, Wrench, ChevronRight, FileText, Image, ExternalLink, UserPlus, Pencil,
   Database, RefreshCcw, Monitor, Trophy, Gamepad2, Heart, Tv2, Code2, Home, Link2,
-  Tag, Layers, Mic, Video, Wifi, Package, Award, Hash, GripVertical,
+  Tag, Layers, Mic, Video, Wifi, Package, Award, Hash, GripVertical, Diamond,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -3104,6 +3104,357 @@ function PaginasSection() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// SEÇÃO: GIFTS TIKTOK
+// ════════════════════════════════════════════════════════════════════════════
+interface CustomGift {
+  id: string; name: string; iconUrl: string; diamondCount: number;
+  source: string; createdAt: string; updatedAt: string;
+}
+
+interface GiftDraft { name: string; iconUrl: string; diamondCount: string; }
+
+function GiftsSection() {
+  const { token } = useAuth();
+  const { toast } = useToast();
+
+  const [brlRate, setBrlRate] = useState<string>("");
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [savingRate, setSavingRate] = useState(false);
+
+  const [customGifts, setCustomGifts] = useState<CustomGift[]>([]);
+  const [loadingGifts, setLoadingGifts] = useState(true);
+
+  const [newGift, setNewGift] = useState<GiftDraft>({ name: "", iconUrl: "", diamondCount: "" });
+  const [addingGift, setAddingGift] = useState(false);
+
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<GiftDraft>({ name: "", iconUrl: "", diamondCount: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadSettings = useCallback(async () => {
+    setLoadingSettings(true);
+    try {
+      const d = await authFetch("/admin/gifts/settings", token!) as { brlPerUsd: number };
+      setBrlRate(String(d.brlPerUsd));
+    } catch { /* ignore */ }
+    setLoadingSettings(false);
+  }, [token]);
+
+  const loadCustomGifts = useCallback(async () => {
+    setLoadingGifts(true);
+    try {
+      const d = await authFetch("/admin/gifts/custom", token!) as CustomGift[];
+      setCustomGifts(d ?? []);
+    } catch { /* ignore */ }
+    setLoadingGifts(false);
+  }, [token]);
+
+  useEffect(() => { void loadSettings(); void loadCustomGifts(); }, [loadSettings, loadCustomGifts]);
+
+  const saveRate = async () => {
+    const v = parseFloat(brlRate);
+    if (isNaN(v) || v <= 0) { toast({ title: "Taxa inválida", variant: "destructive" }); return; }
+    setSavingRate(true);
+    try {
+      await authFetch("/admin/gifts/settings", token!, { method: "PATCH", body: JSON.stringify({ brlPerUsd: v }) });
+      toast({ title: "Taxa BRL/USD atualizada!" });
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : "Erro ao salvar", variant: "destructive" });
+    }
+    setSavingRate(false);
+  };
+
+  const addGift = async () => {
+    const diamonds = parseInt(newGift.diamondCount, 10);
+    if (!newGift.name.trim() || isNaN(diamonds) || diamonds < 0) {
+      toast({ title: "Nome e diamonds (≥ 0) são obrigatórios", variant: "destructive" }); return;
+    }
+    setAddingGift(true);
+    try {
+      await authFetch("/admin/gifts/custom", token!, {
+        method: "POST",
+        body: JSON.stringify({ name: newGift.name, iconUrl: newGift.iconUrl, diamondCount: diamonds }),
+      });
+      toast({ title: "Gift adicionado!" });
+      setNewGift({ name: "", iconUrl: "", diamondCount: "" });
+      void loadCustomGifts();
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : "Erro ao adicionar", variant: "destructive" });
+    }
+    setAddingGift(false);
+  };
+
+  const saveEdit = async () => {
+    if (!editId) return;
+    const diamonds = parseInt(editDraft.diamondCount, 10);
+    if (!editDraft.name.trim() || isNaN(diamonds) || diamonds < 0) {
+      toast({ title: "Dados inválidos", variant: "destructive" }); return;
+    }
+    setSavingEdit(true);
+    try {
+      await authFetch(`/admin/gifts/custom/${editId}`, token!, {
+        method: "PATCH",
+        body: JSON.stringify({ name: editDraft.name, iconUrl: editDraft.iconUrl, diamondCount: diamonds }),
+      });
+      toast({ title: "Gift atualizado!" });
+      setEditId(null);
+      void loadCustomGifts();
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : "Erro ao atualizar", variant: "destructive" });
+    }
+    setSavingEdit(false);
+  };
+
+  const deleteGift = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await authFetch(`/admin/gifts/custom/${id}`, token!, { method: "DELETE" });
+      toast({ title: "Gift removido" });
+      void loadCustomGifts();
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : "Erro ao remover", variant: "destructive" });
+    }
+    setDeletingId(null);
+  };
+
+  const openEdit = (g: CustomGift) => {
+    setEditId(g.id);
+    setEditDraft({ name: g.name, iconUrl: g.iconUrl, diamondCount: String(g.diamondCount) });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
+          <Diamond className="w-5 h-5 text-yellow-400" />Gift Gallery — Configuração
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Ajuste a taxa BRL/USD e gerencie gifts personalizados exibidos na Gift Gallery.
+        </p>
+      </div>
+
+      {/* BRL Rate */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Tag className="w-4 h-4 text-emerald-400" />Taxa de Conversão BRL/USD
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Define quantos reais equivalem a 1 dólar para calcular valores em BRL na Gift Gallery.
+            Ex: 5.5 significa R$5,50 por USD.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingSettings ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="w-4 h-4 animate-spin" />Carregando...</div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-mono">R$1 USD =</span>
+                <Input
+                  type="number"
+                  min={0.01}
+                  step={0.01}
+                  value={brlRate}
+                  onChange={(e) => setBrlRate(e.target.value)}
+                  className="pl-24 w-44 font-mono"
+                  placeholder="5.50"
+                />
+              </div>
+              <span className="text-sm text-muted-foreground font-mono">BRL</span>
+              <Button size="sm" onClick={saveRate} disabled={savingRate}>
+                {savingRate ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                Salvar
+              </Button>
+              <p className="text-xs text-muted-foreground font-mono ml-2">
+                1 💎 = {brlRate ? `R$${(0.005 * parseFloat(brlRate || "0")).toFixed(4)}` : "—"}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add custom gift */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Plus className="w-4 h-4 text-violet-400" />Adicionar Gift Personalizado
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Gifts adicionados aqui aparecem na Gift Gallery e sobrepõem dados da API se o ID coincidir.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs text-muted-foreground">Nome do gift *</Label>
+              <Input
+                placeholder="Ex: Cyber Lion"
+                value={newGift.name}
+                onChange={(e) => setNewGift((p) => ({ ...p, name: e.target.value }))}
+                className="font-mono text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Diamonds (coins) *</Label>
+              <Input
+                type="number"
+                min={0}
+                placeholder="Ex: 29999"
+                value={newGift.diamondCount}
+                onChange={(e) => setNewGift((p) => ({ ...p, diamondCount: e.target.value }))}
+                className="font-mono text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">URL do ícone (opcional)</Label>
+              <Input
+                placeholder="https://..."
+                value={newGift.iconUrl}
+                onChange={(e) => setNewGift((p) => ({ ...p, iconUrl: e.target.value }))}
+                className="font-mono text-sm"
+              />
+            </div>
+          </div>
+          <Button size="sm" onClick={addGift} disabled={addingGift}>
+            {addingGift ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Plus className="w-3.5 h-3.5 mr-1.5" />}
+            Adicionar
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Custom gifts list */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Diamond className="w-4 h-4 text-yellow-400" />Gifts Personalizados
+              <Badge variant="outline" className="text-xs ml-1">{customGifts.length}</Badge>
+            </CardTitle>
+            <Button size="icon" variant="ghost" className="w-7 h-7" onClick={() => void loadCustomGifts()} disabled={loadingGifts}>
+              <RefreshCcw className={`w-3.5 h-3.5 ${loadingGifts ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loadingGifts ? (
+            <div className="py-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></div>
+          ) : customGifts.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              Nenhum gift personalizado adicionado ainda.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead className="text-right">💎 Diamonds</TableHead>
+                  <TableHead>Ícone URL</TableHead>
+                  <TableHead>Adicionado em</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {customGifts.map((g) => (
+                  <TableRow key={g.id}>
+                    {editId === g.id ? (
+                      <>
+                        <TableCell>
+                          <Input
+                            value={editDraft.name}
+                            onChange={(e) => setEditDraft((p) => ({ ...p, name: e.target.value }))}
+                            className="h-7 text-sm font-mono"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={editDraft.diamondCount}
+                            onChange={(e) => setEditDraft((p) => ({ ...p, diamondCount: e.target.value }))}
+                            className="h-7 text-sm font-mono w-28 ml-auto"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            value={editDraft.iconUrl}
+                            onChange={(e) => setEditDraft((p) => ({ ...p, iconUrl: e.target.value }))}
+                            className="h-7 text-sm font-mono"
+                            placeholder="https://..."
+                          />
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(g.createdAt).toLocaleDateString("pt-BR")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button size="sm" variant="ghost" className="h-7 text-xs text-green-400 hover:text-green-300" onClick={saveEdit} disabled={savingEdit}>
+                              {savingEdit ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => setEditId(null)}>
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell className="font-medium text-sm">{g.name}</TableCell>
+                        <TableCell className="text-right font-mono text-sm text-cyan-400">{g.diamondCount.toLocaleString()}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground font-mono max-w-[180px] truncate">
+                          {g.iconUrl || <span className="italic">—</span>}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(g.createdAt).toLocaleDateString("pt-BR")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openEdit(g)}>
+                              <Edit2 className="w-3 h-3" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="ghost" className="h-7 text-xs text-red-400 hover:text-red-300">
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Remover gift?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    O gift &quot;{g.name}&quot; será removido da lista de gifts personalizados.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => void deleteGift(g.id)}
+                                    disabled={deletingId === g.id}
+                                    className="bg-red-500 hover:bg-red-600"
+                                  >
+                                    {deletingId === g.id ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                                    Remover
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // SEÇÃO: BANCO DE DADOS
 // ════════════════════════════════════════════════════════════════════════════
 function BancoDadosSection() {
@@ -3568,7 +3919,7 @@ function SuporteSection() {
 // ════════════════════════════════════════════════════════════════════════════
 // MAIN ADMIN PAGE
 // ════════════════════════════════════════════════════════════════════════════
-type AdminSection = "overview" | "users" | "roles" | "plans" | "announcements" | "content" | "customization" | "landing" | "sistema" | "paginas" | "database" | "support";
+type AdminSection = "overview" | "users" | "roles" | "plans" | "announcements" | "content" | "customization" | "landing" | "sistema" | "paginas" | "database" | "support" | "gifts";
 
 const ADMIN_NAV: Array<{ id: AdminSection; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }> = [
   { id: "overview",      label: "Visão Geral",       icon: LayoutDashboard },
@@ -3581,6 +3932,7 @@ const ADMIN_NAV: Array<{ id: AdminSection; label: string; icon: React.ComponentT
   { id: "content",       label: "Conteúdo",           icon: BookOpen },
   { id: "customization", label: "Customização",       icon: Palette },
   { id: "landing",       label: "Landing Page",       icon: Globe },
+  { id: "gifts",         label: "Gifts TikTok",       icon: Diamond },
   { id: "database",      label: "Banco de Dados",     icon: Database },
   { id: "sistema",       label: "Sistema",            icon: Server },
 ];
@@ -3679,6 +4031,7 @@ export default function Admin() {
         {activeSection === "content"       && <ConteudoSection />}
         {activeSection === "customization" && <CustomizacaoSection />}
         {activeSection === "landing"       && <LandingPageTab allPlans={plans} />}
+        {activeSection === "gifts"         && <GiftsSection />}
         {activeSection === "database"      && <BancoDadosSection />}
         {activeSection === "sistema"       && <SistemaSection />}
         {activeSection === "support"       && <SuporteSection />}

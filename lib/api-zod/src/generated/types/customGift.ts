@@ -6,13 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface GiftItem {
+export interface CustomGift {
   id: string;
   name: string;
   iconUrl: string;
   diamondCount: number;
-  valueUsd: number;
-  valueBrl: number;
-  /** Position index in the source list (lower = appears earlier in catalog; use for popularity sort) */
-  rank: number;
+  source: string;
+  createdAt: string;
+  updatedAt: string;
 }

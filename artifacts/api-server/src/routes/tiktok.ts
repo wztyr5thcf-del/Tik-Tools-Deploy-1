@@ -36,9 +36,81 @@ function getApiKey(): string {
   return key;
 }
 
-// Gift catalog is cached in memory to avoid repeated API calls
-let giftCatalogCache: { data: unknown; ts: number } | null = null;
+// Raw API gift cache — only stores what tik.tools returned; BRL/custom applied fresh per request
+type RawGift = { id: string; name: string; iconUrl: string; diamondCount: number; rank: number };
+let rawApiGiftCache: { data: RawGift[]; ts: number } | null = null;
 const GIFT_CACHE_TTL = 1000 * 60 * 60; // 1 hour
+
+/** Called by the gifts admin router whenever settings or custom gifts change */
+export function invalidateGiftCache(): void {
+  rawApiGiftCache = null;
+}
+
+const staticGiftsFile = path.resolve(workspaceRoot, "artifacts/api-server/data/gifts-static.json");
+const giftSettingsFile = path.resolve(workspaceRoot, "artifacts/api-server/data/gifts-settings.json");
+const customGiftsFile = path.resolve(workspaceRoot, "artifacts/api-server/data/gifts-custom.json");
+
+interface StaticGift { id: string; name: string; iconUrl: string; diamondCount: number; rank?: number; }
+interface GiftSettings { brlPerUsd: number; }
+interface CustomGift { id: string; name: string; iconUrl: string; diamondCount: number; source: string; }
+
+function loadStaticGifts(): StaticGift[] {
+  try {
+    if (fs.existsSync(staticGiftsFile)) {
+      return JSON.parse(fs.readFileSync(staticGiftsFile, "utf-8")) as StaticGift[];
+    }
+  } catch { /* ignore */ }
+  return [];
+}
+
+function loadGiftSettings(): GiftSettings {
+  try {
+    if (fs.existsSync(giftSettingsFile)) {
+      return JSON.parse(fs.readFileSync(giftSettingsFile, "utf-8")) as GiftSettings;
+    }
+  } catch { /* ignore */ }
+  return { brlPerUsd: 5.5 };
+}
+
+function loadCustomGifts(): CustomGift[] {
+  try {
+    if (fs.existsSync(customGiftsFile)) {
+      return JSON.parse(fs.readFileSync(customGiftsFile, "utf-8")) as CustomGift[];
+    }
+  } catch { /* ignore */ }
+  return [];
+}
+
+/** Build the final gift list from raw API/static base + fresh admin settings and custom gifts */
+function buildGiftList(
+  rawBase: RawGift[],
+  brlPerUsd: number
+) {
+  const COIN_TO_USD = 0.005;
+  const customGifts = loadCustomGifts();
+  const customMap = new Map(customGifts.map((g) => [g.id, g]));
+  // Apply custom overrides on top of base
+  const merged: RawGift[] = rawBase.map((g) =>
+    customMap.has(g.id) ? { ...g, ...customMap.get(g.id) } : g
+  );
+  // Append custom gifts that don't appear in base list
+  const baseIds = new Set(rawBase.map((g) => g.id));
+  let appendRank = rawBase.length;
+  for (const cg of customGifts) {
+    if (!baseIds.has(cg.id)) {
+      merged.push({ ...cg, rank: appendRank++ });
+    }
+  }
+  return merged.map((g) => ({
+    id: g.id,
+    name: g.name,
+    iconUrl: g.iconUrl,
+    diamondCount: g.diamondCount,
+    rank: g.rank,
+    valueUsd: parseFloat((g.diamondCount * COIN_TO_USD).toFixed(2)),
+    valueBrl: parseFloat((g.diamondCount * COIN_TO_USD * brlPerUsd).toFixed(2)),
+  }));
+}
 
 // ── Top Channels ─────────────────────────────────────────────────────────────
 router.get("/tiktok/top-channels", async (req, res): Promise<void> => {
@@ -439,39 +511,59 @@ router.get("/tiktok/rate-limits", requireAuth, async (req, res): Promise<void> =
 router.get("/tiktok/gift-catalog", async (req, res): Promise<void> => {
   try {
     const now = Date.now();
-    if (giftCatalogCache && now - giftCatalogCache.ts < GIFT_CACHE_TTL) {
-      res.json(giftCatalogCache.data);
-      return;
+
+    // Populate raw API cache if stale
+    if (!rawApiGiftCache || now - rawApiGiftCache.ts >= GIFT_CACHE_TTL) {
+      let rawGifts: RawGift[] = [];
+      try {
+        const apiKey = getApiKey();
+        const r = await fetch(`${TIKTOOLS_API}/webcast/gift_info?apiKey=${apiKey}`);
+        const json = await r.json() as {
+          status_code?: number;
+          data?: {
+            gifts?: Array<{
+              id?: string;
+              name?: string;
+              icon_url?: string;
+              diamond_count?: number;
+              value_usd?: number;
+            }>;
+          };
+        };
+        rawGifts = (json.data?.gifts ?? []).map((g, idx) => ({
+          id: g.id ?? "",
+          name: g.name ?? "Unknown Gift",
+          iconUrl: g.icon_url ?? "",
+          diamondCount: g.diamond_count ?? 0,
+          rank: idx,
+        }));
+      } catch (apiErr) {
+        req.log.warn({ err: apiErr }, "tik.tools gift_info unavailable, using static fallback");
+      }
+
+      if (rawGifts.length === 0) {
+        // Static fallback — already has rank fields
+        rawGifts = loadStaticGifts().map((g, idx) => ({
+          ...g,
+          rank: g.rank ?? idx,
+        }));
+      }
+      rawApiGiftCache = { data: rawGifts, ts: now };
     }
 
-    const apiKey = getApiKey();
-    const r = await fetch(`${TIKTOOLS_API}/webcast/gift_info?apiKey=${apiKey}`);
-    const json = await r.json() as {
-      status_code?: number;
-      data?: {
-        gifts?: Array<{
-          id?: string;
-          name?: string;
-          icon_url?: string;
-          diamond_count?: number;
-          value_usd?: number;
-        }>;
-      };
-    };
-
-    const gifts = (json.data?.gifts ?? []).map((g) => ({
-      id: g.id ?? "",
-      name: g.name ?? "Unknown Gift",
-      iconUrl: g.icon_url ?? "",
-      diamondCount: g.diamond_count ?? 0,
-      valueUsd: g.value_usd ?? 0,
-    }));
-
-    giftCatalogCache = { data: gifts, ts: now };
+    // Always apply fresh settings and custom gifts — so admin changes reflect immediately
+    const settings = loadGiftSettings();
+    const gifts = buildGiftList(rawApiGiftCache.data, settings.brlPerUsd);
     res.json(gifts);
   } catch (err) {
     req.log.error({ err }, "Failed to fetch gift catalog");
-    res.status(500).json({ error: "Failed to fetch gift catalog" });
+    try {
+      const settings = loadGiftSettings();
+      const staticBase = loadStaticGifts().map((g, idx) => ({ ...g, rank: g.rank ?? idx }));
+      res.json(buildGiftList(staticBase, settings.brlPerUsd));
+    } catch {
+      res.status(500).json({ error: "Failed to fetch gift catalog" });
+    }
   }
 });
 

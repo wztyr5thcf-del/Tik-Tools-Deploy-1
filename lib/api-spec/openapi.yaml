@@ -1543,7 +1543,38 @@ components:
           type: integer
         valueUsd:
           type: number
-      required: [id, name, iconUrl, diamondCount, valueUsd]
+        valueBrl:
+          type: number
+        rank:
+          type: integer
+          description: Position index in the source list (lower = appears earlier in catalog; use for popularity sort)
+      required: [id, name, iconUrl, diamondCount, valueUsd, valueBrl, rank]
+
+    GiftSettings:
+      type: object
+      properties:
+        brlPerUsd:
+          type: number
+      required: [brlPerUsd]
+
+    CustomGift:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        iconUrl:
+          type: string
+        diamondCount:
+          type: integer
+        source:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, name, iconUrl, diamondCount, source, createdAt, updatedAt]
 
     UserProfile:
       type: object
