@@ -1211,6 +1211,10 @@ function SistemaSection() {
   const [maintenanceLandingAlert, setMaintenanceLandingAlert] = useState("");
   const [savingMaintenance, setSavingMaintenance] = useState(false);
 
+  // per-page maintenance: key = page path (e.g. "/monitor"), value = {enabled, message, estimatedReturn}
+  const [pagesMaint, setPagesMaint] = useState<Record<string, { enabled: boolean; message: string; estimatedReturn: string }>>({});
+  const [savingPages, setSavingPages] = useState(false);
+
   // stripe
   const [stripeConfig, setStripeConfig] = useState<StripeConfig | null>(null);
   const [stripePublishable, setStripePublishable] = useState("");
@@ -1239,6 +1243,12 @@ function SistemaSection() {
       setMaintenance(mc.enabled); setMaintenanceMessage(mc.message ?? "");
       setMaintenanceETA((mc as { estimatedReturn?: string }).estimatedReturn ?? "");
       setMaintenanceLandingAlert((mc as { landingAlert?: string }).landingAlert ?? "");
+      const loadedPages = (mc as { pages?: Record<string, { enabled: boolean; message?: string; estimatedReturn?: string }> }).pages ?? {};
+      const pageState: Record<string, { enabled: boolean; message: string; estimatedReturn: string }> = {};
+      for (const [pagePath, cfg] of Object.entries(loadedPages)) {
+        pageState[pagePath] = { enabled: cfg.enabled, message: cfg.message ?? "", estimatedReturn: cfg.estimatedReturn ?? "" };
+      }
+      setPagesMaint(pageState);
     } catch { /* ignore */ }
   }, [token]);
 
@@ -1263,6 +1273,34 @@ function SistemaSection() {
     } catch { toast({ title: "Erro ao salvar", variant: "destructive" }); }
     setSavingMaintenance(false);
   };
+
+  const togglePageMaint = (pagePath: string, enabled: boolean) => {
+    setPagesMaint(prev => ({
+      ...prev,
+      [pagePath]: { ...(prev[pagePath] ?? { message: "", estimatedReturn: "" }), enabled },
+    }));
+  };
+
+  const setPageMaintField = (pagePath: string, field: "message" | "estimatedReturn", value: string) => {
+    setPagesMaint(prev => ({
+      ...prev,
+      [pagePath]: { ...(prev[pagePath] ?? { enabled: false, message: "", estimatedReturn: "" }), [field]: value },
+    }));
+  };
+
+  const savePagesMaint = async () => {
+    setSavingPages(true);
+    try {
+      const pages: Record<string, { enabled: boolean; message?: string; estimatedReturn?: string }> = {};
+      for (const [pagePath, cfg] of Object.entries(pagesMaint)) {
+        pages[pagePath] = { enabled: cfg.enabled, message: cfg.message || undefined, estimatedReturn: cfg.estimatedReturn || undefined };
+      }
+      await authFetch("/admin/maintenance", token!, { method: "PATCH", body: JSON.stringify({ pages }) });
+      toast({ title: "Manutenção por página salva!" });
+    } catch { toast({ title: "Erro ao salvar", variant: "destructive" }); }
+    setSavingPages(false);
+  };
+
   useEffect(() => { void load(); }, [load]);
 
   const saveTiktools = async () => {
@@ -1350,6 +1388,109 @@ function SistemaSection() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Per-page maintenance */}
+      {(() => {
+        const PAGE_MAINT_ITEMS: { path: string; label: string; category: string }[] = [
+          { path: "/",                   label: "Dashboard",         category: "PAINEL" },
+          { path: "/monitor",            label: "Monitor / Conexão", category: "PAINEL" },
+          { path: "/overlays",           label: "Sobreposições",     category: "PAINEL" },
+          { path: "/events",             label: "Eventos",           category: "FERRAMENTAS" },
+          { path: "/sound-alerts",       label: "Alertas Sonoros",   category: "FERRAMENTAS" },
+          { path: "/layout",             label: "Layout OBS",        category: "FERRAMENTAS" },
+          { path: "/effect-battle",      label: "Effect Battle",     category: "FERRAMENTAS" },
+          { path: "/minigames",          label: "Minigames",         category: "JOGOS" },
+          { path: "/live-counts",        label: "Live Counts",       category: "LIVE" },
+          { path: "/live-captions",      label: "Live Captions",     category: "LIVE" },
+          { path: "/live-analytics",     label: "Live Analytics",    category: "LIVE" },
+          { path: "/leaderboards",       label: "Leaderboards",      category: "RANKINGS" },
+          { path: "/gifters",            label: "Gifters",           category: "RANKINGS" },
+          { path: "/integracoes",        label: "Integrações",       category: "OUTROS" },
+          { path: "/pricing",            label: "Planos / Preços",   category: "OUTROS" },
+        ];
+        const categories = [...new Set(PAGE_MAINT_ITEMS.map(p => p.category))];
+        const activeCount = PAGE_MAINT_ITEMS.filter(p => pagesMaint[p.path]?.enabled).length;
+        return (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Layers className="w-4 h-4 text-orange-400" />
+                <CardTitle className="text-sm">Manutenção por Página</CardTitle>
+                {activeCount > 0 && (
+                  <Badge className="text-xs bg-yellow-500/10 text-yellow-400 border-yellow-500/20">
+                    {activeCount} {activeCount === 1 ? "página bloqueada" : "páginas bloqueadas"}
+                  </Badge>
+                )}
+              </div>
+              <CardDescription>
+                Desative seções individuais sem derrubar o painel inteiro. Administradores continuam com acesso total.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {categories.map(cat => (
+                <div key={cat} className="space-y-2">
+                  <p className="text-[10px] font-bold tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>{cat}</p>
+                  <div className="space-y-2">
+                    {PAGE_MAINT_ITEMS.filter(p => p.category === cat).map(page => {
+                      const cfg = pagesMaint[page.path] ?? { enabled: false, message: "", estimatedReturn: "" };
+                      return (
+                        <div key={page.path} className="rounded-xl p-3 space-y-2"
+                          style={{
+                            background: cfg.enabled ? "rgba(249,115,22,0.06)" : "rgba(255,255,255,0.02)",
+                            border: cfg.enabled ? "1px solid rgba(249,115,22,0.25)" : "1px solid rgba(255,255,255,0.05)",
+                          }}>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {cfg.enabled
+                                ? <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+                                : <CheckCircle2 className="w-3.5 h-3.5 shrink-0" style={{ color: "rgba(255,255,255,0.2)" }} />
+                              }
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-white truncate">{page.label}</p>
+                                <p className="text-[11px] font-mono" style={{ color: "rgba(255,255,255,0.3)" }}>{page.path}</p>
+                              </div>
+                            </div>
+                            <Switch
+                              checked={cfg.enabled}
+                              onCheckedChange={v => togglePageMaint(page.path, v)}
+                            />
+                          </div>
+                          {cfg.enabled && (
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] text-muted-foreground">Mensagem (opcional)</Label>
+                                <Input
+                                  value={cfg.message}
+                                  onChange={e => setPageMaintField(page.path, "message", e.target.value)}
+                                  placeholder="Seção em manutenção…"
+                                  className="text-xs h-8"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] text-muted-foreground">Previsão de retorno (opcional)</Label>
+                                <Input
+                                  value={cfg.estimatedReturn}
+                                  onChange={e => setPageMaintField(page.path, "estimatedReturn", e.target.value)}
+                                  placeholder="Ex: 14h00"
+                                  className="text-xs h-8"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <Button size="sm" variant="outline" onClick={savePagesMaint} disabled={savingPages} className="w-full">
+                {savingPages ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                Salvar manutenção por página
+              </Button>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* tik.tools API Key */}
       <Card>
