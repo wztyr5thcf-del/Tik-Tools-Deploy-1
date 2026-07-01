@@ -58,6 +58,20 @@ if (dbUrl) {
       updated_at BIGINT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS layout_presets_user_id_idx ON layout_presets(user_id);
+    CREATE TABLE IF NOT EXISTS media_items (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      original_name TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      object_path TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'Geral',
+      size INTEGER NOT NULL,
+      mime_type TEXT NOT NULL,
+      width INTEGER,
+      height INTEGER,
+      created_at BIGINT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS media_items_user_id_idx ON media_items(user_id);
   `).catch(() => { /* ignore — table may not exist yet on first boot */ })
     .finally(() => pool.end());
 }

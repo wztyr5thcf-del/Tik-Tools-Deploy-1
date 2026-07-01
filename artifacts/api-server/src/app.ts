@@ -1,6 +1,5 @@
 import express, { type Express } from "express";
 import cors from "cors";
-import path from "path";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -24,16 +23,7 @@ app.use(
 
 app.use(cors());
 
-// Serve uploaded media files without auth — needed for overlay iframes.
-// Only image types (.png/.jpg/.gif/.webp) are ever stored (magic-byte validated at upload).
-// X-Content-Type-Options prevents browsers sniffing beyond declared type.
-const mediaDir = path.join(process.cwd(), "data", "media");
-app.use("/api/media/files", express.static(mediaDir, {
-  setHeaders(res) {
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("Content-Disposition", "inline");
-  },
-}));
+// Media files are now served via Object Storage (GCS) through the /api/media/files route in media.ts.
 
 // Stripe webhook MUST be registered before express.json() — needs raw body
 app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);

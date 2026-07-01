@@ -1,22 +1,14 @@
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 import sizeOf from "image-size";
 import { requireAuth } from "./auth";
 import { getUserById } from "../lib/users-store";
+import { db } from "@workspace/db";
+import { mediaItemsTable } from "@workspace/db/schema";
+import { eq, and, desc } from "drizzle-orm";
+import { objectStorageClient } from "../lib/objectStorage";
 
 const router = Router();
-
-const MEDIA_ROOT = path.join(process.cwd(), "data", "media");
-
-// Allowed MIME types → safe file extension
-const SAFE_EXTENSIONS: Record<string, string> = {
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/gif": ".gif",
-  "image/webp": ".webp",
-};
 
 const PLAN_LIMITS: Record<string, number> = {
   free: 50 * 1024 * 1024,
@@ -24,6 +16,13 @@ const PLAN_LIMITS: Record<string, number> = {
   pro: 500 * 1024 * 1024,
 };
 const CATEGORIES = ["Geral", "Banners", "Logos", "QR Codes", "Thumbnails"];
+
+const SAFE_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/gif": ".gif",
+  "image/webp": ".webp",
+};
 
 export interface MediaItem {
   id: string;
@@ -37,32 +36,72 @@ export interface MediaItem {
   createdAt: string;
 }
 
-function userDir(userId: string): string {
-  return path.join(MEDIA_ROOT, userId);
+// ── GCS helpers ───────────────────────────────────────────────────────────────
+
+function parseGCSPath(fullPath: string): { bucketName: string; objectName: string } {
+  const p = fullPath.startsWith("/") ? fullPath : `/${fullPath}`;
+  const parts = p.split("/").filter((_, i) => i > 0);
+  return { bucketName: parts[0], objectName: parts.slice(1).join("/") };
 }
 
-function indexPath(userId: string): string {
-  return path.join(userDir(userId), "index.json");
+function getPrivateDir(): string {
+  const dir = process.env.PRIVATE_OBJECT_DIR;
+  if (!dir) throw new Error("PRIVATE_OBJECT_DIR not set — run setupObjectStorage()");
+  return dir;
 }
 
-function readIndex(userId: string): MediaItem[] {
-  const p = indexPath(userId);
-  if (!fs.existsSync(p)) return [];
-  try { return JSON.parse(fs.readFileSync(p, "utf-8")) as MediaItem[]; } catch { return []; }
+function mediaObjectPath(userId: string, filename: string): string {
+  return `${getPrivateDir()}/media/${userId}/${filename}`;
 }
 
-function writeIndex(userId: string, items: MediaItem[]): void {
-  fs.mkdirSync(userDir(userId), { recursive: true });
-  fs.writeFileSync(indexPath(userId), JSON.stringify(items, null, 2));
+async function uploadToGCS(
+  buffer: Buffer,
+  objectFullPath: string,
+  contentType: string
+): Promise<void> {
+  const { bucketName, objectName } = parseGCSPath(objectFullPath);
+  const bucket = objectStorageClient.bucket(bucketName);
+  await bucket.file(objectName).save(buffer, {
+    contentType,
+    metadata: { cacheControl: "public, max-age=31536000" },
+  });
 }
 
-function totalUsed(items: MediaItem[]): number {
-  return items.reduce((sum, it) => sum + it.size, 0);
-}
-
-function extractDimensions(filePath: string): { width: number | null; height: number | null } {
+async function deleteFromGCS(objectFullPath: string): Promise<void> {
   try {
-    const buf = fs.readFileSync(filePath);
+    const { bucketName, objectName } = parseGCSPath(objectFullPath);
+    await objectStorageClient.bucket(bucketName).file(objectName).delete({ ignoreNotFound: true });
+  } catch { /* best-effort */ }
+}
+
+async function streamFromGCS(objectFullPath: string, res: Response): Promise<void> {
+  const { bucketName, objectName } = parseGCSPath(objectFullPath);
+  const file = objectStorageClient.bucket(bucketName).file(objectName);
+  const [metadata] = await file.getMetadata();
+  res.setHeader("Content-Type", (metadata.contentType as string) || "application/octet-stream");
+  res.setHeader("Cache-Control", "public, max-age=31536000");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Content-Disposition", "inline");
+  if (metadata.size) res.setHeader("Content-Length", String(metadata.size));
+  file.createReadStream().pipe(res);
+}
+
+// ── Magic-byte validation ─────────────────────────────────────────────────────
+
+function detectImageMime(buf: Buffer): string | undefined {
+  if (buf.length < 12) return undefined;
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "image/png";
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return "image/gif";
+  if (
+    buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+    buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
+  ) return "image/webp";
+  return undefined;
+}
+
+function extractDimensions(buf: Buffer): { width: number | null; height: number | null } {
+  try {
     const dims = sizeOf(buf);
     return { width: dims.width ?? null, height: dims.height ?? null };
   } catch {
@@ -70,187 +109,196 @@ function extractDimensions(filePath: string): { width: number | null; height: nu
   }
 }
 
-/**
- * Detect actual image MIME type from file magic bytes — independent of client-supplied headers.
- * Returns undefined when the file does not match any allowed image signature.
- */
-function detectImageMime(filePath: string): string | undefined {
-  try {
-    // Read only first 12 bytes — sufficient for all four signatures
-    const fd = fs.openSync(filePath, "r");
-    const buf = Buffer.alloc(12);
-    fs.readSync(fd, buf, 0, 12, 0);
-    fs.closeSync(fd);
+// ── Multer — memory storage ───────────────────────────────────────────────────
 
-    // PNG: 89 50 4E 47 0D 0A 1A 0A
-    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
-      return "image/png";
-    }
-    // JPEG: FF D8 FF
-    if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
-      return "image/jpeg";
-    }
-    // GIF: GIF87a or GIF89a
-    if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) {
-      return "image/gif";
-    }
-    // WebP: RIFF????WEBP  (bytes 0-3 = RIFF, bytes 8-11 = WEBP)
-    if (
-      buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
-      buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
-    ) {
-      return "image/webp";
-    }
-    return undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-// Multer stores with .tmp extension — final extension assigned after magic-byte check
-const diskStorage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const userId = (req as Request & { userId: string }).userId;
-    const dir = userDir(userId);
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (_req, _file, cb) => {
-    cb(null, `${crypto.randomUUID()}.tmp`);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (Object.keys(SAFE_EXTENSIONS).includes(file.mimetype)) cb(null, true);
+    else cb(new Error("Tipo de arquivo não suportado. Use PNG, JPG, GIF ou WebP."));
   },
 });
 
-const upload = multer({
-  storage: diskStorage,
-  limits: { fileSize: 50 * 1024 * 1024 },
-  // Client MIME pre-filter — early guard only; not trusted for security
-  fileFilter: (_req, file, cb) => {
-    if (Object.keys(SAFE_EXTENSIONS).includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Tipo de arquivo não suportado. Use PNG, JPG, GIF ou WebP."));
-    }
-  },
+// ── Routes ────────────────────────────────────────────────────────────────────
+
+// GET /media/files/:userId/:filename — public (no auth), needed for overlay iframes
+router.get("/media/files/:userId/:filename", async (req: Request, res: Response): Promise<void> => {
+  const { userId, filename } = req.params as { userId: string; filename: string };
+  if (!userId || !filename || filename.includes("..")) { res.status(400).end(); return; }
+  try {
+    await streamFromGCS(mediaObjectPath(userId, filename), res);
+  } catch {
+    res.status(404).json({ error: "Arquivo não encontrado." });
+  }
 });
 
 // GET /media — list user media
-router.get("/media", requireAuth, (req: Request, res: Response): void => {
+router.get("/media", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = (req as Request & { userId: string }).userId;
-  const items = readIndex(userId);
+  const rows = await db
+    .select()
+    .from(mediaItemsTable)
+    .where(eq(mediaItemsTable.userId, userId))
+    .orderBy(desc(mediaItemsTable.createdAt));
+
+  const items: MediaItem[] = rows.map((r) => ({
+    id: r.id,
+    filename: r.filename,
+    originalName: r.originalName,
+    category: r.category,
+    size: r.size,
+    mimeType: r.mimeType,
+    width: r.width ?? null,
+    height: r.height ?? null,
+    createdAt: new Date(r.createdAt).toISOString(),
+  }));
   res.json({ items });
 });
 
-// GET /media/storage — storage usage (plan fetched server-side from DB)
+// GET /media/storage — storage usage
 router.get("/media/storage", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = (req as Request & { userId: string }).userId;
-  const items = readIndex(userId);
-  const used = totalUsed(items);
+  const rows = await db
+    .select({ size: mediaItemsTable.size })
+    .from(mediaItemsTable)
+    .where(eq(mediaItemsTable.userId, userId));
+
+  const used = rows.reduce((sum, r) => sum + r.size, 0);
   const user = await getUserById(userId);
   const plan = user?.plan ?? "free";
   const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
-  res.json({ used, limit, plan, count: items.length, categories: CATEGORIES });
+  res.json({ used, limit, plan, count: rows.length, categories: CATEGORIES });
 });
 
-// POST /media/upload — upload a file
+// POST /media/upload — upload a file (server validates, then pushes to GCS)
 router.post("/media/upload", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = (req as Request & { userId: string }).userId;
 
-  // 1. Fetch plan server-side — do NOT trust client-supplied value
   const user = await getUserById(userId);
   const plan = user?.plan ?? "free";
   const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
 
-  // 2. Run multer
   const multerErr = await new Promise<Error | null>((resolve) => {
     upload.single("file")(req, res, (err) => resolve(err as Error | null));
   });
 
   if (multerErr) { res.status(400).json({ error: multerErr.message }); return; }
-  if (!req.file) { res.status(400).json({ error: "Nenhum arquivo enviado." }); return; }
+  if (!req.file?.buffer) { res.status(400).json({ error: "Nenhum arquivo enviado." }); return; }
 
-  const tmpPath = req.file.path;
+  const buf = req.file.buffer;
 
-  // 3. Magic-byte validation — detect ACTUAL file type from content, not from client headers
-  const detectedMime = detectImageMime(tmpPath);
+  const detectedMime = detectImageMime(buf);
   const safeExt = detectedMime ? SAFE_EXTENSIONS[detectedMime] : undefined;
-
   if (!safeExt) {
-    fs.unlinkSync(tmpPath);
-    res.status(400).json({
-      error: "Conteúdo do arquivo inválido. Apenas PNG, JPG, GIF e WebP são aceitos.",
-    });
+    res.status(400).json({ error: "Conteúdo do arquivo inválido. Apenas PNG, JPG, GIF e WebP são aceitos." });
     return;
   }
 
-  // 4. Rename .tmp → verified safe extension (prevents serving .html or other active content)
-  const baseId = path.basename(tmpPath, ".tmp");
-  const safeFilename = `${baseId}${safeExt}`;
-  const safePath = path.join(userDir(userId), safeFilename);
-  fs.renameSync(tmpPath, safePath);
-
-  // 5. Quota check against server-side plan
-  const items = readIndex(userId);
-  if (totalUsed(items) + req.file.size > limit) {
-    fs.unlinkSync(safePath);
+  const rows = await db
+    .select({ size: mediaItemsTable.size })
+    .from(mediaItemsTable)
+    .where(eq(mediaItemsTable.userId, userId));
+  const usedBytes = rows.reduce((sum, r) => sum + r.size, 0);
+  if (usedBytes + req.file.size > limit) {
     res.status(413).json({ error: "Limite de armazenamento atingido. Faça upgrade do plano." });
     return;
   }
 
-  // 6. Extract image dimensions
-  const { width, height } = extractDimensions(safePath);
+  const uuid = crypto.randomUUID();
+  const safeFilename = `${uuid}${safeExt}`;
+  const objectPath = mediaObjectPath(userId, safeFilename);
 
-  // 7. Build and persist metadata
-  const category = CATEGORIES.includes(req.body.category) ? (req.body.category as string) : "Geral";
-  const item: MediaItem = {
-    id: crypto.randomUUID(),
+  await uploadToGCS(buf, objectPath, detectedMime as string);
+
+  const { width, height } = extractDimensions(buf);
+  const category = CATEGORIES.includes(req.body.category as string) ? (req.body.category as string) : "Geral";
+  const now = Date.now();
+
+  const item = {
+    id: uuid,
+    userId,
     filename: safeFilename,
-    originalName: (req.body.name as string)?.trim() || req.file.originalname,
+    originalName: ((req.body.name as string)?.trim() || req.file.originalname) ?? safeFilename,
+    objectPath,
     category,
     size: req.file.size,
     mimeType: detectedMime as string,
-    width,
-    height,
-    createdAt: new Date().toISOString(),
+    width: width ?? null,
+    height: height ?? null,
+    createdAt: now,
   };
 
-  items.unshift(item);
-  writeIndex(userId, items);
+  await db.insert(mediaItemsTable).values(item);
 
-  res.json({ item, url: `/api/media/files/${userId}/${safeFilename}` });
+  const out: MediaItem = {
+    id: item.id,
+    filename: item.filename,
+    originalName: item.originalName,
+    category: item.category,
+    size: item.size,
+    mimeType: item.mimeType,
+    width: item.width,
+    height: item.height,
+    createdAt: new Date(now).toISOString(),
+  };
+
+  res.json({ item: out, url: `/api/media/files/${userId}/${safeFilename}` });
 });
 
 // PATCH /media/:id — rename / change category
-router.patch("/media/:id", requireAuth, (req: Request, res: Response): void => {
+router.patch("/media/:id", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = (req as Request & { userId: string }).userId;
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
   const { name, category } = req.body as { name?: string; category?: string };
 
-  const items = readIndex(userId);
-  const idx = items.findIndex((it) => it.id === id);
-  if (idx === -1) { res.status(404).json({ error: "Item não encontrado." }); return; }
+  const [existing] = await db
+    .select()
+    .from(mediaItemsTable)
+    .where(and(eq(mediaItemsTable.id, id), eq(mediaItemsTable.userId, userId)));
+  if (!existing) { res.status(404).json({ error: "Item não encontrado." }); return; }
 
-  if (name?.trim()) items[idx].originalName = name.trim();
-  if (category && CATEGORIES.includes(category)) items[idx].category = category;
+  const updates: Partial<typeof mediaItemsTable.$inferInsert> = {};
+  if (name?.trim()) updates.originalName = name.trim();
+  if (category && CATEGORIES.includes(category)) updates.category = category;
 
-  writeIndex(userId, items);
-  res.json({ item: items[idx] });
+  if (Object.keys(updates).length === 0) { res.json({ item: existing }); return; }
+
+  const [updated] = await db
+    .update(mediaItemsTable)
+    .set(updates)
+    .where(and(eq(mediaItemsTable.id, id), eq(mediaItemsTable.userId, userId)))
+    .returning();
+
+  const out: MediaItem = {
+    id: updated.id,
+    filename: updated.filename,
+    originalName: updated.originalName,
+    category: updated.category,
+    size: updated.size,
+    mimeType: updated.mimeType,
+    width: updated.width ?? null,
+    height: updated.height ?? null,
+    createdAt: new Date(updated.createdAt).toISOString(),
+  };
+  res.json({ item: out });
 });
 
 // DELETE /media/:id — delete file and metadata
-router.delete("/media/:id", requireAuth, (req: Request, res: Response): void => {
+router.delete("/media/:id", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = (req as Request & { userId: string }).userId;
-  const { id } = req.params;
+  const { id } = req.params as { id: string };
 
-  const items = readIndex(userId);
-  const idx = items.findIndex((it) => it.id === id);
-  if (idx === -1) { res.status(404).json({ error: "Item não encontrado." }); return; }
+  const [existing] = await db
+    .select()
+    .from(mediaItemsTable)
+    .where(and(eq(mediaItemsTable.id, id), eq(mediaItemsTable.userId, userId)));
+  if (!existing) { res.status(404).json({ error: "Item não encontrado." }); return; }
 
-  const [removed] = items.splice(idx, 1);
-  const filePath = path.join(userDir(userId), removed.filename);
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  await deleteFromGCS(existing.objectPath);
+  await db.delete(mediaItemsTable).where(and(eq(mediaItemsTable.id, id), eq(mediaItemsTable.userId, userId)));
 
-  writeIndex(userId, items);
-  res.json({ ok: true });
+  res.status(204).end();
 });
 
 export default router;
