@@ -7,14 +7,31 @@ import {
   GetUserProfileQueryParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "./auth";
+import fs from "fs";
+import path from "path";
 
 const router: IRouter = Router();
 
 const TIKTOOLS_API = "https://api.tik.tools";
 
+const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
+  ? path.resolve(process.cwd(), "../..")
+  : process.cwd();
+const configFile = path.resolve(workspaceRoot, "artifacts/api-server/data/config.json");
+
+function loadPersistedApiKey(): string | undefined {
+  try {
+    if (fs.existsSync(configFile)) {
+      const cfg = JSON.parse(fs.readFileSync(configFile, "utf-8")) as { apiKey?: string };
+      return cfg.apiKey || undefined;
+    }
+  } catch { /* ignore */ }
+  return undefined;
+}
+
 function getApiKey(): string {
-  const key = process.env.TIKTOOLS_API_KEY;
-  if (!key) throw new Error("TIKTOOLS_API_KEY not set");
+  const key = process.env.TIKTOOLS_API_KEY || loadPersistedApiKey();
+  if (!key) throw new Error("TIKTOOLS_API_KEY não configurada");
   return key;
 }
 

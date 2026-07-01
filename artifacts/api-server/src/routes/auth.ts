@@ -56,7 +56,10 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     };
 
   if (!email || !password || !name) {
-    res.status(400).json({ error: "email, password e name são obrigatórios" }); return;
+    res.status(400).json({ error: "Email, senha e nome são obrigatórios" }); return;
+  }
+  if (!tiktokUsername || !tiktokUsername.trim()) {
+    res.status(400).json({ error: "O @ do TikTok é obrigatório para criar sua conta" }); return;
   }
   if (password.length < 6) {
     res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres" }); return;
@@ -67,9 +70,12 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     res.status(409).json({ error: "E-mail já cadastrado" }); return;
   }
 
-  // Check TikTok username uniqueness if provided
-  const handle = tiktokUsername?.trim().replace(/^@/, "") || undefined;
-  if (handle && store.users.find((u) => u.tiktokUsername?.toLowerCase() === handle.toLowerCase())) {
+  // Check TikTok username uniqueness
+  const handle = tiktokUsername.trim().replace(/^@/, "");
+  if (!handle) {
+    res.status(400).json({ error: "O @ do TikTok é obrigatório" }); return;
+  }
+  if (store.users.find((u) => u.tiktokUsername?.toLowerCase() === handle.toLowerCase())) {
     res.status(409).json({ error: "Este usuário do TikTok já está vinculado a outra conta" }); return;
   }
 

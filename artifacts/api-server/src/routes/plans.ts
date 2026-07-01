@@ -41,6 +41,9 @@ router.patch("/admin/plans/:id", requireAdmin, (req, res): void => {
   if (body.tiktokUsernameChangesPerWeek !== undefined) p.tiktokUsernameChangesPerWeek = Number(body.tiktokUsernameChangesPerWeek);
   if (body.maxConcurrentWs !== undefined) p.maxConcurrentWs = Number(body.maxConcurrentWs);
   if (body.maxApiCallsPerWindow !== undefined) p.maxApiCallsPerWindow = Number(body.maxApiCallsPerWindow);
+  if (body.maxLiveHoursPerMonth !== undefined) p.maxLiveHoursPerMonth = Number(body.maxLiveHoursPerMonth);
+  if (body.maxLiveAnalyses !== undefined) p.maxLiveAnalyses = Number(body.maxLiveAnalyses);
+  if (body.maxWebhooks !== undefined) p.maxWebhooks = Number(body.maxWebhooks);
   if (Array.isArray(body.features)) p.features = body.features;
   if (body.color !== undefined) p.color = body.color;
   if (body.isActive !== undefined) p.isActive = body.isActive;

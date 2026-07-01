@@ -8,19 +8,22 @@ const dataDir = path.resolve(workspaceRoot, "artifacts/api-server/data");
 const plansFile = path.resolve(dataDir, "plans.json");
 
 export interface Plan {
-  id: string;           // "free" | "basic" | "pro" or custom
+  id: string;
   name: string;
   description: string;
-  price: number;        // in USD cents (0 = free)
-  currency: string;     // "USD", "BRL", etc.
+  price: number;
+  currency: string;
   billingPeriod: "monthly" | "yearly" | "lifetime" | "free";
   permissions: string[];
-  tiktokUsernameChangesPerWeek: number; // 0 = blocked, -1 = unlimited
+  tiktokUsernameChangesPerWeek: number;
   maxConcurrentWs: number;
   maxApiCallsPerWindow: number;
-  features: string[];   // human-readable feature list for display
-  color: string;        // badge color (tailwind class fragment)
-  order: number;        // display order
+  maxLiveHoursPerMonth: number;
+  maxLiveAnalyses: number;
+  maxWebhooks: number;
+  features: string[];
+  color: string;
+  order: number;
   isActive: boolean;
 }
 
@@ -31,31 +34,33 @@ export interface PlansStore {
 const DEFAULT_PLANS: Plan[] = [
   {
     id: "free",
-    name: "Sandbox",
+    name: "Gratuito",
     description: "Gratuito para testes e exploração",
     price: 0,
-    currency: "USD",
+    currency: "BRL",
     billingPeriod: "free",
     permissions: [
       "view_dashboard",
       "view_monitor",
       "view_gift_gallery",
-      "change_tiktok_username",
     ],
-    tiktokUsernameChangesPerWeek: 1,
-    maxConcurrentWs: 3,
+    tiktokUsernameChangesPerWeek: 0,
+    maxConcurrentWs: 1,
     maxApiCallsPerWindow: 20,
-    features: ["Dashboard", "Monitor (básico)", "Gift Gallery"],
+    maxLiveHoursPerMonth: 5,
+    maxLiveAnalyses: 10,
+    maxWebhooks: 0,
+    features: ["Dashboard", "Monitor (básico)", "Gift Gallery", "5h de live/mês"],
     color: "gray",
     order: 0,
     isActive: true,
   },
   {
     id: "basic",
-    name: "Basic+",
+    name: "Basic",
     description: "Para criadores que precisam de mais ferramentas",
-    price: 1999,
-    currency: "USD",
+    price: 2990,
+    currency: "BRL",
     billingPeriod: "monthly",
     permissions: [
       "view_dashboard",
@@ -65,22 +70,24 @@ const DEFAULT_PLANS: Plan[] = [
       "view_country_leaderboard",
       "view_gift_gallery",
       "use_watchlist",
-      "change_tiktok_username",
     ],
-    tiktokUsernameChangesPerWeek: 3,
-    maxConcurrentWs: 5,
+    tiktokUsernameChangesPerWeek: 1,
+    maxConcurrentWs: 3,
     maxApiCallsPerWindow: 100,
-    features: ["Tudo do Sandbox", "Bulk Check", "Gifters Leaderboard", "Watchlist"],
+    maxLiveHoursPerMonth: 30,
+    maxLiveAnalyses: 100,
+    maxWebhooks: 3,
+    features: ["Tudo do Gratuito", "Bulk Check", "Gifters Leaderboard", "Watchlist", "30h de live/mês", "3 webhooks"],
     color: "cyan",
     order: 1,
     isActive: true,
   },
   {
     id: "pro",
-    name: "Pro",
+    name: "PRO",
     description: "Acesso completo a todas as funcionalidades",
-    price: 4999,
-    currency: "USD",
+    price: 5990,
+    currency: "BRL",
     billingPeriod: "monthly",
     permissions: [
       "view_dashboard",
@@ -95,12 +102,14 @@ const DEFAULT_PLANS: Plan[] = [
       "view_gift_gallery",
       "use_watchlist",
       "use_jwt",
-      "change_tiktok_username",
     ],
     tiktokUsernameChangesPerWeek: -1,
     maxConcurrentWs: 10,
     maxApiCallsPerWindow: 500,
-    features: ["Tudo do Basic+", "Gaming Leaderboard", "Webhooks", "Live Captions", "Live Analytics", "JWT/WebSocket"],
+    maxLiveHoursPerMonth: -1,
+    maxLiveAnalyses: -1,
+    maxWebhooks: -1,
+    features: ["Tudo do Basic", "Gaming Leaderboard", "Webhooks ilimitados", "Live Captions", "Live Analytics", "JWT/WebSocket", "Live ilimitada"],
     color: "violet",
     order: 2,
     isActive: true,
@@ -110,10 +119,17 @@ const DEFAULT_PLANS: Plan[] = [
 export function loadPlans(): PlansStore {
   try {
     if (fs.existsSync(plansFile)) {
-      return JSON.parse(fs.readFileSync(plansFile, "utf-8")) as PlansStore;
+      const stored = JSON.parse(fs.readFileSync(plansFile, "utf-8")) as PlansStore;
+      // Migrate existing plans to include new fields with defaults
+      stored.plans = stored.plans.map((p) => ({
+        ...p,
+        maxLiveHoursPerMonth: (p.maxLiveHoursPerMonth as number | undefined) ?? -1,
+        maxLiveAnalyses: (p.maxLiveAnalyses as number | undefined) ?? -1,
+        maxWebhooks: (p.maxWebhooks as number | undefined) ?? 0,
+      }));
+      return stored;
     }
   } catch { /* ignore */ }
-  // Seed with defaults
   const store: PlansStore = { plans: DEFAULT_PLANS };
   savePlans(store);
   return store;

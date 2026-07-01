@@ -426,19 +426,18 @@ export default function Login() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => void handleRegisterFinish(true)} disabled={loading}
-                className="py-3 rounded-xl text-sm font-medium transition-all hover:opacity-80"
-                style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                Pular por agora
-              </button>
-              <button onClick={() => void handleRegisterFinish(false)} disabled={loading || isHandleNotFound}
-                className="py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-40"
-                style={{ background: "linear-gradient(90deg, #ec4899, #8b5cf6)" }}>
-                {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Criando…</> : <><UserPlus className="w-4 h-4" />Criar conta</>}
-              </button>
-            </div>
-            <p className="text-center text-xs text-purple-300/30">Você poderá vincular seu TikTok depois no perfil.</p>
+            {tiktokHandle.trim().length > 0 && !tikLooking && !isHandleValid && !isHandleNotFound && (
+              <div className="flex items-center gap-2 text-xs text-purple-300/40">
+                <Loader2 className="w-3 h-3 animate-spin" />Verificando…
+              </div>
+            )}
+            <button onClick={() => void handleRegisterFinish(false)}
+              disabled={loading || !tiktokHandle.trim() || isHandleNotFound || tikLooking}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-40 transition-all"
+              style={{ background: "linear-gradient(90deg, #ec4899, #8b5cf6)" }}>
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Criando conta…</> : <><UserPlus className="w-4 h-4" />Criar conta</>}
+            </button>
+            <p className="text-center text-xs text-purple-300/30">O @ do TikTok é obrigatório e ficará vinculado à sua conta.</p>
           </div>
         )}
 

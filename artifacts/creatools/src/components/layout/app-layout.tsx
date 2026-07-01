@@ -104,7 +104,7 @@ const DEFAULT_SECTIONS: NavSectionConfig[] = [
     items: [
       { id: "integracoes", label: "Integrações",   href: "/integracoes", icon: "Zap",      matchPrefix: "/integracoes", visible: true },
       { id: "pricing",     label: "Planos",         href: "/pricing",    icon: "Tag",       visible: true },
-      { id: "settings",    label: "Configurações",  href: "/settings",   icon: "Settings",  visible: true },
+      { id: "settings",    label: "Configurações",  href: "/settings",   icon: "Settings",  adminOnly: true, visible: true },
     ],
   },
   {
