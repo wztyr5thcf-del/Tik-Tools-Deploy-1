@@ -51,6 +51,27 @@ export interface ProfileSections {
   showSocialLinks: boolean;
 }
 
+export type LayoutInputLayersItem = { [key: string]: unknown };
+
+export interface LayoutInput {
+  name: string;
+  layers: LayoutInputLayersItem[];
+}
+
+export interface LayoutRenameInput {
+  name: string;
+}
+
+export type LayoutPresetLayersItem = { [key: string]: unknown };
+
+export interface LayoutPreset {
+  id: string;
+  name: string;
+  layers: LayoutPresetLayersItem[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export type StreamerPublicProfileTopGiftsItem = {
   giftName: string;
   count: number;

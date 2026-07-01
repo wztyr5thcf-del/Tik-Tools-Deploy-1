@@ -51,6 +51,9 @@ import type {
   JwtRequest,
   JwtResponse,
   LandingContent,
+  LayoutInput,
+  LayoutPreset,
+  LayoutRenameInput,
   LeaderboardLeague,
   LeaderboardLeagues,
   LiveChannel,
@@ -4424,4 +4427,292 @@ export function useGetStreamerPublicProfile<TData = Awaited<ReturnType<typeof ge
 
 
 
+
+export const getGetLayoutsUrl = () => {
+
+
+
+
+  return `/api/layouts`
+}
+
+/**
+ * @summary List all saved layout presets for the authenticated user
+ */
+export const getLayouts = async ( options?: RequestInit): Promise<LayoutPreset[]> => {
+
+  return customFetch<LayoutPreset[]>(getGetLayoutsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLayoutsQueryKey = () => {
+    return [
+    `/api/layouts`
+    ] as const;
+    }
+
+
+export const getGetLayoutsQueryOptions = <TData = Awaited<ReturnType<typeof getLayouts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLayouts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLayoutsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLayouts>>> = ({ signal }) => getLayouts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLayouts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLayoutsQueryResult = NonNullable<Awaited<ReturnType<typeof getLayouts>>>
+export type GetLayoutsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all saved layout presets for the authenticated user
+ */
+
+export function useGetLayouts<TData = Awaited<ReturnType<typeof getLayouts>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLayouts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLayoutsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateLayoutUrl = () => {
+
+
+
+
+  return `/api/layouts`
+}
+
+/**
+ * @summary Save a new layout preset
+ */
+export const createLayout = async (layoutInput: LayoutInput, options?: RequestInit): Promise<LayoutPreset> => {
+
+  return customFetch<LayoutPreset>(getCreateLayoutUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(layoutInput)
+  }
+);}
+
+
+
+
+export const getCreateLayoutMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLayout>>, TError,{data: BodyType<LayoutInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLayout>>, TError,{data: BodyType<LayoutInput>}, TContext> => {
+
+const mutationKey = ['createLayout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLayout>>, {data: BodyType<LayoutInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createLayout(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateLayoutMutationResult = NonNullable<Awaited<ReturnType<typeof createLayout>>>
+    export type CreateLayoutMutationBody = BodyType<LayoutInput>
+    export type CreateLayoutMutationError = ErrorType<void>
+
+    /**
+ * @summary Save a new layout preset
+ */
+export const useCreateLayout = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLayout>>, TError,{data: BodyType<LayoutInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createLayout>>,
+        TError,
+        {data: BodyType<LayoutInput>},
+        TContext
+      > => {
+      return useMutation(getCreateLayoutMutationOptions(options));
+    }
+
+export const getRenameLayoutUrl = (id: string,) => {
+
+
+
+
+  return `/api/layouts/${id}`
+}
+
+/**
+ * @summary Rename a layout preset
+ */
+export const renameLayout = async (id: string,
+    layoutRenameInput: LayoutRenameInput, options?: RequestInit): Promise<LayoutPreset> => {
+
+  return customFetch<LayoutPreset>(getRenameLayoutUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(layoutRenameInput)
+  }
+);}
+
+
+
+
+export const getRenameLayoutMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renameLayout>>, TError,{id: string;data: BodyType<LayoutRenameInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof renameLayout>>, TError,{id: string;data: BodyType<LayoutRenameInput>}, TContext> => {
+
+const mutationKey = ['renameLayout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof renameLayout>>, {id: string;data: BodyType<LayoutRenameInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  renameLayout(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RenameLayoutMutationResult = NonNullable<Awaited<ReturnType<typeof renameLayout>>>
+    export type RenameLayoutMutationBody = BodyType<LayoutRenameInput>
+    export type RenameLayoutMutationError = ErrorType<void>
+
+    /**
+ * @summary Rename a layout preset
+ */
+export const useRenameLayout = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renameLayout>>, TError,{id: string;data: BodyType<LayoutRenameInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof renameLayout>>,
+        TError,
+        {id: string;data: BodyType<LayoutRenameInput>},
+        TContext
+      > => {
+      return useMutation(getRenameLayoutMutationOptions(options));
+    }
+
+export const getDeleteLayoutUrl = (id: string,) => {
+
+
+
+
+  return `/api/layouts/${id}`
+}
+
+/**
+ * @summary Delete a layout preset
+ */
+export const deleteLayout = async (id: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteLayoutUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteLayoutMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLayout>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteLayout>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteLayout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLayout>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteLayout(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteLayoutMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLayout>>>
+
+    export type DeleteLayoutMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete a layout preset
+ */
+export const useDeleteLayout = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLayout>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteLayout>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteLayoutMutationOptions(options));
+    }
 

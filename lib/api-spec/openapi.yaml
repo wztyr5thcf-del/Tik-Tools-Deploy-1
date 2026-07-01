@@ -1145,6 +1145,90 @@ paths:
         "404":
           description: Profile not found or not public
 
+  /layouts:
+    get:
+      operationId: getLayouts
+      tags: [layouts]
+      summary: List all saved layout presets for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of presets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LayoutPreset"
+    post:
+      operationId: createLayout
+      tags: [layouts]
+      summary: Save a new layout preset
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LayoutInput"
+      responses:
+        "201":
+          description: Created preset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LayoutPreset"
+        "400":
+          description: Validation error or preset limit reached
+
+  /layouts/{id}:
+    patch:
+      operationId: renameLayout
+      tags: [layouts]
+      summary: Rename a layout preset
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LayoutRenameInput"
+      responses:
+        "200":
+          description: Updated preset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LayoutPreset"
+        "404":
+          description: Preset not found
+    delete:
+      operationId: deleteLayout
+      tags: [layouts]
+      summary: Delete a layout preset
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Preset not found
+
 components:
   schemas:
     HealthStatus:
@@ -1231,6 +1315,41 @@ components:
         showSocialLinks:
           type: boolean
       required: [showStats, showLiveStatus, showTopGifts, showTopGifters, showSocialLinks]
+
+    LayoutInput:
+      type: object
+      properties:
+        name:
+          type: string
+        layers:
+          type: array
+          items:
+            type: object
+      required: [name, layers]
+
+    LayoutRenameInput:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+
+    LayoutPreset:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        layers:
+          type: array
+          items:
+            type: object
+        createdAt:
+          type: number
+        updatedAt:
+          type: number
+      required: [id, name, layers, createdAt, updatedAt]
 
     StreamerPublicProfile:
       type: object

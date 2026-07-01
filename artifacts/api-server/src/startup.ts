@@ -49,6 +49,15 @@ if (dbUrl) {
       ADD COLUMN IF NOT EXISTS social_links text,
       ADD COLUMN IF NOT EXISTS profile_sections text,
       ADD COLUMN IF NOT EXISTS total_live_sessions integer NOT NULL DEFAULT 0;
+    CREATE TABLE IF NOT EXISTS layout_presets (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      layers TEXT NOT NULL,
+      created_at BIGINT NOT NULL,
+      updated_at BIGINT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS layout_presets_user_id_idx ON layout_presets(user_id);
   `).catch(() => { /* ignore — table may not exist yet on first boot */ })
     .finally(() => pool.end());
 }

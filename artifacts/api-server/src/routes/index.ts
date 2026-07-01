@@ -17,6 +17,7 @@ import eventsRouter from "./events";
 import mediaRouter from "./media";
 import profileRouter from "./profile";
 import giftsRouter from "./gifts";
+import layoutsRouter from "./layouts";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(eventsRouter);
 router.use(mediaRouter);
 router.use(profileRouter);
 router.use(giftsRouter);
+router.use(layoutsRouter);
 
 export default router;

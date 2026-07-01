@@ -966,3 +966,71 @@ export const GetStreamerPublicProfileResponse = zod.object({
 })
 
 
+/**
+ * @summary List all saved layout presets for the authenticated user
+ */
+export const GetLayoutsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "layers": zod.array(zod.object({
+
+}).passthrough()),
+  "createdAt": zod.number(),
+  "updatedAt": zod.number()
+})
+export const GetLayoutsResponse = zod.array(GetLayoutsResponseItem)
+
+
+/**
+ * @summary Save a new layout preset
+ */
+export const CreateLayoutBody = zod.object({
+  "name": zod.string(),
+  "layers": zod.array(zod.object({
+
+}).passthrough())
+})
+
+export const CreateLayoutResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "layers": zod.array(zod.object({
+
+}).passthrough()),
+  "createdAt": zod.number(),
+  "updatedAt": zod.number()
+})
+
+
+/**
+ * @summary Rename a layout preset
+ */
+export const RenameLayoutParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const RenameLayoutBody = zod.object({
+  "name": zod.string()
+})
+
+export const RenameLayoutResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "layers": zod.array(zod.object({
+
+}).passthrough()),
+  "createdAt": zod.number(),
+  "updatedAt": zod.number()
+})
+
+
+/**
+ * @summary Delete a layout preset
+ */
+export const DeleteLayoutParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteLayoutResponse = zod.void()
+
+

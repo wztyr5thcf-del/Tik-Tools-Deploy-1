@@ -11,10 +11,9 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/context/auth-context";
+import { useAuth, authFetch } from "@/context/auth-context";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const STORAGE_KEY = "creatools_layout_presets_v1";
 const MAX_LAYERS = 8;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -33,7 +32,7 @@ interface OverlayLayer {
   visible: boolean;
   params: Record<string, string>;
 }
-interface Preset { id: string; name: string; layers: OverlayLayer[] }
+interface Preset { id: string; name: string; layers: OverlayLayer[]; createdAt?: number }
 
 type ParamDef =
   | { key: string; label: string; type: "slider"; min: number; max: number; step?: number; default: string }
@@ -274,20 +273,32 @@ function ParamsEditor({ layer, onChange }: { layer: OverlayLayer; onChange: (par
 
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function LayoutEditor() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { toast } = useToast();
   const [username, setUsername] = useState(user?.tiktokUsername ?? "");
   const [usernameInput, setUsernameInput] = useState(user?.tiktokUsername ?? "");
   const [layers, setLayers] = useState<OverlayLayer[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCatalog, setShowCatalog] = useState(true);
-  const [presets, setPresets] = useState<Preset[]>(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]"); } catch { return []; }
-  });
+  const [presets, setPresets] = useState<Preset[]>([]);
+  const [presetsLoading, setPresetsLoading] = useState(false);
   const [presetName, setPresetName] = useState("");
   const [showPresetInput, setShowPresetInput] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const [showUrlPanel, setShowUrlPanel] = useState(true);
   const [activeTab, setActiveTab] = useState<"position" | "params">("position");
+  const importRef = useRef<HTMLInputElement>(null);
+
+  // ── Load presets from server ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!token) return;
+    setPresetsLoading(true);
+    authFetch("/layouts", token)
+      .then((d) => setPresets(d as Preset[]))
+      .catch(() => { /* silently ignore */ })
+      .finally(() => setPresetsLoading(false));
+  }, [token]);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ id: string; sx: number; sy: number; ox: number; oy: number } | null>(null);
@@ -350,14 +361,19 @@ export default function LayoutEditor() {
   }
 
   // ── Presets ────────────────────────────────────────────────────────────────
-  function savePreset() {
-    if (!presetName.trim()) return;
-    const p: Preset = { id: crypto.randomUUID(), name: presetName.trim(), layers };
-    const updated = [...presets, p];
-    setPresets(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    setPresetName(""); setShowPresetInput(false);
-    toast({ title: `Preset "${p.name}" salvo!` });
+  async function savePreset() {
+    if (!presetName.trim() || !token) return;
+    try {
+      const p = await authFetch("/layouts", token, {
+        method: "POST",
+        body: JSON.stringify({ name: presetName.trim(), layers }),
+      }) as Preset;
+      setPresets(prev => [p, ...prev]);
+      setPresetName(""); setShowPresetInput(false);
+      toast({ title: `Preset "${p.name}" salvo na conta!` });
+    } catch {
+      toast({ title: "Erro ao salvar preset", variant: "destructive" });
+    }
   }
 
   function loadPreset(p: Preset) {
@@ -365,10 +381,58 @@ export default function LayoutEditor() {
     toast({ title: `Preset "${p.name}" carregado!` });
   }
 
-  function deletePreset(id: string) {
-    const updated = presets.filter(p => p.id !== id);
-    setPresets(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  async function deletePreset(id: string) {
+    if (!token) return;
+    setPresets(prev => prev.filter(p => p.id !== id));
+    try {
+      await authFetch(`/layouts/${id}`, token, { method: "DELETE" });
+    } catch {
+      // Re-fetch to restore state if delete failed
+      authFetch("/layouts", token).then(d => setPresets(d as Preset[])).catch(() => null);
+    }
+  }
+
+  async function renamePreset(id: string, newName: string) {
+    if (!token || !newName.trim()) return;
+    setRenamingId(null);
+    try {
+      const updated = await authFetch(`/layouts/${id}`, token, {
+        method: "PATCH",
+        body: JSON.stringify({ name: newName.trim() }),
+      }) as Preset;
+      setPresets(prev => prev.map(p => p.id === id ? updated : p));
+      toast({ title: `Preset renomeado para "${updated.name}"` });
+    } catch {
+      toast({ title: "Erro ao renomear", variant: "destructive" });
+    }
+  }
+
+  function exportPreset(p: Preset) {
+    const blob = new Blob([JSON.stringify(p, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${p.name.replace(/\s+/g, "_")}_layout.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function importPreset(file: File) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const parsed = JSON.parse(e.target?.result as string) as Preset;
+        if (!parsed.name || !Array.isArray(parsed.layers)) throw new Error("Formato inválido");
+        if (!token) return;
+        const p = await authFetch("/layouts", token, {
+          method: "POST",
+          body: JSON.stringify({ name: `${parsed.name} (importado)`, layers: parsed.layers }),
+        }) as Preset;
+        setPresets(prev => [p, ...prev]);
+        toast({ title: `Preset "${p.name}" importado!` });
+      } catch {
+        toast({ title: "Arquivo inválido ou corrompido", variant: "destructive" });
+      }
+    };
+    reader.readAsText(file);
   }
 
   const visibleDirectLayers = layers.filter(l => l.visible && l.direct);
@@ -415,37 +479,86 @@ export default function LayoutEditor() {
       </div>
 
       {/* Presets bar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.35)" }}>Presets:</span>
-        {presets.map(p => (
-          <div key={p.id} className="flex items-center gap-0.5">
-            <button onClick={() => loadPreset(p)}
-              className="text-xs px-2 py-1 rounded-md font-medium transition-colors"
-              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)" }}>{p.name}</button>
-            <button onClick={() => deletePreset(p.id)} className="p-0.5 rounded hover:text-red-400 transition-colors"
-              style={{ color: "rgba(255,255,255,0.2)" }}><X className="w-3 h-3" /></button>
-          </div>
-        ))}
-        {showPresetInput ? (
-          <div className="flex items-center gap-1">
-            <Input value={presetName} onChange={e => setPresetName(e.target.value)} placeholder="Nome do preset"
-              className="h-7 text-xs w-36" onKeyDown={e => e.key === "Enter" && savePreset()} autoFocus />
-            <Button size="sm" className="h-7 text-xs px-2" onClick={savePreset}>Salvar</Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setShowPresetInput(false)}>✕</Button>
-          </div>
-        ) : (
-          <button onClick={() => setShowPresetInput(true)}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.35)" }}>
+            {presetsLoading ? "Carregando…" : `Presets (${presets.length}):`}
+          </span>
+
+          {/* Save new preset */}
+          {showPresetInput ? (
+            <div className="flex items-center gap-1">
+              <Input value={presetName} onChange={e => setPresetName(e.target.value)} placeholder="Nome do preset"
+                className="h-7 text-xs w-36" onKeyDown={e => e.key === "Enter" && void savePreset()} autoFocus />
+              <Button size="sm" className="h-7 text-xs px-2" onClick={() => void savePreset()}>Salvar</Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setShowPresetInput(false)}>✕</Button>
+            </div>
+          ) : (
+            <button onClick={() => setShowPresetInput(true)}
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors"
+              style={{ border: "1px dashed rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.35)" }}>
+              <Save className="w-3 h-3" /> Salvar layout
+            </button>
+          )}
+
+          {/* Import preset */}
+          <button onClick={() => importRef.current?.click()}
             className="flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors"
-            style={{ border: "1px dashed rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.35)" }}>
-            <Save className="w-3 h-3" /> Salvar layout
+            style={{ border: "1px dashed rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.25)" }}
+            title="Importar preset de arquivo JSON">
+            <Plus className="w-3 h-3" /> Importar JSON
           </button>
-        )}
-        {layers.length > 0 && (
-          <button onClick={() => { setLayers([]); setSelectedId(null); }}
-            className="flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors ml-auto"
-            style={{ color: "rgba(239,68,68,0.6)" }}>
-            <RotateCcw className="w-3 h-3" /> Limpar
-          </button>
+          <input ref={importRef} type="file" accept=".json" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) importPreset(f); e.target.value = ""; }} />
+
+          {layers.length > 0 && (
+            <button onClick={() => { setLayers([]); setSelectedId(null); }}
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors ml-auto"
+              style={{ color: "rgba(239,68,68,0.6)" }}>
+              <RotateCcw className="w-3 h-3" /> Limpar
+            </button>
+          )}
+        </div>
+
+        {/* Preset chips */}
+        {presets.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {presets.map(p => (
+              <div key={p.id} className="flex items-center gap-0.5 rounded-lg overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {renamingId === p.id ? (
+                  <div className="flex items-center gap-1 px-1.5">
+                    <Input value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                      className="h-6 text-xs w-28 px-1" autoFocus
+                      onKeyDown={e => { if (e.key === "Enter") void renamePreset(p.id, renameValue); if (e.key === "Escape") setRenamingId(null); }} />
+                    <button onClick={() => void renamePreset(p.id, renameValue)}
+                      className="text-[10px] px-1.5 py-0.5 rounded text-green-400 hover:bg-green-400/10">✓</button>
+                    <button onClick={() => setRenamingId(null)} className="text-[10px] text-zinc-500 hover:text-white">✕</button>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => loadPreset(p)} title={p.createdAt ? `Criado em ${new Date(p.createdAt).toLocaleDateString("pt-BR")}` : undefined}
+                      className="text-xs px-2.5 py-1.5 font-medium transition-colors hover:bg-white/5"
+                      style={{ color: "rgba(255,255,255,0.75)" }}>{p.name}</button>
+                    <div className="flex items-center border-l gap-0 px-0.5" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                      <button onClick={() => { setRenamingId(p.id); setRenameValue(p.name); }}
+                        className="p-1 rounded hover:text-violet-400 transition-colors text-zinc-600" title="Renomear">
+                        <Settings2 className="w-2.5 h-2.5" />
+                      </button>
+                      <button onClick={() => exportPreset(p)}
+                        className="p-1 rounded hover:text-blue-400 transition-colors text-zinc-600" title="Exportar JSON">
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </button>
+                      <button onClick={() => void deletePreset(p.id)}
+                        className="p-1 rounded hover:text-red-400 transition-colors text-zinc-600" title="Apagar">
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
