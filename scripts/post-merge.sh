@@ -10,4 +10,8 @@ if [ -z "$DATABASE_URL" ] && [ -n "$DB_URL" ]; then
   export DATABASE_URL="$DB_URL"
 fi
 
-pnpm --filter db push
+if [ -n "$DATABASE_URL" ]; then
+  pnpm --filter db push
+else
+  echo "No DATABASE_URL available — skipping schema push (will run on next deploy)"
+fi
