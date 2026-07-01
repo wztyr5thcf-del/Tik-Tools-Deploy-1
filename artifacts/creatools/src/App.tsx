@@ -70,7 +70,7 @@ import AppLayout from "./components/layout/app-layout";
 import { AuthProvider, useAuth } from "./context/auth-context";
 import { UIConfigProvider } from "./context/ui-config-context";
 import { WatchlistProvider } from "./context/watchlist-context";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +102,58 @@ function GuestRoute({ component: Component }: { component: React.ComponentType }
   if (loading) return <Spinner />;
   if (user) return <Redirect to="/" />;
   return <Component />;
+}
+
+function MaintenanceGate({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const [maint, setMaint] = useState<{ enabled: boolean; message?: string } | null>(null);
+  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch(`${BASE}/api/maintenance`);
+        if (res.ok) setMaint(await res.json() as { enabled: boolean; message?: string });
+      } catch { /* ignore */ }
+    };
+    void check();
+    const interval = setInterval(() => void check(), 30_000);
+    return () => clearInterval(interval);
+  }, [BASE]);
+
+  if (!loading && maint?.enabled && !user?.isAdmin) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+        style={{ background: "#0a0814" }}>
+        <div className="text-center px-6 max-w-md">
+          <div className="text-7xl mb-6">🔧</div>
+          <h1 className="text-4xl font-bold text-white mb-3">Em Manutenção</h1>
+          <p className="text-white/50 text-base mb-4">Estamos melhorando a plataforma para você. Voltamos em breve!</p>
+          {maint.message && (
+            <p className="text-sm px-4 py-3 rounded-xl font-medium"
+              style={{ background: "rgba(124,58,237,0.15)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.3)" }}>
+              {maint.message}
+            </p>
+          )}
+          <p className="text-white/20 text-xs mt-8">Creatools &bull; TikTok LIVE Studio</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loading && maint?.enabled && user?.isAdmin) {
+    return (
+      <>
+        <div className="fixed top-0 left-0 right-0 z-[999] flex items-center justify-center gap-2 py-1.5 text-xs font-semibold"
+          style={{ background: "#f59e0b", color: "#000" }}>
+          <span>⚠️ MODO MANUTENÇÃO ATIVO — Usuários comuns estão bloqueados</span>
+        </div>
+        <div style={{ paddingTop: "28px" }}>{children}</div>
+      </>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 function HomeRoute() {
@@ -245,7 +297,9 @@ function App() {
           <AuthProvider>
             <WatchlistProvider>
               <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                <Router />
+                <MaintenanceGate>
+                  <Router />
+                </MaintenanceGate>
               </WouterRouter>
               <Toaster />
             </WatchlistProvider>

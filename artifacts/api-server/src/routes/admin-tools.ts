@@ -120,4 +120,37 @@ router.post("/admin/test-stripe", requireAdmin, async (req, res): Promise<void> 
   }
 });
 
+// ── Maintenance mode ──────────────────────────────────────────────────────────
+const maintenanceFile = path.resolve(dataDir, "maintenance.json");
+
+interface MaintenanceConfig { enabled: boolean; message?: string; }
+
+function loadMaintenance(): MaintenanceConfig {
+  try {
+    if (fs.existsSync(maintenanceFile)) return JSON.parse(fs.readFileSync(maintenanceFile, "utf-8")) as MaintenanceConfig;
+  } catch { /* ignore */ }
+  return { enabled: false };
+}
+function saveMaintenance(m: MaintenanceConfig): void {
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(maintenanceFile, JSON.stringify(m, null, 2));
+}
+
+// GET /api/maintenance — public, polled by frontend
+router.get("/maintenance", (_req, res): void => { res.json(loadMaintenance()); });
+
+// GET /api/admin/maintenance — admin only
+router.get("/admin/maintenance", requireAdmin, (_req, res): void => { res.json(loadMaintenance()); });
+
+// PATCH /api/admin/maintenance — admin only
+router.patch("/admin/maintenance", requireAdmin, (req, res): void => {
+  const { enabled, message } = req.body as { enabled?: boolean; message?: string };
+  const current = loadMaintenance();
+  if (enabled !== undefined) current.enabled = !!enabled;
+  if (message !== undefined) current.message = message?.trim() || undefined;
+  saveMaintenance(current);
+  req.log.info({ enabled: current.enabled }, "Maintenance mode updated");
+  res.json(current);
+});
+
 export default router;

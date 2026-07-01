@@ -938,6 +938,8 @@ function SistemaSection() {
 
   // maintenance mode
   const [maintenance, setMaintenance] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState("");
+  const [savingMaintenance, setSavingMaintenance] = useState(false);
 
   // stripe
   const [stripeConfig, setStripeConfig] = useState<StripeConfig | null>(null);
@@ -955,16 +957,40 @@ function SistemaSection() {
 
   const load = useCallback(async () => {
     try {
-      const [sc, ac, tc] = await Promise.all([
+      const [sc, ac, tc, mc] = await Promise.all([
         authFetch("/admin/stripe-config", token!) as Promise<StripeConfig>,
         authFetch("/admin/alt-api-config", token!) as Promise<AltApiConfig>,
         authFetch("/admin/tiktools-config", token!) as Promise<{ apiKeySet: boolean; apiKeyMasked: string | null }>,
+        authFetch("/admin/maintenance", token!) as Promise<{ enabled: boolean; message?: string }>,
       ]);
       setStripeConfig(sc); setStripePublishable(sc.publishableKey ?? "");
       setStripeBasic(sc.priceIdBasic ?? ""); setStripePro(sc.priceIdPro ?? "");
       setPaymentsEnabled(sc.paymentsEnabled); setAltApi(ac); setTiktoolsMasked(tc.apiKeyMasked);
+      setMaintenance(mc.enabled); setMaintenanceMessage(mc.message ?? "");
     } catch { /* ignore */ }
   }, [token]);
+
+  const toggleMaintenance = async (val: boolean) => {
+    setSavingMaintenance(true);
+    setMaintenance(val);
+    try {
+      await authFetch("/admin/maintenance", token!, { method: "PATCH", body: JSON.stringify({ enabled: val, message: maintenanceMessage }) });
+      toast({ title: val ? "⚠️ Modo manutenção ATIVADO!" : "✅ Modo manutenção desativado!" });
+    } catch {
+      setMaintenance(!val);
+      toast({ title: "Erro ao salvar modo manutenção", variant: "destructive" });
+    }
+    setSavingMaintenance(false);
+  };
+
+  const saveMaintenance = async () => {
+    setSavingMaintenance(true);
+    try {
+      await authFetch("/admin/maintenance", token!, { method: "PATCH", body: JSON.stringify({ enabled: maintenance, message: maintenanceMessage }) });
+      toast({ title: "Manutenção atualizada!" });
+    } catch { toast({ title: "Erro ao salvar", variant: "destructive" }); }
+    setSavingMaintenance(false);
+  };
   useEffect(() => { void load(); }, [load]);
 
   const saveTiktools = async () => {
@@ -1021,14 +1047,24 @@ function SistemaSection() {
                 <p className="text-xs text-muted-foreground">{maintenance ? "Ativo — usuários verão aviso de manutenção" : "Inativo — plataforma funcionando normalmente"}</p>
               </div>
             </div>
-            <Switch checked={maintenance} onCheckedChange={setMaintenance} />
+            <Switch checked={maintenance} onCheckedChange={toggleMaintenance} disabled={savingMaintenance} />
           </div>
           {maintenance && (
             <div className="mt-3 flex items-center gap-2 p-2 rounded-lg" style={{ background: "rgba(249,115,22,0.1)" }}>
               <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0" />
-              <p className="text-xs text-yellow-300">Modo manutenção ativo. Certifique-se de desativar após concluir as manutenções.</p>
+              <p className="text-xs text-yellow-300">Modo manutenção ATIVO. Usuários verão tela de manutenção. Administradores ainda têm acesso total.</p>
             </div>
           )}
+          <div className="mt-3 space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Mensagem para usuários (opcional)</Label>
+            <div className="flex gap-2">
+              <Input value={maintenanceMessage} onChange={(e) => setMaintenanceMessage(e.target.value)}
+                placeholder="Ex: Voltamos em 30 minutos. Obrigado pela paciência!" className="text-sm flex-1" />
+              <Button size="sm" variant="outline" onClick={saveMaintenance} disabled={savingMaintenance}>
+                {savingMaintenance ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -1948,9 +1984,318 @@ function LandingPageTab({ allPlans }: { allPlans: Plan[] }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// PÁGINAS & MENU
+// ════════════════════════════════════════════════════════════════════════════
+interface PageEntry {
+  id: string; path: string; label: string; category: string; icon: string;
+  matchPrefix?: string; defaultBadge?: string; defaultBadgeColor?: string; adminOnly?: boolean;
+}
+interface MenuNavItem {
+  id: string; label: string; href: string; icon: string; visible: boolean;
+  adminOnly?: boolean; requiresPlan?: string; matchPrefix?: string;
+  badge?: string; badgeColor?: string; children?: MenuNavItem[];
+}
+interface MenuSection { id: string; label?: string; items: MenuNavItem[]; }
+interface UICfgFull {
+  logoText?: string; logoUrl?: string; navType?: string;
+  sidebarSections: MenuSection[];
+}
+
+const ALL_APP_PAGES: PageEntry[] = [
+  // PAINEL
+  { id: "dashboard",           path: "/",                     label: "Dashboard",              category: "PAINEL",      icon: "LayoutDashboard" },
+  { id: "monitor",             path: "/monitor/example",      label: "Monitor / Conexão",      category: "PAINEL",      icon: "Activity",    matchPrefix: "/monitor" },
+  { id: "overlays",            path: "/overlays",             label: "Sobreposições",           category: "PAINEL",      icon: "Monitor",     matchPrefix: "/overlays" },
+  // FERRAMENTAS
+  { id: "events",              path: "/events",               label: "Eventos",                category: "FERRAMENTAS", icon: "Zap",         defaultBadge: "PRO",  defaultBadgeColor: "#f97316" },
+  { id: "sound-alerts",        path: "/sound-alerts",         label: "Alertas Sonoros",        category: "FERRAMENTAS", icon: "Radio" },
+  { id: "layout",              path: "/layout",               label: "Layout OBS",             category: "FERRAMENTAS", icon: "Monitor",     defaultBadge: "PRO",  defaultBadgeColor: "#f97316" },
+  { id: "effect-battle",       path: "/effect-battle",        label: "Effect Battle",          category: "FERRAMENTAS", icon: "Sparkles",    defaultBadge: "PRO",  defaultBadgeColor: "#f97316" },
+  { id: "troll-gift",          path: "/troll-gift",           label: "Troll Gift",             category: "FERRAMENTAS", icon: "Zap",         defaultBadge: "APP",  defaultBadgeColor: "#22d3ee" },
+  { id: "album",               path: "/album",                label: "Álbum",                  category: "FERRAMENTAS", icon: "Layers" },
+  { id: "stream-tools",        path: "/stream-tools",         label: "Stream Tools",           category: "FERRAMENTAS", icon: "Tv2" },
+  // JOGOS
+  { id: "minigames",           path: "/minigames",            label: "Minigames",              category: "JOGOS",       icon: "Gamepad2",    matchPrefix: "/minigames" },
+  { id: "scoreboards",         path: "/scoreboards",          label: "Scoreboards",            category: "JOGOS",       icon: "Trophy" },
+  // LIVE
+  { id: "live-counts",         path: "/live-counts",          label: "Live Counts",            category: "LIVE",        icon: "Radio" },
+  { id: "live-captions",       path: "/live-captions",        label: "Live Captions",          category: "LIVE",        icon: "Subtitles",   matchPrefix: "/live-captions" },
+  { id: "live-analytics",      path: "/live-analytics",       label: "Live Analytics",         category: "LIVE",        icon: "BarChart2" },
+  // RANKINGS
+  { id: "leaderboards",        path: "/leaderboards",         label: "Leagues",                category: "RANKINGS",    icon: "Crown",       matchPrefix: "/leaderboards" },
+  { id: "leaderboards-country",path: "/leaderboards/country", label: "Country Rankings",       category: "RANKINGS",    icon: "Globe" },
+  { id: "gifters",             path: "/gifters",              label: "Gifters",                category: "RANKINGS",    icon: "Diamond",     matchPrefix: "/gifters" },
+  // STREAMER
+  { id: "streamer-lookup",     path: "/streamer/lookup",      label: "Buscar Creator",         category: "STREAMER",    icon: "Search" },
+  { id: "streamer-bulk",       path: "/streamer/bulk-check",  label: "Verificar Múltiplos",    category: "STREAMER",    icon: "Users" },
+  { id: "streamer-watchlist",  path: "/streamer/watchlist",   label: "Watchlist",              category: "STREAMER",    icon: "Bell" },
+  { id: "streamer-jwt",        path: "/streamer/jwt",         label: "JWT Generator",          category: "STREAMER",    icon: "Key" },
+  { id: "streamer-rate-limits",path: "/streamer/rate-limits", label: "Rate Limits",            category: "STREAMER",    icon: "Activity" },
+  // OUTROS
+  { id: "webhooks",            path: "/webhooks",             label: "Webhooks",               category: "OUTROS",      icon: "Webhook" },
+  { id: "notifications",       path: "/notifications",        label: "Notificações",           category: "OUTROS",      icon: "Bell" },
+  { id: "gift-gallery",        path: "/gift-gallery",         label: "Gift Gallery",           category: "OUTROS",      icon: "Diamond" },
+  { id: "dev-tools",           path: "/dev-tools",            label: "Dev Tools",              category: "OUTROS",      icon: "Code2" },
+  { id: "integracoes",         path: "/integracoes",          label: "Integrações",            category: "OUTROS",      icon: "Zap" },
+  { id: "pricing",             path: "/pricing",              label: "Planos / Preços",        category: "OUTROS",      icon: "Tag" },
+  { id: "settings",            path: "/settings",             label: "Configurações",          category: "OUTROS",      icon: "Settings",    adminOnly: true },
+  { id: "admin",               path: "/admin",                label: "Admin Panel",            category: "OUTROS",      icon: "Shield",      adminOnly: true },
+];
+
+function PaginasSection() {
+  const { token } = useAuth();
+  const { toast } = useToast();
+  const [uiCfg, setUiCfg] = useState<UICfgFull | null>(null);
+  const [cfgLoading, setCfgLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editBadge, setEditBadge] = useState("");
+  const [editBadgeColor, setEditBadgeColor] = useState("#f97316");
+  const [editVisible, setEditVisible] = useState(true);
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [addSection, setAddSection] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const loadCfg = useCallback(async () => {
+    setCfgLoading(true);
+    try { setUiCfg(await authFetch("/admin/ui-config", token!) as UICfgFull); }
+    catch { /* ignore */ }
+    setCfgLoading(false);
+  }, [token]);
+  useEffect(() => { void loadCfg(); }, [loadCfg]);
+
+  const saveCfg = async (newCfg: UICfgFull, msg = "Menu atualizado!") => {
+    setSaving(true);
+    try {
+      await authFetch("/admin/ui-config", token!, { method: "PATCH", body: JSON.stringify(newCfg) });
+      setUiCfg(newCfg);
+      toast({ title: msg });
+    } catch { toast({ title: "Erro ao salvar", variant: "destructive" }); }
+    setSaving(false);
+  };
+
+  function findInSidebar(page: PageEntry): { sectionId: string; sectionLabel: string; item: MenuNavItem } | null {
+    if (!uiCfg) return null;
+    for (const sec of uiCfg.sidebarSections) {
+      const item = sec.items.find((it) =>
+        it.href === page.path || (page.matchPrefix && it.matchPrefix === page.matchPrefix) || it.id === page.id
+      );
+      if (item) return { sectionId: sec.id, sectionLabel: sec.label ?? sec.id, item };
+    }
+    return null;
+  }
+
+  function toggleVisibility(page: PageEntry) {
+    if (!uiCfg) return;
+    const found = findInSidebar(page);
+    if (!found) return;
+    void saveCfg({
+      ...uiCfg,
+      sidebarSections: uiCfg.sidebarSections.map((sec) => ({
+        ...sec, items: sec.items.map((it) => it.id === found.item.id ? { ...it, visible: !it.visible } : it),
+      })),
+    }, found.item.visible ? "Item ocultado!" : "Item visível!");
+  }
+
+  function removeFromSidebar(page: PageEntry) {
+    if (!uiCfg) return;
+    void saveCfg({
+      ...uiCfg,
+      sidebarSections: uiCfg.sidebarSections.map((sec) => ({
+        ...sec, items: sec.items.filter((it) => it.id !== page.id && it.href !== page.path),
+      })),
+    }, "Removido do menu!");
+  }
+
+  function startEdit(page: PageEntry) {
+    const found = findInSidebar(page);
+    if (!found) return;
+    setEditingId(page.id);
+    setEditLabel(found.item.label);
+    setEditBadge(found.item.badge ?? "");
+    setEditBadgeColor(found.item.badgeColor ?? "#f97316");
+    setEditVisible(found.item.visible);
+  }
+
+  function saveEdit(page: PageEntry) {
+    if (!uiCfg) return;
+    const found = findInSidebar(page);
+    if (!found) return;
+    void saveCfg({
+      ...uiCfg,
+      sidebarSections: uiCfg.sidebarSections.map((sec) => ({
+        ...sec, items: sec.items.map((it) => it.id === found.item.id
+          ? { ...it, label: editLabel, badge: editBadge || undefined, badgeColor: editBadgeColor || undefined, visible: editVisible }
+          : it),
+      })),
+    });
+    setEditingId(null);
+  }
+
+  function addToSidebar(page: PageEntry, sectionId: string) {
+    if (!uiCfg) return;
+    const newItem: MenuNavItem = {
+      id: page.id, label: page.label, href: page.path, icon: page.icon, visible: true,
+      matchPrefix: page.matchPrefix, badge: page.defaultBadge, badgeColor: page.defaultBadgeColor,
+      adminOnly: page.adminOnly,
+    };
+    void saveCfg({
+      ...uiCfg,
+      sidebarSections: uiCfg.sidebarSections.map((sec) =>
+        sec.id === sectionId ? { ...sec, items: [...sec.items, newItem] } : sec
+      ),
+    }, `"${page.label}" adicionado ao menu!`);
+    setAddingId(null);
+  }
+
+  const categories = [...new Set(ALL_APP_PAGES.map((p) => p.category))];
+  const filtered = ALL_APP_PAGES.filter((p) =>
+    !search || p.label.toLowerCase().includes(search.toLowerCase()) || p.path.toLowerCase().includes(search.toLowerCase())
+  );
+  const inMenuCount = ALL_APP_PAGES.filter((p) => !!findInSidebar(p)).length;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-white mb-1">Páginas & Menu</h2>
+          <p className="text-sm text-muted-foreground">Gerencie todas as páginas. Adicione ou edite itens do menu lateral.</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-2xl font-bold text-white">{ALL_APP_PAGES.length}</p>
+          <p className="text-xs text-muted-foreground">{inMenuCount} no menu</p>
+        </div>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar página..." className="pl-9" />
+      </div>
+
+      {cfgLoading ? (
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        categories.map((cat) => {
+          const pages = filtered.filter((p) => p.category === cat);
+          if (!pages.length) return null;
+          return (
+            <div key={cat}>
+              <h3 className="text-[10px] font-bold uppercase tracking-widest mb-2 px-1"
+                style={{ color: "rgba(255,255,255,0.25)" }}>{cat}</h3>
+              <div className="space-y-1.5">
+                {pages.map((page) => {
+                  const inSidebar = findInSidebar(page);
+                  const isEditing = editingId === page.id;
+                  const isAdding = addingId === page.id;
+                  return (
+                    <Card key={page.id} className={inSidebar ? "border-purple-500/20" : "border-white/5"}>
+                      <CardContent className="p-3">
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            <p className="text-xs font-mono text-muted-foreground">{page.path}</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div><Label className="text-xs mb-1 block">Label no menu</Label>
+                                <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="text-sm" /></div>
+                              <div><Label className="text-xs mb-1 block">Badge (PRO, APP...)</Label>
+                                <Input value={editBadge} onChange={(e) => setEditBadge(e.target.value)} className="text-sm" placeholder="PRO" /></div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Switch checked={editVisible} onCheckedChange={setEditVisible} />
+                              <Label className="text-xs">Visível no menu</Label>
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                              <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>Cancelar</Button>
+                              <Button size="sm" onClick={() => saveEdit(page)} disabled={saving}>
+                                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                                Salvar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : isAdding ? (
+                          <div className="space-y-3">
+                            <p className="text-sm font-medium text-white">Adicionar "{page.label}" ao menu</p>
+                            <Select value={addSection} onValueChange={setAddSection}>
+                              <SelectTrigger className="text-sm"><SelectValue placeholder="Escolha a seção" /></SelectTrigger>
+                              <SelectContent>
+                                {uiCfg?.sidebarSections.map((sec) => (
+                                  <SelectItem key={sec.id} value={sec.id}>{sec.label ?? sec.id}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <div className="flex gap-2 justify-end">
+                              <Button size="sm" variant="outline" onClick={() => setAddingId(null)}>Cancelar</Button>
+                              <Button size="sm" onClick={() => addSection && addToSidebar(page, addSection)} disabled={saving || !addSection}>
+                                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5 mr-1.5" />}
+                                Adicionar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                              style={{ background: inSidebar ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.05)" }}>
+                              <Layout className="w-3.5 h-3.5" style={{ color: inSidebar ? "#a78bfa" : "rgba(255,255,255,0.2)" }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-white truncate">{page.label}</p>
+                              <p className="text-[10px] font-mono truncate" style={{ color: "rgba(255,255,255,0.3)" }}>{page.path}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {inSidebar ? (
+                                <>
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                                    style={{ background: inSidebar.item.visible ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.05)", color: inSidebar.item.visible ? "#22c55e" : "rgba(255,255,255,0.25)" }}>
+                                    {inSidebar.item.visible ? "Visível" : "Oculto"}
+                                  </span>
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                                    style={{ background: "rgba(124,58,237,0.1)", color: "#a78bfa", maxWidth: 80, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", display: "inline-block" }}>
+                                    {inSidebar.sectionLabel}
+                                  </span>
+                                  <button onClick={() => toggleVisibility(page)}
+                                    className="p-1 rounded-lg hover:bg-white/5 transition-colors text-xs"
+                                    style={{ color: inSidebar.item.visible ? "rgba(255,255,255,0.4)" : "#22c55e" }}
+                                    title={inSidebar.item.visible ? "Ocultar" : "Exibir"}>
+                                    {inSidebar.item.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                                  </button>
+                                  <button onClick={() => startEdit(page)}
+                                    className="p-1 rounded-lg hover:bg-white/5 transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => removeFromSidebar(page)}
+                                    className="p-1 rounded-lg hover:bg-red-500/10 transition-colors" style={{ color: "rgba(239,68,68,0.5)" }}>
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              ) : (
+                                <Button size="sm" variant="outline" className="h-7 text-xs"
+                                  onClick={() => { setAddingId(page.id); setAddSection(uiCfg?.sidebarSections[0]?.id ?? ""); }}>
+                                  <Plus className="w-3 h-3 mr-1" />
+                                  Add ao menu
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // MAIN ADMIN PAGE
 // ════════════════════════════════════════════════════════════════════════════
-type AdminSection = "overview" | "users" | "roles" | "plans" | "announcements" | "content" | "customization" | "landing" | "sistema";
+type AdminSection = "overview" | "users" | "roles" | "plans" | "announcements" | "content" | "customization" | "landing" | "sistema" | "paginas";
 
 const ADMIN_NAV: Array<{ id: AdminSection; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }> = [
   { id: "overview",      label: "Visão Geral",       icon: LayoutDashboard },
@@ -1958,6 +2303,7 @@ const ADMIN_NAV: Array<{ id: AdminSection; label: string; icon: React.ComponentT
   { id: "roles",         label: "Funções",            icon: Star },
   { id: "plans",         label: "Planos",             icon: CreditCard },
   { id: "announcements", label: "Anúncios",           icon: Bell,           badge: "Novo" },
+  { id: "paginas",       label: "Páginas",            icon: FileText,       badge: "Novo" },
   { id: "content",       label: "Conteúdo",           icon: BookOpen },
   { id: "customization", label: "Customização",       icon: Palette },
   { id: "landing",       label: "Landing Page",       icon: Globe },
@@ -2054,6 +2400,7 @@ export default function Admin() {
         {activeSection === "roles"         && <FuncoesSection roles={roles} permissions={permissions} onRefresh={fetchRoles} />}
         {activeSection === "plans"         && <PlanosSection plans={plans} permissions={permissions} onRefresh={fetchPlans} />}
         {activeSection === "announcements" && <AnunciosSection />}
+        {activeSection === "paginas"       && <PaginasSection />}
         {activeSection === "content"       && <ConteudoSection />}
         {activeSection === "customization" && <CustomizacaoSection />}
         {activeSection === "landing"       && <LandingPageTab allPlans={plans} />}
