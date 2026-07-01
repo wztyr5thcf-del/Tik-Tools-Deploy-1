@@ -1,8 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import path from "path";
-import { requireAuth } from "./auth";
-import { loadUsers } from "../lib/users-store";
+import { requireAuth, requireAdminMiddleware as requireAdmin } from "./auth";
 
 const router = Router();
 
@@ -103,18 +102,6 @@ function saveContent(content: LandingContent): void {
   writeFileSync(DATA_FILE, JSON.stringify(content, null, 2));
 }
 
-function requireAdmin(req: Request, res: Response, next: () => void): void {
-  requireAuth(req, res, () => {
-    const userId = (req as Request & { userId: string }).userId;
-    const store = loadUsers();
-    const user = store.users.find((u) => u.id === userId);
-    if (!user?.isAdmin) {
-      res.status(403).json({ error: "Admin access required" });
-      return;
-    }
-    next();
-  });
-}
 
 // ── Helper: fetch TikTok profile from tik.tools ───────────────────────────────
 

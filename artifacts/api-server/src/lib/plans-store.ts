@@ -1,37 +1,13 @@
-import fs from "fs";
-import path from "path";
+import { db } from "@workspace/db";
+import { plansTable } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 
-const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
-  ? path.resolve(process.cwd(), "../..")
-  : process.cwd();
-const dataDir = path.resolve(workspaceRoot, "artifacts/api-server/data");
-const plansFile = path.resolve(dataDir, "plans.json");
+export type Plan = typeof plansTable.$inferSelect;
+export type InsertPlan = typeof plansTable.$inferInsert;
 
-export interface Plan {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  currency: string;
-  billingPeriod: "monthly" | "yearly" | "lifetime" | "free";
-  permissions: string[];
-  tiktokUsernameChangesPerWeek: number;
-  maxConcurrentWs: number;
-  maxApiCallsPerWindow: number;
-  maxLiveHoursPerMonth: number;
-  maxLiveAnalyses: number;
-  maxWebhooks: number;
-  features: string[];
-  color: string;
-  order: number;
-  isActive: boolean;
-}
+export { ALL_PERMISSIONS } from "./roles-store";
 
-export interface PlansStore {
-  plans: Plan[];
-}
-
-const DEFAULT_PLANS: Plan[] = [
+const DEFAULT_PLANS: InsertPlan[] = [
   {
     id: "free",
     name: "Gratuito",
@@ -39,18 +15,14 @@ const DEFAULT_PLANS: Plan[] = [
     price: 0,
     currency: "BRL",
     billingPeriod: "free",
-    permissions: [
-      "view_dashboard",
-      "view_monitor",
-      "view_gift_gallery",
-    ],
+    permissions: ["view_dashboard","view_monitor","view_gift_gallery"],
     tiktokUsernameChangesPerWeek: 0,
     maxConcurrentWs: 1,
     maxApiCallsPerWindow: 20,
     maxLiveHoursPerMonth: 5,
     maxLiveAnalyses: 10,
     maxWebhooks: 0,
-    features: ["Dashboard", "Monitor (básico)", "Gift Gallery", "5h de live/mês"],
+    features: ["Dashboard","Monitor (básico)","Gift Gallery","5h de live/mês"],
     color: "gray",
     order: 0,
     isActive: true,
@@ -62,22 +34,14 @@ const DEFAULT_PLANS: Plan[] = [
     price: 2990,
     currency: "BRL",
     billingPeriod: "monthly",
-    permissions: [
-      "view_dashboard",
-      "view_monitor",
-      "view_bulk_check",
-      "view_gifters",
-      "view_country_leaderboard",
-      "view_gift_gallery",
-      "use_watchlist",
-    ],
+    permissions: ["view_dashboard","view_monitor","view_bulk_check","view_gifters","view_country_leaderboard","view_gift_gallery","use_watchlist"],
     tiktokUsernameChangesPerWeek: 1,
     maxConcurrentWs: 3,
     maxApiCallsPerWindow: 100,
     maxLiveHoursPerMonth: 30,
     maxLiveAnalyses: 100,
     maxWebhooks: 3,
-    features: ["Tudo do Gratuito", "Bulk Check", "Gifters Leaderboard", "Watchlist", "30h de live/mês", "3 webhooks"],
+    features: ["Tudo do Gratuito","Bulk Check","Gifters Leaderboard","Watchlist","30h de live/mês","3 webhooks"],
     color: "cyan",
     order: 1,
     isActive: true,
@@ -89,57 +53,47 @@ const DEFAULT_PLANS: Plan[] = [
     price: 5990,
     currency: "BRL",
     billingPeriod: "monthly",
-    permissions: [
-      "view_dashboard",
-      "view_monitor",
-      "view_bulk_check",
-      "view_gaming_leaderboard",
-      "view_gifters",
-      "view_webhooks",
-      "view_live_captions",
-      "view_live_analytics",
-      "view_country_leaderboard",
-      "view_gift_gallery",
-      "use_watchlist",
-      "use_jwt",
-    ],
+    permissions: ["view_dashboard","view_monitor","view_bulk_check","view_gaming_leaderboard","view_gifters","view_webhooks","view_live_captions","view_live_analytics","view_country_leaderboard","view_gift_gallery","use_watchlist","use_jwt"],
     tiktokUsernameChangesPerWeek: -1,
     maxConcurrentWs: 10,
     maxApiCallsPerWindow: 500,
     maxLiveHoursPerMonth: -1,
     maxLiveAnalyses: -1,
     maxWebhooks: -1,
-    features: ["Tudo do Basic", "Gaming Leaderboard", "Webhooks ilimitados", "Live Captions", "Live Analytics", "JWT/WebSocket", "Live ilimitada"],
+    features: ["Tudo do Basic","Gaming Leaderboard","Webhooks ilimitados","Live Captions","Live Analytics","JWT/WebSocket","Live ilimitada"],
     color: "violet",
     order: 2,
     isActive: true,
   },
 ];
 
-export function loadPlans(): PlansStore {
-  try {
-    if (fs.existsSync(plansFile)) {
-      const stored = JSON.parse(fs.readFileSync(plansFile, "utf-8")) as PlansStore;
-      // Migrate existing plans to include new fields with defaults
-      stored.plans = stored.plans.map((p) => ({
-        ...p,
-        maxLiveHoursPerMonth: (p.maxLiveHoursPerMonth as number | undefined) ?? -1,
-        maxLiveAnalyses: (p.maxLiveAnalyses as number | undefined) ?? -1,
-        maxWebhooks: (p.maxWebhooks as number | undefined) ?? 0,
-      }));
-      return stored;
-    }
-  } catch { /* ignore */ }
-  const store: PlansStore = { plans: DEFAULT_PLANS };
-  savePlans(store);
-  return store;
+export async function seedDefaultPlans(): Promise<void> {
+  const existing = await db.select().from(plansTable);
+  if (existing.length === 0) {
+    await db.insert(plansTable).values(DEFAULT_PLANS);
+  }
 }
 
-export function savePlans(store: PlansStore): void {
-  fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(plansFile, JSON.stringify(store, null, 2));
+export async function getAllPlans(): Promise<Plan[]> {
+  const rows = await db.select().from(plansTable).orderBy(plansTable.order);
+  return rows;
 }
 
-export function getPlanById(id: string): Plan | undefined {
-  return loadPlans().plans.find((p) => p.id === id);
+export async function getPlanById(id: string): Promise<Plan | null> {
+  const rows = await db.select().from(plansTable).where(eq(plansTable.id, id));
+  return rows[0] ?? null;
+}
+
+export async function createPlan(data: InsertPlan): Promise<Plan> {
+  const rows = await db.insert(plansTable).values(data).returning();
+  return rows[0];
+}
+
+export async function updatePlan(id: string, data: Partial<InsertPlan>): Promise<Plan | null> {
+  const rows = await db.update(plansTable).set(data).where(eq(plansTable.id, id)).returning();
+  return rows[0] ?? null;
+}
+
+export async function deletePlan(id: string): Promise<void> {
+  await db.delete(plansTable).where(eq(plansTable.id, id));
 }

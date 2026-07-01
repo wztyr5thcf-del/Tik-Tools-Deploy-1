@@ -1,87 +1,71 @@
-import fs from "fs";
-import path from "path";
+import { db } from "@workspace/db";
+import { supportTicketsTable, supportMessagesTable } from "@workspace/db/schema";
+import { eq, and } from "drizzle-orm";
 
-const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
-  ? path.resolve(process.cwd(), "../..")
-  : process.cwd();
-
-const dataDir = path.resolve(workspaceRoot, "artifacts/api-server/data");
-const supportFile = path.resolve(dataDir, "support.json");
+export type SupportTicket = typeof supportTicketsTable.$inferSelect;
+export type SupportMessage = typeof supportMessagesTable.$inferSelect;
+export type InsertSupportTicket = typeof supportTicketsTable.$inferInsert;
+export type InsertSupportMessage = typeof supportMessagesTable.$inferInsert;
 
 export type TicketStatus = "pending" | "approved" | "denied" | "cancelled";
 export type TicketType = "tiktok_username_change";
 
-export interface SupportTicket {
-  id: string;
-  type: TicketType;
-  userId: string;
-  userEmail: string;
-  userName: string;
-  // for tiktok_username_change
-  oldValue?: string;
-  newValue: string;
-  reason: string;         // predefined key
-  customReason?: string;  // when reason === "other"
-  status: TicketStatus;
-  adminNote?: string;
-  createdAt: string;
-  resolvedAt?: string;
-  resolvedBy?: string;    // admin userId
-}
-
-export interface SupportMessage {
-  id: string;
-  ticketId: string;
-  fromAdmin: boolean;
-  authorName: string;
-  text: string;
-  createdAt: string;
-}
-
-export interface SupportStore {
-  tickets: SupportTicket[];
-  messages: SupportMessage[];
-}
-
-function makeId() {
+function makeId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-export function loadSupport(): SupportStore {
-  try {
-    if (fs.existsSync(supportFile)) {
-      return JSON.parse(fs.readFileSync(supportFile, "utf-8")) as SupportStore;
-    }
-  } catch { /* ignore */ }
-  return { tickets: [], messages: [] };
+export async function getTicketsByUser(userId: string): Promise<SupportTicket[]> {
+  return db.select().from(supportTicketsTable)
+    .where(eq(supportTicketsTable.userId, userId))
+    .orderBy(supportTicketsTable.createdAt);
 }
 
-export function saveSupport(store: SupportStore): void {
-  fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(supportFile, JSON.stringify(store, null, 2));
+export async function getAllTickets(): Promise<SupportTicket[]> {
+  return db.select().from(supportTicketsTable).orderBy(supportTicketsTable.createdAt);
 }
 
-export function createTicket(data: Omit<SupportTicket, "id" | "createdAt" | "status">): SupportTicket {
-  const store = loadSupport();
-  const ticket: SupportTicket = {
+export async function getTicketById(id: string): Promise<SupportTicket | null> {
+  const rows = await db.select().from(supportTicketsTable).where(eq(supportTicketsTable.id, id));
+  return rows[0] ?? null;
+}
+
+export async function getPendingTicketByUser(userId: string, type: string): Promise<SupportTicket | null> {
+  const rows = await db.select().from(supportTicketsTable).where(
+    and(
+      eq(supportTicketsTable.userId, userId),
+      eq(supportTicketsTable.status, "pending"),
+      eq(supportTicketsTable.type, type)
+    )
+  );
+  return rows[0] ?? null;
+}
+
+export async function createTicket(data: Omit<InsertSupportTicket, "id" | "createdAt" | "status">): Promise<SupportTicket> {
+  const rows = await db.insert(supportTicketsTable).values({
     ...data,
     id: makeId(),
     status: "pending",
     createdAt: new Date().toISOString(),
-  };
-  store.tickets.push(ticket);
-  saveSupport(store);
-  return ticket;
+  }).returning();
+  return rows[0];
 }
 
-export function addMessage(data: Omit<SupportMessage, "id" | "createdAt">): SupportMessage {
-  const store = loadSupport();
-  const msg: SupportMessage = {
+export async function updateTicket(id: string, data: Partial<InsertSupportTicket>): Promise<SupportTicket | null> {
+  const rows = await db.update(supportTicketsTable).set(data).where(eq(supportTicketsTable.id, id)).returning();
+  return rows[0] ?? null;
+}
+
+export async function getMessagesByTicket(ticketId: string): Promise<SupportMessage[]> {
+  return db.select().from(supportMessagesTable)
+    .where(eq(supportMessagesTable.ticketId, ticketId))
+    .orderBy(supportMessagesTable.createdAt);
+}
+
+export async function addMessage(data: Omit<InsertSupportMessage, "id" | "createdAt">): Promise<SupportMessage> {
+  const rows = await db.insert(supportMessagesTable).values({
     ...data,
     id: makeId(),
     createdAt: new Date().toISOString(),
-  };
-  store.messages.push(msg);
-  saveSupport(store);
-  return msg;
+  }).returning();
+  return rows[0];
 }

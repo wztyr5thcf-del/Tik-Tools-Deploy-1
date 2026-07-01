@@ -1,61 +1,74 @@
-import fs from "fs";
-import path from "path";
+import { db } from "@workspace/db";
+import { usersTable } from "@workspace/db/schema";
+import { eq, ne, and, sql } from "drizzle-orm";
 
-const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
-  ? path.resolve(process.cwd(), "../..")
-  : process.cwd();
-
-const dataDir = path.resolve(workspaceRoot, "artifacts/api-server/data");
-const usersFile = path.resolve(dataDir, "users.json");
-
-export interface StoredUser {
-  id: string;
-  email: string;
-  name: string;
-  passwordHash: string;
-  createdAt: string;
-  plan: "free" | "basic" | "pro";
-  isAdmin: boolean;
-  roleId?: string;
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
-  // TikTok username (manually linked or set at registration)
-  tiktokUsername?: string;
-  tiktokUsernameChangeLog?: string[]; // ISO timestamps of each change
-  // TikTok profile snapshot (fetched at link time)
-  tiktokVerified?: boolean;
-  tiktokProfilePicture?: string;
-  tiktokDisplayName?: string;
-  tiktokFollowerCount?: number;
-  tiktokLinkedAt?: string;
-  // TikTok OAuth (when user signs in with TikTok)
-  tiktokOAuthId?: string;
-  tiktokOAuthAccessToken?: string;
-  tiktokOAuthRefreshToken?: string;
-  // Last admin login (used for "is support online" heuristic)
-  lastLoginAt?: string;
-}
-
-export interface UsersStore {
-  users: StoredUser[];
-}
-
-export function loadUsers(): UsersStore {
-  try {
-    if (fs.existsSync(usersFile)) {
-      return JSON.parse(fs.readFileSync(usersFile, "utf-8")) as UsersStore;
-    }
-  } catch { /* ignore */ }
-  return { users: [] };
-}
-
-export function saveUsers(store: UsersStore): void {
-  fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(usersFile, JSON.stringify(store, null, 2));
-}
+export type StoredUser = typeof usersTable.$inferSelect;
+export type InsertStoredUser = typeof usersTable.$inferInsert;
 
 export function makeId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+export async function getAllUsers(): Promise<StoredUser[]> {
+  return db.select().from(usersTable).orderBy(usersTable.createdAt);
+}
+
+export async function getUserById(id: string): Promise<StoredUser | null> {
+  const rows = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  return rows[0] ?? null;
+}
+
+export async function getUserByEmail(email: string): Promise<StoredUser | null> {
+  const rows = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
+  return rows[0] ?? null;
+}
+
+export async function getUserByTiktokUsername(username: string): Promise<StoredUser | null> {
+  const rows = await db.select().from(usersTable).where(
+    sql`lower(${usersTable.tiktokUsername}) = ${username.toLowerCase()}`
+  );
+  return rows[0] ?? null;
+}
+
+export async function getUserByTiktokOAuthId(oauthId: string): Promise<StoredUser | null> {
+  const rows = await db.select().from(usersTable).where(eq(usersTable.tiktokOAuthId, oauthId));
+  return rows[0] ?? null;
+}
+
+export async function countUsers(): Promise<number> {
+  const rows = await db.select({ count: sql<string>`count(*)` }).from(usersTable);
+  return parseInt(rows[0]?.count ?? "0", 10);
+}
+
+export async function createUser(data: InsertStoredUser): Promise<StoredUser> {
+  const rows = await db.insert(usersTable).values(data).returning();
+  return rows[0];
+}
+
+export async function updateUser(id: string, data: Partial<InsertStoredUser>): Promise<StoredUser | null> {
+  const rows = await db.update(usersTable).set(data).where(eq(usersTable.id, id)).returning();
+  return rows[0] ?? null;
+}
+
+export async function deleteUserById(id: string): Promise<void> {
+  await db.delete(usersTable).where(eq(usersTable.id, id));
+}
+
+export async function emailConflictExists(email: string, excludeId: string): Promise<boolean> {
+  const rows = await db.select({ id: usersTable.id }).from(usersTable).where(
+    and(eq(usersTable.email, email.toLowerCase()), ne(usersTable.id, excludeId))
+  );
+  return rows.length > 0;
+}
+
+export async function tiktokUsernameConflictExists(username: string, excludeId: string): Promise<boolean> {
+  const rows = await db.select({ id: usersTable.id }).from(usersTable).where(
+    and(
+      sql`lower(${usersTable.tiktokUsername}) = ${username.toLowerCase()}`,
+      ne(usersTable.id, excludeId)
+    )
+  );
+  return rows.length > 0;
 }
 
 export function publicUser(u: StoredUser) {
@@ -71,6 +84,7 @@ export function publicUser(u: StoredUser) {
     isAdmin: u.isAdmin,
     roleId: u.roleId ?? null,
     createdAt: u.createdAt,
+    lastLoginAt: u.lastLoginAt ?? null,
     hasStripe: !!u.stripeCustomerId,
     tiktokUsername: u.tiktokUsername ?? null,
     tiktokUsernameChangesThisWeek: changesThisWeek,

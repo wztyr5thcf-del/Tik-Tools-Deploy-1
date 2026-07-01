@@ -1,20 +1,9 @@
-import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import fs from "fs";
 import path from "path";
-import { requireAuth } from "./auth";
-import { loadUsers } from "../lib/users-store";
+import { requireAdminMiddleware } from "./auth";
 
 const router: IRouter = Router();
-
-function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  requireAuth(req, res, () => {
-    const userId = (req as Request & { userId: string }).userId;
-    const store = loadUsers();
-    const user = store.users.find((u) => u.id === userId);
-    if (!user?.isAdmin) { res.status(403).json({ error: "Admin access required" }); return; }
-    next();
-  });
-}
 
 const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
   ? path.resolve(process.cwd(), "../..")
@@ -31,9 +20,7 @@ interface StripeConfigFile {
 
 function loadStripeConfig(): StripeConfigFile {
   try {
-    if (fs.existsSync(stripeConfigFile)) {
-      return JSON.parse(fs.readFileSync(stripeConfigFile, "utf-8")) as StripeConfigFile;
-    }
+    if (fs.existsSync(stripeConfigFile)) return JSON.parse(fs.readFileSync(stripeConfigFile, "utf-8")) as StripeConfigFile;
   } catch { /* ignore */ }
   return {};
 }
@@ -44,7 +31,7 @@ function saveStripeConfig(cfg: StripeConfigFile): void {
 }
 
 // GET /api/admin/stripe-config
-router.get("/admin/stripe-config", requireAdmin, (_req, res): void => {
+router.get("/admin/stripe-config", requireAdminMiddleware, (_req, res): void => {
   const stored = loadStripeConfig();
   res.json({
     secretKeySet: !!process.env.STRIPE_SECRET_KEY,
@@ -58,12 +45,9 @@ router.get("/admin/stripe-config", requireAdmin, (_req, res): void => {
 });
 
 // PATCH /api/admin/stripe-config
-router.patch("/admin/stripe-config", requireAdmin, (req, res): void => {
+router.patch("/admin/stripe-config", requireAdminMiddleware, (req, res): void => {
   const { publishableKey, priceIdBasic, priceIdPro, paymentsEnabled } = req.body as {
-    publishableKey?: string | null;
-    priceIdBasic?: string | null;
-    priceIdPro?: string | null;
-    paymentsEnabled?: boolean;
+    publishableKey?: string | null; priceIdBasic?: string | null; priceIdPro?: string | null; paymentsEnabled?: boolean;
   };
   const stored = loadStripeConfig();
   if (publishableKey !== undefined) stored.publishableKey = publishableKey || undefined;
@@ -76,16 +60,11 @@ router.patch("/admin/stripe-config", requireAdmin, (req, res): void => {
 });
 
 // POST /api/admin/test-tiktools
-router.post("/admin/test-tiktools", requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/test-tiktools", requireAdminMiddleware, async (req, res): Promise<void> => {
   const apiKey = process.env.TIKTOOLS_API_KEY;
-  if (!apiKey) {
-    res.json({ ok: false, message: "TIKTOOLS_API_KEY is not set in environment variables." });
-    return;
-  }
+  if (!apiKey) { res.json({ ok: false, message: "TIKTOOLS_API_KEY is not set in environment variables." }); return; }
   try {
-    const r = await fetch("https://api.tik.tools/api/live/top-channels", {
-      signal: AbortSignal.timeout(8000),
-    });
+    const r = await fetch("https://api.tik.tools/api/live/top-channels", { signal: AbortSignal.timeout(8000) });
     if (r.ok) {
       const json = await r.json() as { channels?: unknown[] };
       res.json({ ok: true, message: `Connected! Found ${json.channels?.length ?? 0} live channels.` });
@@ -99,58 +78,19 @@ router.post("/admin/test-tiktools", requireAdmin, async (req, res): Promise<void
 });
 
 // POST /api/admin/test-stripe
-router.post("/admin/test-stripe", requireAdmin, async (req, res): Promise<void> => {
+router.post("/admin/test-stripe", requireAdminMiddleware, async (req, res): Promise<void> => {
   const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    res.json({ ok: false, message: "STRIPE_SECRET_KEY is not set in environment variables." });
-    return;
-  }
+  if (!secretKey) { res.json({ ok: false, message: "STRIPE_SECRET_KEY is not set in environment variables." }); return; }
   try {
     const Stripe = (await import("stripe")).default;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stripe = new Stripe(secretKey, { apiVersion: "2026-06-24.dahlia" as any });
     const balance = await stripe.balance.retrieve();
-    res.json({
-      ok: true,
-      message: `Stripe connected! Mode: ${balance.livemode ? "🔴 Live (production)" : "🟡 Test (sandbox)"}`,
-    });
+    res.json({ ok: true, message: `Stripe connected! Mode: ${balance.livemode ? "🔴 Live (production)" : "🟡 Test (sandbox)"}` });
   } catch (err) {
     req.log.error({ err }, "Stripe test failed");
     res.json({ ok: false, message: err instanceof Error ? err.message : "Failed to connect to Stripe" });
   }
-});
-
-// ── Maintenance mode ──────────────────────────────────────────────────────────
-const maintenanceFile = path.resolve(dataDir, "maintenance.json");
-
-interface MaintenanceConfig { enabled: boolean; message?: string; }
-
-function loadMaintenance(): MaintenanceConfig {
-  try {
-    if (fs.existsSync(maintenanceFile)) return JSON.parse(fs.readFileSync(maintenanceFile, "utf-8")) as MaintenanceConfig;
-  } catch { /* ignore */ }
-  return { enabled: false };
-}
-function saveMaintenance(m: MaintenanceConfig): void {
-  fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(maintenanceFile, JSON.stringify(m, null, 2));
-}
-
-// GET /api/maintenance — public, polled by frontend
-router.get("/maintenance", (_req, res): void => { res.json(loadMaintenance()); });
-
-// GET /api/admin/maintenance — admin only
-router.get("/admin/maintenance", requireAdmin, (_req, res): void => { res.json(loadMaintenance()); });
-
-// PATCH /api/admin/maintenance — admin only
-router.patch("/admin/maintenance", requireAdmin, (req, res): void => {
-  const { enabled, message } = req.body as { enabled?: boolean; message?: string };
-  const current = loadMaintenance();
-  if (enabled !== undefined) current.enabled = !!enabled;
-  if (message !== undefined) current.message = message?.trim() || undefined;
-  saveMaintenance(current);
-  req.log.info({ enabled: current.enabled }, "Maintenance mode updated");
-  res.json(current);
 });
 
 export default router;

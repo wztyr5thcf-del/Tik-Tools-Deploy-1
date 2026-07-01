@@ -1,11 +1,6 @@
-import fs from "fs";
-import path from "path";
-
-const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
-  ? path.resolve(process.cwd(), "../..")
-  : process.cwd();
-const dataDir = path.resolve(workspaceRoot, "artifacts/api-server/data");
-const uiFile = path.resolve(dataDir, "ui-config.json");
+import { db } from "@workspace/db";
+import { uiConfigTable } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 
 export interface NavItemConfig {
   id: string;
@@ -16,6 +11,7 @@ export interface NavItemConfig {
   adminOnly?: boolean;
   requiresPlan?: string;
   visible: boolean;
+  children?: NavItemConfig[];
 }
 
 export interface NavSectionConfig {
@@ -55,15 +51,15 @@ const DEFAULT_UI_CONFIG: UIConfig = {
       label: "Streamer Tools",
       items: [
         { id: "overlays",     label: "Overlay Studio",   href: "/overlays",             icon: "Monitor",   matchPrefix: "/overlays",             visible: true },
-        { id: "stream-tools", label: "Stream Tools",    href: "/stream-tools",         icon: "Tv2",       matchPrefix: "/stream-tools",         visible: true },
-        { id: "scoreboards",  label: "Scoreboards",     href: "/scoreboards",          icon: "Trophy",    matchPrefix: "/scoreboards",          visible: true },
-        { id: "minigames",    label: "Minigames",       href: "/minigames",            icon: "Gamepad2",  matchPrefix: "/minigames",            visible: true },
-        { id: "lookup",       label: "Lookup",          href: "/streamer/lookup",      icon: "Search",    matchPrefix: "/streamer/lookup",      visible: true },
-        { id: "bulk-check",   label: "Bulk Check",      href: "/streamer/bulk-check",  icon: "Users",     matchPrefix: "/streamer/bulk-check",  requiresPlan: "basic", visible: true },
-        { id: "watchlist",    label: "Watchlist",       href: "/streamer/watchlist",   icon: "Star",      matchPrefix: "/streamer/watchlist",   visible: true },
-        { id: "jwt",          label: "JWT / WebSocket", href: "/streamer/jwt",         icon: "Key",       matchPrefix: "/streamer/jwt",         requiresPlan: "basic", visible: true },
-        { id: "rate-limits",  label: "Rate Limits",     href: "/streamer/rate-limits", icon: "BarChart2", matchPrefix: "/streamer/rate-limits", visible: true },
-        { id: "dev-tools",    label: "Dev Tools",       href: "/dev-tools",            icon: "Code2",     matchPrefix: "/dev-tools",            requiresPlan: "pro",   visible: true },
+        { id: "stream-tools", label: "Stream Tools",     href: "/stream-tools",         icon: "Tv2",       matchPrefix: "/stream-tools",         visible: true },
+        { id: "scoreboards",  label: "Scoreboards",      href: "/scoreboards",          icon: "Trophy",    matchPrefix: "/scoreboards",          visible: true },
+        { id: "minigames",    label: "Minigames",        href: "/minigames",            icon: "Gamepad2",  matchPrefix: "/minigames",            visible: true },
+        { id: "lookup",       label: "Lookup",           href: "/streamer/lookup",      icon: "Search",    matchPrefix: "/streamer/lookup",      visible: true },
+        { id: "bulk-check",   label: "Bulk Check",       href: "/streamer/bulk-check",  icon: "Users",     matchPrefix: "/streamer/bulk-check",  requiresPlan: "basic", visible: true },
+        { id: "watchlist",    label: "Watchlist",        href: "/streamer/watchlist",   icon: "Star",      matchPrefix: "/streamer/watchlist",   visible: true },
+        { id: "jwt",          label: "JWT / WebSocket",  href: "/streamer/jwt",         icon: "Key",       matchPrefix: "/streamer/jwt",         requiresPlan: "basic", visible: true },
+        { id: "rate-limits",  label: "Rate Limits",      href: "/streamer/rate-limits", icon: "BarChart2", matchPrefix: "/streamer/rate-limits", visible: true },
+        { id: "dev-tools",    label: "Dev Tools",        href: "/dev-tools",            icon: "Code2",     matchPrefix: "/dev-tools",            requiresPlan: "pro",   visible: true },
       ],
     },
     {
@@ -80,10 +76,10 @@ const DEFAULT_UI_CONFIG: UIConfig = {
       id: "leaderboards",
       label: "Leaderboards",
       items: [
-        { id: "leaderboards",         label: "Leagues",  href: "/leaderboards",         icon: "Crown",    matchPrefix: "/leaderboards",         visible: true },
-        { id: "leaderboards-country", label: "Country",  href: "/leaderboards/country", icon: "Globe",    matchPrefix: "/leaderboards/country", visible: true },
-        { id: "leaderboards-gaming",  label: "Gaming",   href: "/leaderboards/gaming",  icon: "Gamepad2", matchPrefix: "/leaderboards/gaming",  visible: true },
-        { id: "gifters",              label: "Gifters",  href: "/gifters",               icon: "Diamond",  matchPrefix: "/gifters",              visible: true },
+        { id: "leaderboards",         label: "Leagues", href: "/leaderboards",         icon: "Crown",    matchPrefix: "/leaderboards",         visible: true },
+        { id: "leaderboards-country", label: "Country", href: "/leaderboards/country", icon: "Globe",    matchPrefix: "/leaderboards/country", visible: true },
+        { id: "leaderboards-gaming",  label: "Gaming",  href: "/leaderboards/gaming",  icon: "Gamepad2", matchPrefix: "/leaderboards/gaming",  visible: true },
+        { id: "gifters",              label: "Gifters", href: "/gifters",               icon: "Diamond",  matchPrefix: "/gifters",              visible: true },
       ],
     },
     {
@@ -103,22 +99,47 @@ const DEFAULT_UI_CONFIG: UIConfig = {
   updatedAt: new Date().toISOString(),
 };
 
-export function loadUIConfig(): UIConfig {
-  try {
-    if (fs.existsSync(uiFile)) {
-      const stored = JSON.parse(fs.readFileSync(uiFile, "utf-8")) as UIConfig;
-      return stored;
-    }
-  } catch { /* ignore */ }
-  saveUIConfig(DEFAULT_UI_CONFIG);
-  return DEFAULT_UI_CONFIG;
-}
-
 export function getDefaultUIConfig(): UIConfig {
   return { ...DEFAULT_UI_CONFIG, updatedAt: new Date().toISOString() };
 }
 
-export function saveUIConfig(config: UIConfig): void {
-  fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(uiFile, JSON.stringify(config, null, 2));
+export async function loadUIConfig(): Promise<UIConfig> {
+  const rows = await db.select().from(uiConfigTable).where(eq(uiConfigTable.id, "default"));
+  if (rows[0]) {
+    return {
+      navType: (rows[0].navType as UIConfig["navType"]) ?? "sidebar",
+      primaryColor: rows[0].primaryColor,
+      secondaryColor: rows[0].secondaryColor,
+      logoText: rows[0].logoText,
+      logoUrl: rows[0].logoUrl,
+      sidebarSections: (rows[0].sidebarSections as NavSectionConfig[]) ?? [],
+      updatedAt: rows[0].updatedAt,
+    };
+  }
+  await saveUIConfig(DEFAULT_UI_CONFIG);
+  return DEFAULT_UI_CONFIG;
+}
+
+export async function saveUIConfig(config: UIConfig): Promise<void> {
+  await db.insert(uiConfigTable).values({
+    id: "default",
+    navType: config.navType,
+    primaryColor: config.primaryColor,
+    secondaryColor: config.secondaryColor,
+    logoText: config.logoText,
+    logoUrl: config.logoUrl,
+    sidebarSections: config.sidebarSections,
+    updatedAt: config.updatedAt,
+  }).onConflictDoUpdate({
+    target: uiConfigTable.id,
+    set: {
+      navType: config.navType,
+      primaryColor: config.primaryColor,
+      secondaryColor: config.secondaryColor,
+      logoText: config.logoText,
+      logoUrl: config.logoUrl,
+      sidebarSections: config.sidebarSections,
+      updatedAt: config.updatedAt,
+    },
+  });
 }

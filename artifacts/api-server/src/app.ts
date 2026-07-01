@@ -12,16 +12,10 @@ app.use(
     logger,
     serializers: {
       req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
+        return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
       },
       res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
+        return { statusCode: res.statusCode };
       },
     },
   }),
@@ -30,15 +24,16 @@ app.use(
 app.use(cors());
 
 // Stripe webhook MUST be registered before express.json() — needs raw body
-app.post(
-  "/api/stripe/webhook",
-  express.raw({ type: "application/json" }),
-  handleStripeWebhook,
-);
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+// Seed DB defaults on startup (non-blocking)
+import("./lib/plans-store").then(({ seedDefaultPlans }) => seedDefaultPlans()).catch((err) => {
+  logger.error({ err }, "Failed to seed default plans");
+});
 
 export default app;
