@@ -674,11 +674,36 @@ interface SocialLinks {
   custom?: Array<{ label: string; url: string }>;
 }
 
+interface ProfileSections {
+  showStats: boolean;
+  showLiveStatus: boolean;
+  showTopGifts: boolean;
+  showTopGifters: boolean;
+  showSocialLinks: boolean;
+}
+
+const SECTION_LABELS: Record<keyof ProfileSections, string> = {
+  showStats: "Estatísticas (seguidores, lives)",
+  showLiveStatus: "Status ao vivo (badge + espectadores)",
+  showTopGifts: "Top gifts da sessão atual",
+  showTopGifters: "Ranking de top gifters",
+  showSocialLinks: "Links sociais",
+};
+
+const SECTION_DEFAULTS: ProfileSections = {
+  showStats: true,
+  showLiveStatus: true,
+  showTopGifts: true,
+  showTopGifters: true,
+  showSocialLinks: true,
+};
+
 interface PublicProfileSettings {
   publicProfileEnabled: boolean;
   profileBio: string | null;
   profileBanner: string | null;
   socialLinks: SocialLinks;
+  profileSections: ProfileSections;
 }
 
 function PublicProfileSection() {
@@ -692,6 +717,7 @@ function PublicProfileSection() {
   const [whatsapp, setWhatsapp]   = useState("");
   const [discord, setDiscord]     = useState("");
   const [banner, setBanner]       = useState("");
+  const [sections, setSections]   = useState<ProfileSections>({ ...SECTION_DEFAULTS });
   const [custom, setCustom]       = useState<Array<{ label: string; url: string }>>([]);
   const [saving, setSaving]       = useState(false);
   const [loaded, setLoaded]       = useState(false);
@@ -720,6 +746,7 @@ function PublicProfileSection() {
         setWhatsapp(p.socialLinks.whatsapp ?? "");
         setDiscord(p.socialLinks.discord ?? "");
         setCustom(p.socialLinks.custom ?? []);
+        setSections(p.profileSections ?? { ...SECTION_DEFAULTS });
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
@@ -734,6 +761,7 @@ function PublicProfileSection() {
           publicProfileEnabled: enabled,
           profileBio: bio,
           profileBanner: banner,
+          profileSections: sections,
           socialLinks: {
             instagram: instagram.trim() || undefined,
             youtube: youtube.trim() || undefined,
@@ -952,6 +980,22 @@ function PublicProfileSection() {
               Adicionar link personalizado
             </Button>
           )}
+        </div>
+
+        {/* Section visibility */}
+        <div className="space-y-2">
+          <Label className="text-sm">Seções visíveis no perfil público</Label>
+          <div className="rounded-lg border border-border divide-y divide-border">
+            {(Object.keys(SECTION_DEFAULTS) as Array<keyof ProfileSections>).map((key) => (
+              <div key={key} className="flex items-center justify-between px-3 py-2.5">
+                <span className="text-sm text-muted-foreground">{SECTION_LABELS[key]}</span>
+                <Switch
+                  checked={sections[key]}
+                  onCheckedChange={(v) => setSections((prev) => ({ ...prev, [key]: v }))}
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="flex gap-2 flex-wrap">

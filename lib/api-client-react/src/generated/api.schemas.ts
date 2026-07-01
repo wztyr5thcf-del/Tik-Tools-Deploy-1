@@ -43,11 +43,26 @@ export interface TopGifter {
   diamondCount: number;
 }
 
+export interface ProfileSections {
+  showStats: boolean;
+  showLiveStatus: boolean;
+  showTopGifts: boolean;
+  showTopGifters: boolean;
+  showSocialLinks: boolean;
+}
+
+export type StreamerPublicProfileTopGiftsItem = {
+  giftName: string;
+  count: number;
+  diamondValue: number;
+};
+
 export interface StreamerPublicProfile {
   username: string;
   displayName: string;
   avatar?: string | null;
   followerCount?: number | null;
+  totalLiveSessions?: number | null;
   verified: boolean;
   bio?: string | null;
   banner?: string | null;
@@ -56,6 +71,8 @@ export interface StreamerPublicProfile {
   viewerCount?: number | null;
   likeCount?: number | null;
   topGifters: TopGifter[];
+  topGifts: StreamerPublicProfileTopGiftsItem[];
+  profileSections?: ProfileSections;
 }
 
 export interface LandingFeature {

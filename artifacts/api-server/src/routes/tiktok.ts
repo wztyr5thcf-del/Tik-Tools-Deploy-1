@@ -7,6 +7,7 @@ import {
   GetUserProfileQueryParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "./auth";
+import { getUserById, updateUser } from "../lib/users-store";
 import fs from "fs";
 import path from "path";
 
@@ -197,6 +198,14 @@ router.get("/tiktok/live-connect", requireAuth, async (req, res): Promise<void> 
     );
     const json = await r.json();
     res.json(json);
+
+    // Increment totalLiveSessions when owner monitors their own TikTok live
+    const userId = (req as typeof req & { userId: string }).userId;
+    void getUserById(userId).then((u) => {
+      if (u && u.tiktokUsername?.toLowerCase() === uniqueId.toLowerCase()) {
+        void updateUser(userId, { totalLiveSessions: (u.totalLiveSessions ?? 0) + 1 });
+      }
+    }).catch(() => { /* best-effort */ });
   } catch (err) {
     req.log.error({ err }, "Failed to live connect");
     res.status(500).json({ error: "Failed to live connect" });

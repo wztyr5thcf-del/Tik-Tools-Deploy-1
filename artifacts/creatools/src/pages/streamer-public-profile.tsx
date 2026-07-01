@@ -23,11 +23,26 @@ interface TopGifter {
   diamondCount: number;
 }
 
+interface TopGift {
+  giftName: string;
+  count: number;
+  diamondValue: number;
+}
+
+interface ProfileSections {
+  showStats: boolean;
+  showLiveStatus: boolean;
+  showTopGifts: boolean;
+  showTopGifters: boolean;
+  showSocialLinks: boolean;
+}
+
 interface PublicProfile {
   username: string;
   displayName: string;
   avatar: string | null;
   followerCount: number | null;
+  totalLiveSessions: number | null;
   verified: boolean;
   bio: string | null;
   banner: string | null;
@@ -36,6 +51,8 @@ interface PublicProfile {
   viewerCount: number | null;
   likeCount: number | null;
   topGifters: TopGifter[];
+  topGifts: TopGift[];
+  profileSections: ProfileSections;
 }
 
 function formatCount(n: number): string {
@@ -276,13 +293,24 @@ export default function StreamerPublicProfile() {
             </div>
           )}
 
-          {/* Follower stats */}
-          {profile.followerCount !== null && (
-            <div className="flex items-center gap-4 px-1">
-              <div className="text-center">
-                <p className="text-base font-bold text-white">{formatCount(profile.followerCount)}</p>
-                <p className="text-xs text-zinc-500">Seguidores</p>
-              </div>
+          {/* Stats */}
+          {profile.profileSections.showStats && (profile.followerCount !== null || (profile.totalLiveSessions !== null && profile.totalLiveSessions > 0)) && (
+            <div className="flex items-center gap-4 px-1 flex-wrap">
+              {profile.followerCount !== null && (
+                <div className="text-center">
+                  <p className="text-base font-bold text-white">{formatCount(profile.followerCount)}</p>
+                  <p className="text-xs text-zinc-500">Seguidores</p>
+                </div>
+              )}
+              {profile.followerCount !== null && profile.totalLiveSessions !== null && profile.totalLiveSessions > 0 && (
+                <Separator orientation="vertical" className="h-8 bg-zinc-800" />
+              )}
+              {profile.totalLiveSessions !== null && profile.totalLiveSessions > 0 && (
+                <div className="text-center">
+                  <p className="text-base font-bold text-violet-400">{profile.totalLiveSessions}</p>
+                  <p className="text-xs text-zinc-500">Lives monitoradas</p>
+                </div>
+              )}
               {profile.isLive && profile.viewerCount !== null && (
                 <>
                   <Separator orientation="vertical" className="h-8 bg-zinc-800" />
@@ -295,8 +323,31 @@ export default function StreamerPublicProfile() {
             </div>
           )}
 
-          {/* Top gifters (current session ranking) */}
-          {profile.topGifters.length > 0 && (
+          {/* Top gifts da sessão atual */}
+          {profile.profileSections.showTopGifts && profile.isLive && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span>🎁</span> Top Gifts — Sessão Atual
+              </p>
+              {profile.topGifts.length > 0 ? (
+                <div className="space-y-1.5">
+                  {profile.topGifts.map((g, i) => (
+                    <div key={g.giftName} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                      <span className="text-xs font-bold text-zinc-500 w-4 text-center">{i + 1}</span>
+                      <span className="text-sm text-zinc-200 flex-1">{g.giftName}</span>
+                      <span className="text-xs text-zinc-400">×{g.count}</span>
+                      <span className="text-xs text-amber-400">💎 {formatCount(g.diamondValue)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-500 italic px-1">Nenhum gift registrado nesta sessão ainda.</p>
+              )}
+            </div>
+          )}
+
+          {/* Top gifters (ranking de gifters) */}
+          {profile.profileSections.showTopGifters && profile.topGifters.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
                 <span className="text-amber-400">💎</span> Top Gifters

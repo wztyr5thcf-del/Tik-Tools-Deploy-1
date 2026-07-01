@@ -46,7 +46,9 @@ if (dbUrl) {
       ADD COLUMN IF NOT EXISTS public_profile_enabled boolean NOT NULL DEFAULT false,
       ADD COLUMN IF NOT EXISTS profile_bio text,
       ADD COLUMN IF NOT EXISTS profile_banner text,
-      ADD COLUMN IF NOT EXISTS social_links text;
+      ADD COLUMN IF NOT EXISTS social_links text,
+      ADD COLUMN IF NOT EXISTS profile_sections text,
+      ADD COLUMN IF NOT EXISTS total_live_sessions integer NOT NULL DEFAULT 0;
   `).catch(() => { /* ignore — table may not exist yet on first boot */ })
     .finally(() => pool.end());
 }

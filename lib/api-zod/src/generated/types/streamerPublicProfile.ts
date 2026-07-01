@@ -5,7 +5,9 @@
  * Creatools - TikTok LIVE monitoring API
  * OpenAPI spec version: 0.1.0
  */
+import type { ProfileSections } from './profileSections';
 import type { SocialLinks } from './socialLinks';
+import type { StreamerPublicProfileTopGiftsItem } from './streamerPublicProfileTopGiftsItem';
 import type { TopGifter } from './topGifter';
 
 export interface StreamerPublicProfile {
@@ -13,6 +15,7 @@ export interface StreamerPublicProfile {
   displayName: string;
   avatar?: string | null;
   followerCount?: number | null;
+  totalLiveSessions?: number | null;
   verified: boolean;
   bio?: string | null;
   banner?: string | null;
@@ -21,4 +24,6 @@ export interface StreamerPublicProfile {
   viewerCount?: number | null;
   likeCount?: number | null;
   topGifters: TopGifter[];
+  topGifts: StreamerPublicProfileTopGiftsItem[];
+  profileSections?: ProfileSections;
 }

@@ -1217,6 +1217,21 @@ components:
           type: number
       required: [username, displayName, diamondCount]
 
+    ProfileSections:
+      type: object
+      properties:
+        showStats:
+          type: boolean
+        showLiveStatus:
+          type: boolean
+        showTopGifts:
+          type: boolean
+        showTopGifters:
+          type: boolean
+        showSocialLinks:
+          type: boolean
+      required: [showStats, showLiveStatus, showTopGifts, showTopGifters, showSocialLinks]
+
     StreamerPublicProfile:
       type: object
       properties:
@@ -1228,6 +1243,9 @@ components:
           type: string
           nullable: true
         followerCount:
+          type: number
+          nullable: true
+        totalLiveSessions:
           type: number
           nullable: true
         verified:
@@ -1252,7 +1270,21 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TopGifter"
-      required: [username, displayName, verified, socialLinks, isLive, topGifters]
+        topGifts:
+          type: array
+          items:
+            type: object
+            properties:
+              giftName:
+                type: string
+              count:
+                type: number
+              diamondValue:
+                type: number
+            required: [giftName, count, diamondValue]
+        profileSections:
+          $ref: "#/components/schemas/ProfileSections"
+      required: [username, displayName, verified, socialLinks, isLive, topGifters, topGifts]
 
     LandingFeature:
       type: object

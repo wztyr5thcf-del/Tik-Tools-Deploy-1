@@ -926,6 +926,7 @@ export const GetStreamerPublicProfileResponse = zod.object({
   "displayName": zod.string(),
   "avatar": zod.string().nullish(),
   "followerCount": zod.number().nullish(),
+  "totalLiveSessions": zod.number().nullish(),
   "verified": zod.boolean(),
   "bio": zod.string().nullish(),
   "banner": zod.string().nullish(),
@@ -947,7 +948,19 @@ export const GetStreamerPublicProfileResponse = zod.object({
   "displayName": zod.string(),
   "avatar": zod.string().nullish(),
   "diamondCount": zod.number()
-}))
+})),
+  "topGifts": zod.array(zod.object({
+  "giftName": zod.string(),
+  "count": zod.number(),
+  "diamondValue": zod.number()
+})),
+  "profileSections": zod.object({
+  "showStats": zod.boolean(),
+  "showLiveStatus": zod.boolean(),
+  "showTopGifts": zod.boolean(),
+  "showTopGifters": zod.boolean(),
+  "showSocialLinks": zod.boolean()
+}).optional()
 })
 
 
