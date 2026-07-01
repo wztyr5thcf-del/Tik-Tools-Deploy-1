@@ -70,8 +70,14 @@ router.patch("/admin/users/:id/role", requireAdminMiddleware, async (req, res): 
     if (!role) { res.status(404).json({ error: "Role not found" }); return; }
   }
 
-  await updateUser(id, { roleId: (roleId && roleId !== "") ? roleId : undefined });
-  res.json({ ok: true, roleId: (roleId && roleId !== "") ? roleId : null });
+  const newRoleId = (roleId && roleId !== "") ? roleId : null;
+  if (newRoleId) {
+    await updateUser(id, { roleId: newRoleId });
+  } else {
+    // Explicitly set to null to clear — Drizzle ignores undefined, so we must use null
+    await updateUser(id, { roleId: null });
+  }
+  res.json({ ok: true, roleId: newRoleId });
 });
 
 export default router;

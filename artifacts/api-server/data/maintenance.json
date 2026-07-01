@@ -2,5 +2,17 @@
   "enabled": false,
   "message": "Testando essa buceta",
   "estimatedReturn": "",
-  "landingAlert": ""
+  "landingAlert": "",
+  "pages": {
+    "/monitor": {
+      "enabled": false,
+      "message": "tamo arrumando aqui",
+      "estimatedReturn": "18h amanha"
+    },
+    "/events": {
+      "enabled": true,
+      "message": "meu cu",
+      "estimatedReturn": "18h do co"
+    }
+  }
 }

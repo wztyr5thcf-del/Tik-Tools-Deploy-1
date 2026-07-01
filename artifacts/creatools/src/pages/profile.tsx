@@ -360,7 +360,7 @@ function TikTokSection() {
                 </div>
                 <Button
                   onClick={() => void handleDirectChange()}
-                  disabled={changeSaving || !tikProfile?.exists || !newHandle.trim()}
+                  disabled={changeSaving || tikProfile?.exists === false || !newHandle.trim()}
                   size="sm"
                 >
                   {changeSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

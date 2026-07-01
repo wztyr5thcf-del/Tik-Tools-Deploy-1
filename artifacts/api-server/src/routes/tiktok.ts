@@ -80,8 +80,8 @@ router.get("/tiktok/verify-username", async (req, res): Promise<void> => {
   try {
     const apiKey = process.env.TIKTOOLS_API_KEY;
     if (!apiKey) {
-      // No API key: return minimal "exists" check via live-status (unauthenticated path)
-      res.json({ exists: false, uniqueId: handle, reason: "no_api_key" }); return;
+      // No API key: cannot verify — return null so the UI doesn't block the user
+      res.json({ exists: null, uniqueId: handle, reason: "no_api_key" }); return;
     }
     // Use user-profile endpoint for full data
     const r = await fetch(

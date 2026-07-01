@@ -3272,17 +3272,306 @@ function BancoDadosSection() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// SUPORTE SECTION
+// ════════════════════════════════════════════════════════════════════════════
+interface AdminTicket {
+  id: string; type: string; status: string;
+  userId: string; userEmail: string; userName: string;
+  oldValue?: string; newValue: string;
+  reason: string; customReason?: string;
+  adminNote?: string; createdAt: string; resolvedAt?: string; resolvedBy?: string;
+}
+interface AdminMessage {
+  id: string; ticketId: string; fromAdmin: boolean; authorName: string; text: string; createdAt: string;
+}
+
+const TICKET_REASON_LABELS: Record<string, string> = {
+  rebrand:     "Rebranding / mudança de nome",
+  typo:        "Erro de digitação no cadastro",
+  privacy:     "Privacidade / segurança",
+  new_account: "Nova conta no TikTok",
+  other:       "Outro motivo",
+};
+const TICKET_STATUS_LABELS: Record<string, string> = {
+  pending:   "Pendente",
+  approved:  "Aprovado",
+  denied:    "Negado",
+  cancelled: "Cancelado",
+};
+const TICKET_STATUS_COLORS: Record<string, string> = {
+  pending:   "text-amber-400 border-amber-400/30 bg-amber-400/10",
+  approved:  "text-green-400 border-green-400/30 bg-green-400/10",
+  denied:    "text-destructive border-destructive/30 bg-destructive/10",
+  cancelled: "text-muted-foreground border-muted bg-muted/20",
+};
+
+function SuporteSection() {
+  const { token } = useAuth();
+  const { toast } = useToast();
+  const [tickets, setTickets]     = useState<AdminTicket[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [filter, setFilter]       = useState<"all" | "pending" | "approved" | "denied" | "cancelled">("pending");
+  const [search, setSearch]       = useState("");
+  const [messages, setMessages]   = useState<Record<string, AdminMessage[]>>({});
+  const [expanded, setExpanded]   = useState<string | null>(null);
+  const [actionNote, setActionNote] = useState<Record<string, string>>({});
+  const [acting, setActing]       = useState<string | null>(null);
+  const [chatText, setChatText]   = useState<Record<string, string>>({});
+  const [chatSending, setChatSending] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await authFetch("/admin/support/tickets", token!) as { tickets: AdminTicket[] };
+      setTickets(d.tickets ?? []);
+    } catch { toast({ title: "Erro ao carregar tickets", variant: "destructive" }); }
+    finally { setLoading(false); }
+  }, [token, toast]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  async function loadMessages(ticketId: string) {
+    if (messages[ticketId]) return;
+    try {
+      const d = await authFetch(`/support/tickets/${ticketId}/messages`, token!) as { messages: AdminMessage[] };
+      setMessages((p) => ({ ...p, [ticketId]: d.messages ?? [] }));
+    } catch { /* silent */ }
+  }
+
+  async function sendMessage(ticketId: string) {
+    const text = chatText[ticketId]?.trim();
+    if (!text) return;
+    setChatSending(ticketId);
+    try {
+      await authFetch(`/support/tickets/${ticketId}/messages`, token!, { method: "POST", body: JSON.stringify({ text }) });
+      setChatText((p) => ({ ...p, [ticketId]: "" }));
+      const d = await authFetch(`/support/tickets/${ticketId}/messages`, token!) as { messages: AdminMessage[] };
+      setMessages((p) => ({ ...p, [ticketId]: d.messages ?? [] }));
+    } catch (err) {
+      toast({ title: "Erro ao enviar mensagem", description: err instanceof Error ? err.message : "Erro", variant: "destructive" });
+    } finally { setChatSending(null); }
+  }
+
+  async function handleAction(ticketId: string, action: "approve" | "deny") {
+    setActing(ticketId);
+    try {
+      await authFetch(`/admin/support/tickets/${ticketId}`, token!, {
+        method: "PATCH",
+        body: JSON.stringify({ action, adminNote: actionNote[ticketId] ?? "" }),
+      });
+      toast({ title: action === "approve" ? "Ticket aprovado!" : "Ticket negado" });
+      setExpanded(null);
+      await load();
+    } catch (err) {
+      toast({ title: "Erro", description: err instanceof Error ? err.message : "Erro", variant: "destructive" });
+    } finally { setActing(null); }
+  }
+
+  const pending = tickets.filter((t) => t.status === "pending").length;
+  const filtered = tickets.filter((t) => {
+    if (filter !== "all" && t.status !== filter) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return (
+        t.userEmail.toLowerCase().includes(q) ||
+        t.userName.toLowerCase().includes(q) ||
+        t.newValue.toLowerCase().includes(q) ||
+        (t.oldValue ?? "").toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-violet-400" />
+            Tickets de Suporte
+            {pending > 0 && (
+              <Badge className="ml-1 bg-amber-400/20 text-amber-300 border-amber-400/30 text-xs">{pending} pendente{pending !== 1 ? "s" : ""}</Badge>
+            )}
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">Gerencie solicitações de alteração de username e outras requisições</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+          <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />Atualizar
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input placeholder="Buscar por usuário ou @..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 bg-background border-border text-sm h-9" />
+        </div>
+        {(["all", "pending", "approved", "denied", "cancelled"] as const).map((f) => (
+          <Button key={f} size="sm" variant={filter === f ? "default" : "outline"}
+            className={filter === f ? "bg-violet-600 hover:bg-violet-700" : ""}
+            onClick={() => setFilter(f)}>
+            {f === "all" ? "Todos" : TICKET_STATUS_LABELS[f]}
+          </Button>
+        ))}
+      </div>
+
+      {loading && <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin" /><span>Carregando tickets…</span></div>}
+
+      {!loading && filtered.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground">
+          <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p>Nenhum ticket encontrado</p>
+        </div>
+      )}
+
+      {!loading && filtered.map((ticket) => {
+        const isOpen = expanded === ticket.id;
+        const msgs   = messages[ticket.id] ?? [];
+
+        return (
+          <Card key={ticket.id} className={`bg-card border-border overflow-hidden ${ticket.status === "pending" ? "border-amber-400/20" : ""}`}>
+            <CardContent className="p-0">
+              {/* Header row */}
+              <div className="flex items-start gap-3 p-4">
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge className={`text-xs border ${TICKET_STATUS_COLORS[ticket.status]}`}>
+                      {TICKET_STATUS_LABELS[ticket.status]}
+                    </Badge>
+                    <span className="text-xs font-mono text-muted-foreground">{ticket.id.slice(-8)}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(ticket.createdAt).toLocaleString("pt-BR")}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-semibold text-white">{ticket.userName}</span>
+                    <span className="text-muted-foreground text-xs">{ticket.userEmail}</span>
+                  </div>
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">{ticket.oldValue ? `@${ticket.oldValue}` : "sem vínculo"}</span>
+                    <span className="mx-2 text-muted-foreground">→</span>
+                    <span className="font-semibold text-violet-300">@{ticket.newValue}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {TICKET_REASON_LABELS[ticket.reason] ?? ticket.reason}
+                    {ticket.customReason && `: ${ticket.customReason}`}
+                  </p>
+                  {ticket.adminNote && (
+                    <p className="text-xs italic text-muted-foreground">Nota: {ticket.adminNote}</p>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-1.5 shrink-0">
+                  <Button size="sm" variant="ghost" className="text-xs gap-1 h-8 px-2"
+                    onClick={async () => {
+                      const next = isOpen ? null : ticket.id;
+                      setExpanded(next);
+                      if (next) await loadMessages(next);
+                    }}>
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    {msgs.length > 0 ? msgs.length : "Chat"}
+                    <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                  </Button>
+                  {ticket.status === "pending" && (
+                    <>
+                      <Button size="sm" variant="outline"
+                        className="text-green-400 border-green-400/30 hover:bg-green-400/10 h-8 px-2 text-xs"
+                        disabled={acting === ticket.id}
+                        onClick={() => void handleAction(ticket.id, "approve")}>
+                        {acting === ticket.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                        <span className="ml-1 hidden sm:inline">Aprovar</span>
+                      </Button>
+                      <Button size="sm" variant="outline"
+                        className="text-destructive border-destructive/30 hover:bg-destructive/10 h-8 px-2 text-xs"
+                        disabled={acting === ticket.id}
+                        onClick={() => void handleAction(ticket.id, "deny")}>
+                        {acting === ticket.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                        <span className="ml-1 hidden sm:inline">Negar</span>
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Expanded: admin note + chat */}
+              {isOpen && (
+                <div className="border-t border-border bg-background/40 p-4 space-y-4">
+                  {/* Admin note input (pending only) */}
+                  {ticket.status === "pending" && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Nota para o usuário (opcional)</Label>
+                      <div className="flex gap-2">
+                        <Textarea
+                          placeholder="Explique a decisão, ou deixe em branco…"
+                          value={actionNote[ticket.id] ?? ""}
+                          onChange={(e) => setActionNote((p) => ({ ...p, [ticket.id]: e.target.value }))}
+                          className="bg-background border-border text-sm resize-none h-16 flex-1"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-xs gap-1" disabled={acting === ticket.id}
+                          onClick={() => void handleAction(ticket.id, "approve")}>
+                          <Check className="w-3.5 h-3.5" />Aprovar com nota
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-destructive border-destructive/30 text-xs gap-1" disabled={acting === ticket.id}
+                          onClick={() => void handleAction(ticket.id, "deny")}>
+                          <X className="w-3.5 h-3.5" />Negar com nota
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chat */}
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Mensagens</p>
+                    {msgs.length === 0 && <p className="text-xs text-muted-foreground italic">Sem mensagens ainda</p>}
+                    <div className="space-y-2 max-h-56 overflow-y-auto">
+                      {msgs.map((m) => (
+                        <div key={m.id} className={`flex gap-2 ${m.fromAdmin ? "flex-row-reverse" : ""}`}>
+                          <div className={`max-w-[75%] rounded-xl px-3 py-2 text-sm ${m.fromAdmin ? "bg-violet-600/20 border border-violet-400/20 text-right" : "bg-background border border-border"}`}>
+                            <p className="text-xs font-semibold text-muted-foreground mb-0.5">{m.fromAdmin ? "🛡 " : ""}{m.authorName}</p>
+                            <p className="text-sm leading-snug">{m.text}</p>
+                            <p className="text-[10px] text-muted-foreground mt-1">{new Date(m.createdAt).toLocaleString("pt-BR")}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enviar mensagem ao usuário…"
+                        value={chatText[ticket.id] ?? ""}
+                        onChange={(e) => setChatText((p) => ({ ...p, [ticket.id]: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(ticket.id); } }}
+                        className="flex-1 bg-background border-border text-sm h-9"
+                        disabled={chatSending === ticket.id}
+                      />
+                      <Button size="sm" onClick={() => void sendMessage(ticket.id)} disabled={chatSending === ticket.id || !chatText[ticket.id]?.trim()}>
+                        {chatSending === ticket.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // MAIN ADMIN PAGE
 // ════════════════════════════════════════════════════════════════════════════
-type AdminSection = "overview" | "users" | "roles" | "plans" | "announcements" | "content" | "customization" | "landing" | "sistema" | "paginas" | "database";
+type AdminSection = "overview" | "users" | "roles" | "plans" | "announcements" | "content" | "customization" | "landing" | "sistema" | "paginas" | "database" | "support";
 
 const ADMIN_NAV: Array<{ id: AdminSection; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }> = [
   { id: "overview",      label: "Visão Geral",       icon: LayoutDashboard },
   { id: "users",         label: "Usuários",           icon: Users2 },
   { id: "roles",         label: "Funções",            icon: Star },
   { id: "plans",         label: "Planos",             icon: CreditCard },
-  { id: "announcements", label: "Anúncios",           icon: Bell,           badge: "Novo" },
-  { id: "paginas",       label: "Páginas",            icon: FileText,       badge: "Novo" },
+  { id: "announcements", label: "Anúncios",           icon: Bell },
+  { id: "support",       label: "Suporte",            icon: MessageSquare },
+  { id: "paginas",       label: "Páginas",            icon: FileText },
   { id: "content",       label: "Conteúdo",           icon: BookOpen },
   { id: "customization", label: "Customização",       icon: Palette },
   { id: "landing",       label: "Landing Page",       icon: Globe },
@@ -3386,6 +3675,7 @@ export default function Admin() {
         {activeSection === "landing"       && <LandingPageTab allPlans={plans} />}
         {activeSection === "database"      && <BancoDadosSection />}
         {activeSection === "sistema"       && <SistemaSection />}
+        {activeSection === "support"       && <SuporteSection />}
       </div>
     </div>
   );
