@@ -2422,10 +2422,12 @@ function PaginasSection() {
 
   const load = useCallback(async () => {
     setCfgLoading(true);
-    try { setUiCfg(await authFetch("/admin/ui-config", token!) as UICfgFull); }
-    catch { /* ignore */ }
+    try {
+      const res = await fetch("/api/ui-config");
+      if (res.ok) setUiCfg(await res.json() as UICfgFull);
+    } catch { /* ignore */ }
     setCfgLoading(false);
-  }, [token]);
+  }, []);
   useEffect(() => { void load(); }, [load]);
 
   const saveCfg = async (cfg: UICfgFull, msg = "Menu atualizado!") => {
