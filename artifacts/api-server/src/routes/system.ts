@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import fs from "fs";
 import path from "path";
 import os from "os";
+import pg from "pg";
 import { requireAuth, requireAdminMiddleware } from "./auth";
 import { getAllUsers } from "../lib/users-store";
 
@@ -198,6 +199,71 @@ router.patch("/admin/maintenance", requireAdminMiddleware, (req, res): void => {
   saveMaintenance(current);
   req.log.info({ enabled: current.enabled }, "Maintenance mode updated");
   res.json(current);
+});
+
+// ── DB Config ─────────────────────────────────────────────────────────────────
+const dbConfigFile = path.resolve(dataDir, "db-config.json");
+
+function loadDbConfig(): { url?: string } {
+  try {
+    if (fs.existsSync(dbConfigFile)) return JSON.parse(fs.readFileSync(dbConfigFile, "utf-8")) as { url?: string };
+  } catch { /* ignore */ }
+  return {};
+}
+
+function parseDbUrl(urlStr: string): { host: string; database: string; user: string; port: string } {
+  try {
+    const u = new URL(urlStr);
+    return { host: u.hostname, database: u.pathname.replace(/^\//, ""), user: u.username, port: u.port || "5432" };
+  } catch {
+    return { host: "?", database: "?", user: "?", port: "5432" };
+  }
+}
+
+function maskDbUrl(urlStr: string): string {
+  try {
+    const u = new URL(urlStr);
+    if (u.password) u.password = "***";
+    return u.toString();
+  } catch { return urlStr; }
+}
+
+router.get("/admin/db-config", requireAdminMiddleware, (_req, res): void => {
+  const envUrl = process.env.DATABASE_URL;
+  const fileUrl = loadDbConfig().url;
+  const activeUrl = envUrl || fileUrl || "";
+  const source: string = envUrl ? "env" : fileUrl ? "file" : "none";
+  const info = activeUrl ? parseDbUrl(activeUrl) : { host: "N/A", database: "N/A", user: "N/A", port: "5432" };
+  res.json({ source, host: info.host, database: info.database, user: info.user, port: info.port, maskedUrl: activeUrl ? maskDbUrl(activeUrl) : null });
+});
+
+router.patch("/admin/db-config", requireAdminMiddleware, (req: Request, res: Response): void => {
+  const { url } = req.body as { url?: string };
+  if (!url?.trim()) { res.status(400).json({ error: "url is required" }); return; }
+  try { new URL(url.trim()); } catch { res.status(400).json({ error: "Invalid URL format" }); return; }
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(dbConfigFile, JSON.stringify({ url: url.trim() }, null, 2));
+  req.log.info({ host: parseDbUrl(url.trim()).host }, "DB config updated (restart required)");
+  res.json({ ok: true, maskedUrl: maskDbUrl(url.trim()), restartRequired: true });
+});
+
+router.post("/admin/db-config/test", requireAdminMiddleware, async (req: Request, res: Response): Promise<void> => {
+  const { url } = req.body as { url?: string };
+  const testUrl = url?.trim() || process.env.DATABASE_URL || loadDbConfig().url || "";
+  if (!testUrl) { res.status(400).json({ ok: false, message: "Nenhuma URL de banco configurada" }); return; }
+  const { Pool } = pg;
+  const testPool = new Pool({ connectionString: testUrl, connectionTimeoutMillis: 5000, max: 1 });
+  try {
+    const client = await testPool.connect();
+    const result = await client.query<{ version: string }>("SELECT version()");
+    client.release();
+    await testPool.end();
+    const version = result.rows[0]?.version?.split(" ").slice(0, 2).join(" ") ?? "PostgreSQL";
+    res.json({ ok: true, message: `Conectado! ${version}` });
+  } catch (err) {
+    await testPool.end().catch(() => { /* ignore */ });
+    res.json({ ok: false, message: err instanceof Error ? err.message : "Erro de conexão" });
+  }
 });
 
 export default router;

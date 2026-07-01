@@ -8,6 +8,7 @@ import {
   Cpu, HardDrive, Key, PlugZap, Megaphone, Pin, Info, Sparkles,
   BookOpen, Building2, Users, Bell, BarChart2, LayoutDashboard,
   AlertCircle, Wrench, ChevronRight, FileText, Image, ExternalLink, UserPlus, Pencil,
+  Database, RefreshCcw,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -2555,9 +2556,177 @@ function PaginasSection() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// SEÇÃO: BANCO DE DADOS
+// ════════════════════════════════════════════════════════════════════════════
+function BancoDadosSection() {
+  const { token } = useAuth();
+  const { toast } = useToast();
+
+  interface DbInfo { source: string; host: string; database: string; user: string; port: string; maskedUrl: string | null; }
+  const [info, setInfo] = useState<DbInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [newUrl, setNewUrl] = useState("");
+  const [showUrl, setShowUrl] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [restartNeeded, setRestartNeeded] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await authFetch("/admin/db-config", token!) as DbInfo;
+      setInfo(d);
+    } catch { /* ignore */ }
+    setLoading(false);
+  }, [token]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const testConnection = async () => {
+    setTesting(true); setTestResult(null);
+    try {
+      const body: Record<string, string> = {};
+      if (newUrl.trim()) body.url = newUrl.trim();
+      const r = await authFetch("/admin/db-config/test", token!, { method: "POST", body: JSON.stringify(body) }) as { ok: boolean; message: string };
+      setTestResult(r);
+    } catch { setTestResult({ ok: false, message: "Erro de conexão" }); }
+    setTesting(false);
+  };
+
+  const saveUrl = async () => {
+    if (!newUrl.trim()) return;
+    setSaving(true);
+    try {
+      await authFetch("/admin/db-config", token!, { method: "PATCH", body: JSON.stringify({ url: newUrl.trim() }) });
+      toast({ title: "URL salva! Reinicie o servidor para aplicar." });
+      setNewUrl(""); setRestartNeeded(true); void load();
+    } catch { toast({ title: "Erro ao salvar", variant: "destructive" }); }
+    setSaving(false);
+  };
+
+  const sourceLabel: Record<string, string> = { env: "Variável de ambiente (DATABASE_URL)", file: "Arquivo de configuração (db-config.json)", none: "Não configurado" };
+  const sourceBadgeClass: Record<string, string> = { env: "bg-blue-500/10 text-blue-400 border-blue-500/20", file: "bg-amber-500/10 text-amber-400 border-amber-500/20", none: "bg-red-500/10 text-red-400 border-red-500/20" };
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-xl font-bold text-white mb-1">Banco de Dados</h2>
+        <p className="text-sm text-muted-foreground">Conexão PostgreSQL — visualize e altere a URL de acesso ao banco.</p>
+      </div>
+
+      {restartNeeded && (
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-amber-500/30" style={{ background: "rgba(245,158,11,0.08)" }}>
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <p className="text-sm text-amber-300">Nova URL salva. <strong>Reinicie o servidor</strong> para aplicar as mudanças.</p>
+        </div>
+      )}
+
+      {/* Status atual */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-emerald-400" />
+            <CardTitle className="text-sm">Conexão Atual</CardTitle>
+            {info && <Badge className={`text-xs ${sourceBadgeClass[info.source] ?? ""}`}>{sourceLabel[info.source] ?? info.source}</Badge>}
+            <Button size="icon" variant="ghost" className="w-6 h-6 ml-auto" onClick={() => void load()} disabled={loading}>
+              <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {loading ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="w-4 h-4 animate-spin" />Carregando...</div>
+          ) : info ? (
+            <>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {[
+                  { label: "Host", value: info.host },
+                  { label: "Banco", value: info.database },
+                  { label: "Usuário", value: info.user },
+                  { label: "Porta", value: info.port },
+                ].map(({ label, value }) => (
+                  <div key={label} className="rounded-lg px-3 py-2" style={{ background: "rgba(255,255,255,0.04)" }}>
+                    <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+                    <p className="font-mono font-medium text-white">{value}</p>
+                  </div>
+                ))}
+              </div>
+              {info.maskedUrl && (
+                <div className="rounded-lg px-3 py-2" style={{ background: "rgba(255,255,255,0.04)" }}>
+                  <p className="text-xs text-muted-foreground mb-0.5">URL (senha mascarada)</p>
+                  <p className="font-mono text-xs text-muted-foreground break-all">{info.maskedUrl}</p>
+                </div>
+              )}
+              <Button variant="outline" size="sm" onClick={testConnection} disabled={testing}>
+                {testing ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Testando…</> : <><Activity className="w-3.5 h-3.5 mr-1.5" />Testar conexão atual</>}
+              </Button>
+              {testResult && (
+                <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${testResult.ok ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+                  {testResult.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+                  {testResult.message}
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Não foi possível carregar informações do banco.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Alterar URL */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Key className="w-4 h-4 text-purple-400" />
+            <CardTitle className="text-sm">Alterar URL de Conexão</CardTitle>
+          </div>
+          <CardDescription>
+            Salva em <code className="text-xs bg-muted/30 px-1 rounded">data/db-config.json</code>. A variável de ambiente <code className="text-xs bg-muted/30 px-1 rounded">DATABASE_URL</code> tem prioridade.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="relative">
+            <Input
+              type={showUrl ? "text" : "password"}
+              placeholder="postgresql://user:senha@host:5432/database"
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              className="pr-10 font-mono text-sm"
+            />
+            <button className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              onClick={() => setShowUrl((v) => !v)}>
+              {showUrl ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={saveUrl} disabled={saving || !newUrl.trim()}>
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}Salvar URL
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { setTestResult(null); testConnection(); }} disabled={testing || !newUrl.trim()}>
+              {testing ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Testando…</> : <><Activity className="w-3.5 h-3.5 mr-1.5" />Testar nova URL</>}
+            </Button>
+          </div>
+          {testResult && (
+            <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${testResult.ok ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+              {testResult.ok ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+              {testResult.message}
+            </div>
+          )}
+          <div className="rounded-lg px-3 py-2.5 text-xs text-muted-foreground" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="font-medium text-white/60 mb-1">Formato esperado:</p>
+            <code className="font-mono">postgresql://usuario:senha@host:5432/nome_banco</code>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // MAIN ADMIN PAGE
 // ════════════════════════════════════════════════════════════════════════════
-type AdminSection = "overview" | "users" | "roles" | "plans" | "announcements" | "content" | "customization" | "landing" | "sistema" | "paginas";
+type AdminSection = "overview" | "users" | "roles" | "plans" | "announcements" | "content" | "customization" | "landing" | "sistema" | "paginas" | "database";
 
 const ADMIN_NAV: Array<{ id: AdminSection; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }> = [
   { id: "overview",      label: "Visão Geral",       icon: LayoutDashboard },
@@ -2569,6 +2738,7 @@ const ADMIN_NAV: Array<{ id: AdminSection; label: string; icon: React.ComponentT
   { id: "content",       label: "Conteúdo",           icon: BookOpen },
   { id: "customization", label: "Customização",       icon: Palette },
   { id: "landing",       label: "Landing Page",       icon: Globe },
+  { id: "database",      label: "Banco de Dados",     icon: Database },
   { id: "sistema",       label: "Sistema",            icon: Server },
 ];
 
@@ -2666,6 +2836,7 @@ export default function Admin() {
         {activeSection === "content"       && <ConteudoSection />}
         {activeSection === "customization" && <CustomizacaoSection />}
         {activeSection === "landing"       && <LandingPageTab allPlans={plans} />}
+        {activeSection === "database"      && <BancoDadosSection />}
         {activeSection === "sistema"       && <SistemaSection />}
       </div>
     </div>

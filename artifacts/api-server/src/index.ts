@@ -1,3 +1,4 @@
+import "./startup";
 import app from "./app";
 import { logger } from "./lib/logger";
 
