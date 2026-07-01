@@ -23,6 +23,38 @@ export interface NavSectionConfig {
   items: NavItemConfig[];
 }
 
+export interface CenterButton {
+  id: string;
+  label: string;
+  url: string;
+  icon?: string;
+  badge?: string;
+  color?: "purple" | "blue" | "green" | "red" | "gray" | "cyan";
+  openInNewTab?: boolean;
+}
+
+export interface HeaderConfig {
+  appName?: string;
+  appSubtitle?: string;
+  logoUrl?: string;
+  showSubtitle?: boolean;
+  showUpgradeBtn?: boolean;
+  showFlag?: boolean;
+  centerButtons?: CenterButton[];
+}
+
+export interface FeaturedSlide {
+  id: string;
+  title: string;
+  subtitle?: string;
+  body?: string;
+  imageUrl?: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  badge?: string;
+  badgeColor?: string;
+}
+
 export interface UIConfig {
   navType: "sidebar" | "topbar";
   primaryColor: string;
@@ -30,6 +62,8 @@ export interface UIConfig {
   logoText: string;
   logoUrl: string;
   sidebarSections: NavSectionConfig[];
+  headerConfig?: HeaderConfig;
+  featuredSlides?: FeaturedSlide[];
   updatedAt: string;
 }
 
@@ -48,6 +82,15 @@ const DEFAULT: UIConfig = {
   logoText: "Creatools",
   logoUrl: "",
   sidebarSections: [],
+  headerConfig: {
+    appName: "Creatools",
+    appSubtitle: "Painel do Criador",
+    showSubtitle: true,
+    showUpgradeBtn: true,
+    showFlag: false,
+    centerButtons: [],
+  },
+  featuredSlides: [],
   updatedAt: "",
 };
 

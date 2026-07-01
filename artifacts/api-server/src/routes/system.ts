@@ -177,7 +177,16 @@ router.patch("/admin/tiktools-config", requireAdminMiddleware, (req, res): void 
 
 // Maintenance mode (kept as file-based — config, not user data)
 const maintenanceFile = path.resolve(dataDir, "maintenance.json");
-interface MaintenanceConfig { enabled: boolean; message?: string; }
+
+interface PageMaintenance { enabled: boolean; message?: string; estimatedReturn?: string; }
+interface MaintenanceConfig {
+  enabled: boolean;
+  message?: string;
+  estimatedReturn?: string;
+  landingAlert?: string;
+  pages?: Record<string, PageMaintenance>;
+}
+
 function loadMaintenance(): MaintenanceConfig {
   try {
     if (fs.existsSync(maintenanceFile)) return JSON.parse(fs.readFileSync(maintenanceFile, "utf-8")) as MaintenanceConfig;
@@ -192,10 +201,13 @@ function saveMaintenance(m: MaintenanceConfig): void {
 router.get("/maintenance", (_req, res): void => { res.json(loadMaintenance()); });
 router.get("/admin/maintenance", requireAdminMiddleware, (_req, res): void => { res.json(loadMaintenance()); });
 router.patch("/admin/maintenance", requireAdminMiddleware, (req, res): void => {
-  const { enabled, message } = req.body as { enabled?: boolean; message?: string };
+  const body = req.body as Partial<MaintenanceConfig>;
   const current = loadMaintenance();
-  if (enabled !== undefined) current.enabled = !!enabled;
-  if (message !== undefined) current.message = message?.trim() || undefined;
+  if (body.enabled !== undefined) current.enabled = !!body.enabled;
+  if (body.message !== undefined) current.message = body.message?.trim() || undefined;
+  if (body.estimatedReturn !== undefined) current.estimatedReturn = body.estimatedReturn?.trim() || undefined;
+  if (body.landingAlert !== undefined) current.landingAlert = body.landingAlert?.trim() || undefined;
+  if (body.pages !== undefined) current.pages = body.pages;
   saveMaintenance(current);
   req.log.info({ enabled: current.enabled }, "Maintenance mode updated");
   res.json(current);

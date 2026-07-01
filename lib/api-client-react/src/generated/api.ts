@@ -3006,3 +3006,311 @@ export const useSaveConfig = <TError = ErrorType<unknown>,
       return useMutation(getSaveConfigMutationOptions(options));
     }
 
+export const getGetMaintenanceUrl = () => {
+
+
+
+
+  return `/api/maintenance`
+}
+
+/**
+ * @summary Get public maintenance status
+ */
+export const getMaintenance = async ( options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetMaintenanceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMaintenanceQueryKey = () => {
+    return [
+    `/api/maintenance`
+    ] as const;
+    }
+
+
+export const getGetMaintenanceQueryOptions = <TData = Awaited<ReturnType<typeof getMaintenance>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMaintenance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMaintenanceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMaintenance>>> = ({ signal }) => getMaintenance({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMaintenance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMaintenanceQueryResult = NonNullable<Awaited<ReturnType<typeof getMaintenance>>>
+export type GetMaintenanceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get public maintenance status
+ */
+
+export function useGetMaintenance<TData = Awaited<ReturnType<typeof getMaintenance>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMaintenance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMaintenanceQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetUiConfigUrl = () => {
+
+
+
+
+  return `/api/ui-config`
+}
+
+/**
+ * @summary Get UI configuration
+ */
+export const getUiConfig = async ( options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetUiConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetUiConfigQueryKey = () => {
+    return [
+    `/api/ui-config`
+    ] as const;
+    }
+
+
+export const getGetUiConfigQueryOptions = <TData = Awaited<ReturnType<typeof getUiConfig>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUiConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetUiConfigQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUiConfig>>> = ({ signal }) => getUiConfig({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUiConfig>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetUiConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getUiConfig>>>
+export type GetUiConfigQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get UI configuration
+ */
+
+export function useGetUiConfig<TData = Awaited<ReturnType<typeof getUiConfig>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUiConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetUiConfigQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminMaintenanceUrl = () => {
+
+
+
+
+  return `/api/admin/maintenance`
+}
+
+/**
+ * @summary Get admin maintenance config
+ */
+export const getAdminMaintenance = async ( options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetAdminMaintenanceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminMaintenanceQueryKey = () => {
+    return [
+    `/api/admin/maintenance`
+    ] as const;
+    }
+
+
+export const getGetAdminMaintenanceQueryOptions = <TData = Awaited<ReturnType<typeof getAdminMaintenance>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminMaintenance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminMaintenanceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminMaintenance>>> = ({ signal }) => getAdminMaintenance({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminMaintenance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminMaintenanceQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminMaintenance>>>
+export type GetAdminMaintenanceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get admin maintenance config
+ */
+
+export function useGetAdminMaintenance<TData = Awaited<ReturnType<typeof getAdminMaintenance>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminMaintenance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminMaintenanceQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminUiConfigUrl = () => {
+
+
+
+
+  return `/api/admin/ui-config`
+}
+
+/**
+ * @summary Get admin UI config
+ */
+export const getAdminUiConfig = async ( options?: RequestInit): Promise<PassthroughResponse> => {
+
+  return customFetch<PassthroughResponse>(getGetAdminUiConfigUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminUiConfigQueryKey = () => {
+    return [
+    `/api/admin/ui-config`
+    ] as const;
+    }
+
+
+export const getGetAdminUiConfigQueryOptions = <TData = Awaited<ReturnType<typeof getAdminUiConfig>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminUiConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminUiConfigQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminUiConfig>>> = ({ signal }) => getAdminUiConfig({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminUiConfig>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminUiConfigQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminUiConfig>>>
+export type GetAdminUiConfigQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get admin UI config
+ */
+
+export function useGetAdminUiConfig<TData = Awaited<ReturnType<typeof getAdminUiConfig>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminUiConfig>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminUiConfigQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+

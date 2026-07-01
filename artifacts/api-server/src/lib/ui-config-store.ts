@@ -20,6 +20,37 @@ export interface NavSectionConfig {
   items: NavItemConfig[];
 }
 
+export interface CenterButton {
+  id: string;
+  label: string;
+  url: string;
+  badge?: string;
+  color?: "purple" | "blue" | "green" | "red" | "gray" | "cyan";
+  openInNewTab?: boolean;
+}
+
+export interface HeaderConfig {
+  appName?: string;
+  appSubtitle?: string;
+  logoUrl?: string;
+  showSubtitle?: boolean;
+  showUpgradeBtn?: boolean;
+  showFlag?: boolean;
+  centerButtons?: CenterButton[];
+}
+
+export interface FeaturedSlide {
+  id: string;
+  title: string;
+  subtitle?: string;
+  body?: string;
+  imageUrl?: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  badge?: string;
+  badgeColor?: string;
+}
+
 export interface UIConfig {
   navType: "sidebar" | "topbar";
   primaryColor: string;
@@ -27,8 +58,21 @@ export interface UIConfig {
   logoText: string;
   logoUrl: string;
   sidebarSections: NavSectionConfig[];
+  headerConfig?: HeaderConfig;
+  featuredSlides?: FeaturedSlide[];
   updatedAt: string;
 }
+
+const DEFAULT_HEADER_CONFIG: HeaderConfig = {
+  appName: "Creatools",
+  appSubtitle: "Painel do Criador",
+  showSubtitle: true,
+  showUpgradeBtn: true,
+  showFlag: false,
+  centerButtons: [
+    { id: "discord", label: "Discord", url: "https://discord.gg/creatools", badge: "", color: "purple", openInNewTab: true },
+  ],
+};
 
 const DEFAULT_UI_CONFIG: UIConfig = {
   navType: "sidebar",
@@ -113,6 +157,8 @@ export async function loadUIConfig(): Promise<UIConfig> {
       logoText: rows[0].logoText,
       logoUrl: rows[0].logoUrl,
       sidebarSections: (rows[0].sidebarSections as NavSectionConfig[]) ?? [],
+      headerConfig: (rows[0].headerConfig as HeaderConfig | null) ?? DEFAULT_HEADER_CONFIG,
+      featuredSlides: (rows[0].featuredSlides as FeaturedSlide[] | null) ?? [],
       updatedAt: rows[0].updatedAt,
     };
   }
@@ -129,6 +175,8 @@ export async function saveUIConfig(config: UIConfig): Promise<void> {
     logoText: config.logoText,
     logoUrl: config.logoUrl,
     sidebarSections: config.sidebarSections,
+    headerConfig: (config.headerConfig ?? null) as unknown,
+    featuredSlides: (config.featuredSlides ?? null) as unknown,
     updatedAt: config.updatedAt,
   }).onConflictDoUpdate({
     target: uiConfigTable.id,
@@ -139,6 +187,8 @@ export async function saveUIConfig(config: UIConfig): Promise<void> {
       logoText: config.logoText,
       logoUrl: config.logoUrl,
       sidebarSections: config.sidebarSections,
+      headerConfig: (config.headerConfig ?? null) as unknown,
+      featuredSlides: (config.featuredSlides ?? null) as unknown,
       updatedAt: config.updatedAt,
     },
   });

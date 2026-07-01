@@ -8,6 +8,8 @@ export const uiConfigTable = pgTable("ui_config", {
   logoText:        text("logo_text").notNull().default("Creatools"),
   logoUrl:         text("logo_url").notNull().default(""),
   sidebarSections: jsonb("sidebar_sections").notNull().default([]),
+  headerConfig:    jsonb("header_config"),
+  featuredSlides:  jsonb("featured_slides"),
   updatedAt:       text("updated_at").notNull(),
 });
 

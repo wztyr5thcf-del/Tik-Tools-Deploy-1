@@ -1,13 +1,14 @@
 import { useAuth } from "@/context/auth-context";
+import { UpdateCarousel } from "@/components/dashboard/update-carousel";
+import { FeaturedSlider } from "@/components/dashboard/featured-slider";
 import { useLocation } from "wouter";
 import {
   Monitor, Zap, Gamepad2, Radio, Layers, BarChart2, Crown,
   ExternalLink, ChevronRight, CheckCircle2, Wifi, WifiOff,
   Star, Users, Megaphone, BookOpen, Sparkles, ArrowRight,
-  Shield, Music, Target, Tv2,
+  Shield, Target, Tv2,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
-import { Badge } from "@/components/ui/badge";
 
 // ── Feature pill data ──────────────────────────────────────────────────────────
 const OVERLAY_PILLS = [
@@ -164,29 +165,8 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Update banner */}
-          <div className="rounded-2xl border border-purple-500/20 p-5 relative overflow-hidden"
-            style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.1) 0%, rgba(236,72,153,0.06) 100%)" }}>
-            <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 pointer-events-none"
-              style={{ background: "radial-gradient(ellipse at right, #ec4899, transparent)" }} />
-            <div className="relative flex items-start gap-4">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl shrink-0"
-                style={{ background: "rgba(124,58,237,0.2)" }}>
-                <Megaphone className="w-5 h-5 text-purple-400" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-base font-bold text-white">Creatools — TikTok LIVE Studio</span>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                    style={{ background: "rgba(124,58,237,0.3)", color: "#a78bfa" }}>BETA</span>
-                </div>
-                <p className="text-sm text-purple-300/60 leading-relaxed">
-                  Sobreposições, rankings, alertas sonoros, jogos interativos e muito mais para suas lives no TikTok.
-                  Clique nos itens abaixo para explorar as ferramentas disponíveis.
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* Update carousel */}
+          <UpdateCarousel />
 
           {/* Overlays pills */}
           <div className="rounded-2xl border border-white/8 p-5" style={{ background: "rgba(255,255,255,0.03)" }}>
@@ -278,6 +258,8 @@ export default function Dashboard() {
 
         {/* ── Right column ───────────────────────────────────────────────────── */}
         <div className="space-y-5">
+          {/* Featured slides */}
+          <FeaturedSlider />
 
           {/* Stats rápidas */}
           <div className="rounded-2xl border border-white/8 p-5" style={{ background: "rgba(255,255,255,0.03)" }}>

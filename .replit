@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "postgresql-16", "python-3.11"]
 
 [deployment]
 router = "application"
@@ -21,3 +21,6 @@ timeoutMs = 20000
 
 [objectStorage]
 defaultBucketID = "replit-objstore-678dfad3-c242-402f-8c1b-c86c0ac45d61"
+
+[nix]
+channel = "stable-25_05"

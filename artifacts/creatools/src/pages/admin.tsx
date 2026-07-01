@@ -34,7 +34,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useAuth, authFetch, type AuthUser } from "@/context/auth-context";
-import { useUIConfig, type NavSectionConfig, type NavItemConfig } from "@/context/ui-config-context";
+import { useUIConfig, type NavSectionConfig, type NavItemConfig, type CenterButton, type FeaturedSlide } from "@/context/ui-config-context";
 import { useToast } from "@/hooks/use-toast";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ interface StripeConfig {
 interface Announcement {
   id: string; title: string; body: string;
   type: "info" | "warning" | "success" | "new" | "update";
-  pinned: boolean; createdAt: number; emoji?: string;
+  pinned: boolean; createdAt: number; emoji?: string; imageUrl?: string;
 }
 interface Ticket {
   id: string; type: string; userId: string; userName: string; userEmail: string;
@@ -858,7 +858,7 @@ function AnunciosSection() {
   const [anns, setAnns] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ title: "", body: "", type: "info" as Announcement["type"], pinned: false, emoji: "" });
+  const [form, setForm] = useState({ title: "", body: "", type: "info" as Announcement["type"], pinned: false, emoji: "", imageUrl: "" });
   const [editAnn, setEditAnn] = useState<Announcement | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -874,7 +874,7 @@ function AnunciosSection() {
     try {
       await authFetch("/announcements", token!, { method: "POST", body: JSON.stringify(form) });
       toast({ title: "Anúncio publicado!" });
-      setForm({ title: "", body: "", type: "info", pinned: false, emoji: "" });
+      setForm({ title: "", body: "", type: "info", pinned: false, emoji: "", imageUrl: "" });
       setCreating(false);
       load();
     } catch { toast({ title: "Erro ao publicar", variant: "destructive" }); }
@@ -931,6 +931,10 @@ function AnunciosSection() {
           placeholder="Conteúdo do anúncio..." value={value.body}
           onChange={(e) => onChange({ ...value, body: e.target.value })} />
       </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs">URL da Imagem (opcional — aparece no carrossel)</Label>
+        <Input placeholder="https://exemplo.com/imagem.png" value={value.imageUrl} onChange={(e) => onChange({ ...value, imageUrl: e.target.value })} />
+      </div>
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <Switch checked={value.pinned} onCheckedChange={(v) => onChange({ ...value, pinned: v })} />
@@ -983,7 +987,7 @@ function AnunciosSection() {
                 <CardContent className="p-4">
                   {isEditing ? (
                     <AnnForm
-                      value={{ title: editAnn.title, body: editAnn.body, type: editAnn.type, pinned: editAnn.pinned, emoji: editAnn.emoji ?? "" }}
+                      value={{ title: editAnn.title, body: editAnn.body, type: editAnn.type, pinned: editAnn.pinned, emoji: editAnn.emoji ?? "", imageUrl: editAnn.imageUrl ?? "" }}
                       onChange={(v) => setEditAnn({ ...editAnn, ...v })}
                       onSubmit={updateAnn}
                       onCancel={() => setEditAnn(null)}
@@ -1203,6 +1207,8 @@ function SistemaSection() {
   // maintenance mode
   const [maintenance, setMaintenance] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState("");
+  const [maintenanceETA, setMaintenanceETA] = useState("");
+  const [maintenanceLandingAlert, setMaintenanceLandingAlert] = useState("");
   const [savingMaintenance, setSavingMaintenance] = useState(false);
 
   // stripe
@@ -1231,6 +1237,8 @@ function SistemaSection() {
       setStripeBasic(sc.priceIdBasic ?? ""); setStripePro(sc.priceIdPro ?? "");
       setPaymentsEnabled(sc.paymentsEnabled); setAltApi(ac); setTiktoolsMasked(tc.apiKeyMasked);
       setMaintenance(mc.enabled); setMaintenanceMessage(mc.message ?? "");
+      setMaintenanceETA((mc as { estimatedReturn?: string }).estimatedReturn ?? "");
+      setMaintenanceLandingAlert((mc as { landingAlert?: string }).landingAlert ?? "");
     } catch { /* ignore */ }
   }, [token]);
 
@@ -1238,7 +1246,7 @@ function SistemaSection() {
     setSavingMaintenance(true);
     setMaintenance(val);
     try {
-      await authFetch("/admin/maintenance", token!, { method: "PATCH", body: JSON.stringify({ enabled: val, message: maintenanceMessage }) });
+      await authFetch("/admin/maintenance", token!, { method: "PATCH", body: JSON.stringify({ enabled: val, message: maintenanceMessage, estimatedReturn: maintenanceETA || undefined, landingAlert: maintenanceLandingAlert || undefined }) });
       toast({ title: val ? "⚠️ Modo manutenção ATIVADO!" : "✅ Modo manutenção desativado!" });
     } catch {
       setMaintenance(!val);
@@ -1250,7 +1258,7 @@ function SistemaSection() {
   const saveMaintenance = async () => {
     setSavingMaintenance(true);
     try {
-      await authFetch("/admin/maintenance", token!, { method: "PATCH", body: JSON.stringify({ enabled: maintenance, message: maintenanceMessage }) });
+      await authFetch("/admin/maintenance", token!, { method: "PATCH", body: JSON.stringify({ enabled: maintenance, message: maintenanceMessage, estimatedReturn: maintenanceETA || undefined, landingAlert: maintenanceLandingAlert || undefined }) });
       toast({ title: "Manutenção atualizada!" });
     } catch { toast({ title: "Erro ao salvar", variant: "destructive" }); }
     setSavingMaintenance(false);
@@ -1319,15 +1327,26 @@ function SistemaSection() {
               <p className="text-xs text-yellow-300">Modo manutenção ATIVO. Usuários verão tela de manutenção. Administradores ainda têm acesso total.</p>
             </div>
           )}
-          <div className="mt-3 space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Mensagem para usuários (opcional)</Label>
-            <div className="flex gap-2">
+          <div className="mt-3 space-y-2.5">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Mensagem para usuários (painel — overlay de manutenção)</Label>
               <Input value={maintenanceMessage} onChange={(e) => setMaintenanceMessage(e.target.value)}
-                placeholder="Ex: Voltamos em 30 minutos. Obrigado pela paciência!" className="text-sm flex-1" />
-              <Button size="sm" variant="outline" onClick={saveMaintenance} disabled={savingMaintenance}>
-                {savingMaintenance ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              </Button>
+                placeholder="Ex: Estamos realizando melhorias. Obrigado pela paciência!" className="text-sm" />
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Previsão de retorno</Label>
+              <Input value={maintenanceETA} onChange={(e) => setMaintenanceETA(e.target.value)}
+                placeholder="Ex: 13h30 (horário de Brasília)" className="text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Alerta na Landing Page (deixe vazio para não exibir)</Label>
+              <Input value={maintenanceLandingAlert} onChange={(e) => setMaintenanceLandingAlert(e.target.value)}
+                placeholder="Ex: Estamos em manutenção. Acesso ao painel temporariamente indisponível." className="text-sm" />
+            </div>
+            <Button size="sm" variant="outline" onClick={saveMaintenance} disabled={savingMaintenance} className="w-full">
+              {savingMaintenance ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+              Salvar configurações de manutenção
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -1566,12 +1585,49 @@ function CustomizacaoSection() {
     setResetting(false);
   };
 
+  // center buttons helpers
+  const addCenterBtn = () => {
+    const btn: CenterButton = { id: `btn_${Date.now()}`, label: "Novo Botão", url: "https://", color: "purple" };
+    setLocal((p) => p ? { ...p, headerConfig: { ...p.headerConfig, centerButtons: [...(p.headerConfig?.centerButtons ?? []), btn] } } : p);
+  };
+  const updateCenterBtn = (idx: number, patch: Partial<CenterButton>) => {
+    setLocal((p) => { if (!p) return p; const btns = [...(p.headerConfig?.centerButtons ?? [])]; btns[idx] = { ...btns[idx], ...patch }; return { ...p, headerConfig: { ...p.headerConfig, centerButtons: btns } }; });
+  };
+  const removeCenterBtn = (idx: number) => {
+    setLocal((p) => { if (!p) return p; const btns = [...(p.headerConfig?.centerButtons ?? [])]; btns.splice(idx, 1); return { ...p, headerConfig: { ...p.headerConfig, centerButtons: btns } }; });
+  };
+  const moveCenterBtn = (idx: number, dir: -1 | 1) => {
+    setLocal((p) => { if (!p) return p; const btns = [...(p.headerConfig?.centerButtons ?? [])]; const ni = idx + dir; if (ni < 0 || ni >= btns.length) return p; [btns[idx], btns[ni]] = [btns[ni], btns[idx]]; return { ...p, headerConfig: { ...p.headerConfig, centerButtons: btns } }; });
+  };
+
+  // featured slides helpers
+  const addSlide = () => {
+    const slide: FeaturedSlide = { id: `slide_${Date.now()}`, title: "Novo Slide", subtitle: "", body: "", ctaLabel: "Saiba mais", ctaUrl: "", badge: "", badgeColor: "purple" };
+    setLocal((p) => p ? { ...p, featuredSlides: [...(p.featuredSlides ?? []), slide] } : p);
+  };
+  const updateSlide = (idx: number, patch: Partial<FeaturedSlide>) => {
+    setLocal((p) => { if (!p) return p; const slides = [...(p.featuredSlides ?? [])]; slides[idx] = { ...slides[idx], ...patch }; return { ...p, featuredSlides: slides }; });
+  };
+  const removeSlide = (idx: number) => {
+    setLocal((p) => { if (!p) return p; const slides = [...(p.featuredSlides ?? [])]; slides.splice(idx, 1); return { ...p, featuredSlides: slides }; });
+  };
+  const moveSlide = (idx: number, dir: -1 | 1) => {
+    setLocal((p) => { if (!p) return p; const slides = [...(p.featuredSlides ?? [])]; const ni = idx + dir; if (ni < 0 || ni >= slides.length) return p; [slides[idx], slides[ni]] = [slides[ni], slides[idx]]; return { ...p, featuredSlides: slides }; });
+  };
+
   if (!local) return <div className="py-10 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>;
+
+  const hcfg = local.headerConfig ?? {};
+  const centerBtns = hcfg.centerButtons ?? [];
+  const featuredSlides = local.featuredSlides ?? [];
+
+  const BTN_COLORS: CenterButton["color"][] = ["purple", "blue", "green", "red", "gray", "cyan"];
 
   return (
     <div className="space-y-5">
-      <div><h2 className="text-xl font-bold text-white mb-1">Customização</h2><p className="text-sm text-muted-foreground">Edite cores e itens do menu da plataforma.</p></div>
+      <div><h2 className="text-xl font-bold text-white mb-1">Customização</h2><p className="text-sm text-muted-foreground">Edite aparência, cabeçalho, botões e slides da plataforma.</p></div>
 
+      {/* Theme colors */}
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-sm">Cores do Tema</CardTitle></CardHeader>
         <CardContent className="space-y-4">
@@ -1591,6 +1647,149 @@ function CustomizacaoSection() {
               </div>
               <Input value={local[key]} onChange={(e) => setLocal((p) => p ? { ...p, [key]: e.target.value } : p)} placeholder="180 100% 50%" />
               <div className="h-5 rounded-md" style={{ background: `hsl(${local[key]})` }} />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Header config */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Cabeçalho (TopBar)</CardTitle>
+          <CardDescription>Nome do app, subtítulo e visibilidade de elementos no topo.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nome do App</Label>
+              <Input value={hcfg.appName ?? ""} onChange={(e) => setLocal((p) => p ? { ...p, headerConfig: { ...p.headerConfig, appName: e.target.value } } : p)} placeholder="Creatools" className="text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Subtítulo</Label>
+              <Input value={hcfg.appSubtitle ?? ""} onChange={(e) => setLocal((p) => p ? { ...p, headerConfig: { ...p.headerConfig, appSubtitle: e.target.value } } : p)} placeholder="TikTok LIVE Studio" className="text-sm" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">URL do Logo (substitui ícone padrão)</Label>
+            <Input value={hcfg.logoUrl ?? ""} onChange={(e) => setLocal((p) => p ? { ...p, headerConfig: { ...p.headerConfig, logoUrl: e.target.value || undefined } } : p)} placeholder="https://exemplo.com/logo.png" className="text-sm" />
+          </div>
+          <div className="flex flex-wrap gap-4">
+            {[
+              { key: "showSubtitle" as const, label: "Mostrar subtítulo" },
+              { key: "showUpgradeBtn" as const, label: "Botão Upgrade" },
+              { key: "showFlag" as const, label: "Bandeira/País" },
+            ].map(({ key, label }) => (
+              <label key={key} className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={!!(hcfg as Record<string, unknown>)[key]}
+                  onChange={(e) => setLocal((p) => p ? { ...p, headerConfig: { ...p.headerConfig, [key]: e.target.checked } } : p)}
+                  className="rounded" />
+                <span className="text-sm">{label}</span>
+              </label>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Center buttons */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-sm">Botões Centrais (TopBar)</CardTitle>
+              <CardDescription>Links rápidos exibidos no centro do cabeçalho.</CardDescription>
+            </div>
+            <Button size="sm" variant="outline" onClick={addCenterBtn}><Plus className="w-3.5 h-3.5 mr-1.5" />Adicionar</Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {centerBtns.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-3">Nenhum botão configurado. Clique em "Adicionar" para criar.</p>
+          )}
+          {centerBtns.map((btn, idx) => (
+            <div key={btn.id} className="rounded-xl border border-white/8 p-3 space-y-2" style={{ background: "rgba(255,255,255,0.02)" }}>
+              <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  <button onClick={() => moveCenterBtn(idx, -1)} disabled={idx === 0} className="text-white/30 hover:text-white/70 disabled:opacity-20"><ChevronUp className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => moveCenterBtn(idx, 1)} disabled={idx === centerBtns.length - 1} className="text-white/30 hover:text-white/70 disabled:opacity-20"><ChevronDown className="w-3.5 h-3.5" /></button>
+                </div>
+                <Input value={btn.icon ?? ""} onChange={(e) => updateCenterBtn(idx, { icon: e.target.value || undefined })} placeholder="Emoji/ícone (ex: 🚀)" className="text-sm w-28 shrink-0" />
+                <Input value={btn.label} onChange={(e) => updateCenterBtn(idx, { label: e.target.value })} placeholder="Label" className="text-sm flex-1" />
+                <Input value={btn.url} onChange={(e) => updateCenterBtn(idx, { url: e.target.value })} placeholder="https://..." className="text-sm flex-1" />
+                <button onClick={() => removeCenterBtn(idx)} className="text-red-400 hover:text-red-300 shrink-0"><Trash2 className="w-4 h-4" /></button>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1">
+                  {BTN_COLORS.map((c) => (
+                    <button key={c} title={c}
+                      className={`w-5 h-5 rounded-full border-2 transition-all ${btn.color === c ? "border-white scale-110" : "border-transparent"}`}
+                      style={{ background: c === "purple" ? "#7c3aed" : c === "blue" ? "#2563eb" : c === "green" ? "#16a34a" : c === "red" ? "#dc2626" : c === "gray" ? "#6b7280" : "#06b6d4" }}
+                      onClick={() => updateCenterBtn(idx, { color: c })} />
+                  ))}
+                </div>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                  <input type="checkbox" checked={!!btn.openInNewTab} onChange={(e) => updateCenterBtn(idx, { openInNewTab: e.target.checked })} />
+                  Abrir em nova aba
+                </label>
+                <Input value={btn.badge ?? ""} onChange={(e) => updateCenterBtn(idx, { badge: e.target.value || undefined })} placeholder="Badge (opcional)" className="text-xs flex-1 h-7" />
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Featured slides */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-sm">Slides em Destaque (Dashboard)</CardTitle>
+              <CardDescription>Carrossel de destaques exibido na coluna direita do Dashboard.</CardDescription>
+            </div>
+            <Button size="sm" variant="outline" onClick={addSlide}><Plus className="w-3.5 h-3.5 mr-1.5" />Adicionar</Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {featuredSlides.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-3">Nenhum slide configurado. Clique em "Adicionar" para criar.</p>
+          )}
+          {featuredSlides.map((slide, idx) => (
+            <div key={slide.id} className="rounded-xl border border-white/8 p-3 space-y-2" style={{ background: "rgba(255,255,255,0.02)" }}>
+              <div className="flex items-start gap-2">
+                <div className="flex flex-col gap-0.5 shrink-0 pt-1">
+                  <button onClick={() => moveSlide(idx, -1)} disabled={idx === 0} className="text-white/30 hover:text-white/70 disabled:opacity-20"><ChevronUp className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => moveSlide(idx, 1)} disabled={idx === featuredSlides.length - 1} className="text-white/30 hover:text-white/70 disabled:opacity-20"><ChevronDown className="w-3.5 h-3.5" /></button>
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input value={slide.title} onChange={(e) => updateSlide(idx, { title: e.target.value })} placeholder="Título" className="text-sm" />
+                    <Input value={slide.subtitle ?? ""} onChange={(e) => updateSlide(idx, { subtitle: e.target.value || undefined })} placeholder="Subtítulo" className="text-sm" />
+                  </div>
+                  <Input value={slide.body ?? ""} onChange={(e) => updateSlide(idx, { body: e.target.value || undefined })} placeholder="Texto / Descrição" className="text-sm" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input value={slide.ctaLabel ?? ""} onChange={(e) => updateSlide(idx, { ctaLabel: e.target.value || undefined })} placeholder="Texto do botão CTA" className="text-sm" />
+                    <Input value={slide.ctaUrl ?? ""} onChange={(e) => updateSlide(idx, { ctaUrl: e.target.value || undefined })} placeholder="URL do CTA" className="text-sm" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input value={slide.badge ?? ""} onChange={(e) => updateSlide(idx, { badge: e.target.value || undefined })} placeholder="Badge (ex: NOVO)" className="text-sm" />
+                    <Input value={slide.imageUrl ?? ""} onChange={(e) => updateSlide(idx, { imageUrl: e.target.value || undefined })} placeholder="URL da imagem (opcional)" className="text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Cor do Badge</Label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {(["purple","blue","green","red","orange","cyan","pink"] as const).map((c) => {
+                        const hex = c==="purple"?"#7c3aed":c==="blue"?"#2563eb":c==="green"?"#16a34a":c==="red"?"#dc2626":c==="orange"?"#ea580c":c==="cyan"?"#0891b2":"#db2777";
+                        return (
+                          <button key={c} title={c}
+                            className={`w-5 h-5 rounded-full border-2 transition-all ${slide.badgeColor===c?"border-white scale-110":"border-transparent opacity-60 hover:opacity-100"}`}
+                            style={{ background: hex }}
+                            onClick={() => updateSlide(idx, { badgeColor: c })} />
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => removeSlide(idx)} className="text-red-400 hover:text-red-300 mt-1 shrink-0"><Trash2 className="w-4 h-4" /></button>
+              </div>
             </div>
           ))}
         </CardContent>

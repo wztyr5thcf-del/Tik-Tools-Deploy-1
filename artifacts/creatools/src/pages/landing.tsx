@@ -6,12 +6,13 @@ import {
   ArrowRight, Menu, X, Gamepad2, Bell, Diamond, Webhook,
   Code2, Eye, EyeOff, Heart, Gift, BarChart3, Zap, Star, Shield,
   MessageCircle, TrendingUp, Sparkles, Play, ChevronRight,
-  Loader2, AlertCircle, CheckCircle2, XCircle, Search, UserPlus,
+  Loader2, AlertCircle, CheckCircle2, XCircle, Search, UserPlus, Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PricingTable, type PricingPlan } from "@/components/pricing-table";
 import { useUIConfig } from "@/context/ui-config-context";
 import { useAuth } from "@/context/auth-context";
+import { useMaintenance } from "@/context/maintenance-context";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface LandingFeature { id: string; title: string; description: string; icon: string; imageUrl: string; demoUrl: string; order: number }
@@ -906,6 +907,7 @@ function AuthModal({ open, initialMode, onClose }: { open: boolean; initialMode:
 export default function LandingPage({ isPreview = false }: { isPreview?: boolean }) {
   const [, setLocation] = useLocation();
   const { config } = useUIConfig();
+  const { maint } = useMaintenance();
   const [landing, setLanding] = useState<LandingContent | null>(null);
   const [partners, setPartners] = useState<LandingPartner[]>([]);
   const [plans, setPlans] = useState<PricingPlan[]>([]);
@@ -965,6 +967,22 @@ export default function LandingPage({ isPreview = false }: { isPreview?: boolean
       `}</style>
 
       <AuthModal open={showAuth} initialMode={authMode} onClose={() => setShowAuth(false)} />
+      {/* Maintenance alert banner — visible when landingAlert is set */}
+      {maint.landingAlert && !isPreview && (
+        <div className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium"
+          style={{ background: "linear-gradient(90deg, rgba(234,179,8,0.95), rgba(249,115,22,0.95))", color: "#1a1200" }}>
+          <Wrench className="w-4 h-4 shrink-0" />
+          <span>{maint.landingAlert}</span>
+          {maint.estimatedReturn && (
+            <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold"
+              style={{ background: "rgba(0,0,0,0.2)" }}>
+              Retorno: {maint.estimatedReturn}
+            </span>
+          )}
+        </div>
+      )}
+      {/* Spacer when banner is active */}
+      {maint.landingAlert && !isPreview && <div className="h-10" />}
       <Nav logo={logo} logoUrl={logoUrl} onLogin={() => openAuth("login")} onSignup={() => openAuth("register")} />
       <Hero hero={landing.hero} onCTA={() => openAuth("register")} />
       <ToolTicker />

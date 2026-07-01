@@ -586,3 +586,27 @@ export const SaveConfigResponse = zod.object({
 })
 
 
+/**
+ * @summary Get public maintenance status
+ */
+export const GetMaintenanceResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * @summary Get UI configuration
+ */
+export const GetUiConfigResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * @summary Get admin maintenance config
+ */
+export const GetAdminMaintenanceResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+
+/**
+ * @summary Get admin UI config
+ */
+export const GetAdminUiConfigResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
+
+

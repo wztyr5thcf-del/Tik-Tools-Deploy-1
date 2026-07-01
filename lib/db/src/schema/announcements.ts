@@ -8,6 +8,7 @@ export const announcementsTable = pgTable("announcements", {
   pinned:    boolean("pinned").notNull().default(false),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   emoji:     text("emoji"),
+  imageUrl:  text("image_url"),
 });
 
 export type AnnouncementRow = typeof announcementsTable.$inferSelect;

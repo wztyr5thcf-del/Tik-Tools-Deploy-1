@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import pg from "pg";
 
 const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
   ? path.resolve(process.cwd(), "../..")
@@ -15,4 +16,19 @@ try {
   }
 } catch {
   // ignore — fall back to DATABASE_URL env var
+}
+
+// Run additive schema migrations at startup
+const dbUrl = process.env.DATABASE_URL;
+if (dbUrl) {
+  const { Pool } = pg;
+  const pool = new Pool({ connectionString: dbUrl });
+  pool.query(`
+    ALTER TABLE IF EXISTS ui_config
+      ADD COLUMN IF NOT EXISTS header_config jsonb,
+      ADD COLUMN IF NOT EXISTS featured_slides jsonb;
+    ALTER TABLE IF EXISTS announcements
+      ADD COLUMN IF NOT EXISTS image_url text;
+  `).catch(() => { /* ignore — table may not exist yet on first boot */ })
+    .finally(() => pool.end());
 }

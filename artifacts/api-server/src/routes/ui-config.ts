@@ -20,6 +20,8 @@ router.patch("/admin/ui-config", requireAdminMiddleware, async (req, res): Promi
   if (body.logoText !== undefined) cfg.logoText = body.logoText;
   if (body.logoUrl !== undefined) cfg.logoUrl = body.logoUrl;
   if (Array.isArray(body.sidebarSections)) cfg.sidebarSections = body.sidebarSections;
+  if (body.headerConfig !== undefined) cfg.headerConfig = body.headerConfig;
+  if (Array.isArray(body.featuredSlides)) cfg.featuredSlides = body.featuredSlides;
   cfg.updatedAt = new Date().toISOString();
 
   await saveUIConfig(cfg);
