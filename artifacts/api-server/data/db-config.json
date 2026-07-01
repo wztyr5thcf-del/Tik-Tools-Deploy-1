@@ -1,0 +1,3 @@
+{
+  "url": "postgresql://postgres:password@helium:5432/heliumdb"
+}
