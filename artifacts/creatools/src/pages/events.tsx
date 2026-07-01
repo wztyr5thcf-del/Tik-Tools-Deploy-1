@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Zap, Plus, Trash2, ChevronDown, ChevronUp, Download, Upload,
-  GripVertical, Edit2, X, Check, Copy, Settings2, Bell,
+  GripVertical, Edit2, X, Check, Copy, Settings2, Bell, PlayCircle,
 } from "lucide-react";
 import {
   DndContext,
@@ -27,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context";
 import { authFetch } from "@/context/auth-context";
-import type { EventRule, RuleAction, TriggerType, ActionType } from "@/hooks/use-events-engine";
+import { useEventsEngine, type EventRule, type RuleAction, type TriggerType, type ActionType, type LiveEventCtx } from "@/hooks/use-events-engine";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -720,11 +720,15 @@ function RuleCard({
   onEdit,
   onDelete,
   onToggle,
+  onTest,
+  testing,
 }: {
   rule: EventRule;
   onEdit: () => void;
   onDelete: () => void;
   onToggle: () => void;
+  onTest: () => void;
+  testing: boolean;
 }) {
   const triggerDef = TRIGGER_DEFS.find((t) => t.id === rule.triggerType);
 
@@ -759,6 +763,23 @@ function RuleCard({
       </div>
       <Switch checked={rule.enabled} onCheckedChange={onToggle} />
       <button
+        onClick={onTest}
+        disabled={testing || rule.actions.length === 0}
+        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-all disabled:opacity-40"
+        style={{
+          background: testing ? "rgba(34,197,94,0.15)" : "rgba(124,58,237,0.15)",
+          color: testing ? "#4ade80" : "#c4b5fd",
+          border: `1px solid ${testing ? "rgba(34,197,94,0.2)" : "rgba(124,58,237,0.2)"}`,
+        }}
+        title="Testar regra com dados de exemplo"
+      >
+        {testing ? (
+          <><Check className="w-3 h-3" /> Disparado!</>
+        ) : (
+          <><PlayCircle className="w-3 h-3" /> Testar</>
+        )}
+      </button>
+      <button
         onClick={onEdit}
         className="p-1.5 rounded-lg hover:bg-white/10"
         style={{ color: "rgba(255,255,255,0.5)" }}
@@ -774,13 +795,28 @@ function RuleCard({
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
+// Sample context used when testing a rule — simulates a gift event
+const SAMPLE_CTX: LiveEventCtx = {
+  event: "gift",
+  user: { nickname: "testUser", uniqueId: "testUser" },
+  giftName: "Rosa",
+  diamondCount: 100,
+  repeatCount: 1,
+  likeCount: 50,
+  viewerCount: 200,
+  comment: "Olá, testando!",
+};
+
 export default function Events() {
   const { token } = useAuth();
   const [rules, setRules] = useState<EventRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editorRule, setEditorRule] = useState<Partial<EventRule> | null>(null);
+  const [testingRuleId, setTestingRuleId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { executeAction } = useEventsEngine();
 
   // Load rules from API
   const loadRules = useCallback(async () => {
@@ -839,6 +875,16 @@ export default function Events() {
       await authFetch(`/events/rules/${id}`, token, { method: "DELETE" });
       setRules((prev) => prev.filter((r) => r.id !== id));
     } catch {}
+  }
+
+  // Test rule — fires all actions with sample data
+  async function testRule(rule: EventRule) {
+    if (testingRuleId) return;
+    setTestingRuleId(rule.id);
+    for (const action of rule.actions) {
+      await executeAction(action, SAMPLE_CTX);
+    }
+    setTimeout(() => setTestingRuleId(null), 2000);
   }
 
   // Export
@@ -990,6 +1036,8 @@ export default function Events() {
                 onEdit={() => setEditorRule(rule)}
                 onDelete={() => deleteRule(rule.id)}
                 onToggle={() => toggleRule(rule.id)}
+                onTest={() => testRule(rule)}
+                testing={testingRuleId === rule.id}
               />
             ))}
           </div>

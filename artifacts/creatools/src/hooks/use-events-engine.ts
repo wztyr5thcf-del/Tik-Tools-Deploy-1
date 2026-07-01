@@ -319,5 +319,5 @@ export function useEventsEngine(options: EventsEngineOptions = {}) {
     [executeAction],
   );
 
-  return { setRules, handleEvent, resetSession, rulesRef };
+  return { setRules, handleEvent, resetSession, rulesRef, executeAction };
 }
