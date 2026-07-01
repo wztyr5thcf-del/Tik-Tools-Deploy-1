@@ -17,7 +17,10 @@ import {
   ChevronDown, ChevronUp, Filter, X, Languages, AlignLeft,
   Swords, Bell, Star, Tv2, Hash,
   Mic, MicOff, Play, Pause, StopCircle, Flag,
+  Volume2, VolumeX,
 } from "lucide-react";
+import { useTTSEngine } from "@/hooks/use-tts-engine";
+import { useSoundAlertsEngine } from "@/hooks/use-sound-alerts-engine";
 
 // ─── Event types ────────────────────────────────────────────────────────────
 type EventType =
@@ -374,6 +377,19 @@ export default function Monitor() {
   const activeUsernameRef = useRef(activeUsername);
   activeUsernameRef.current = activeUsername;
 
+  // TTS & sound alerts engines
+  const ttsEngine = useTTSEngine();
+  const soundEngine = useSoundAlertsEngine();
+  const [ttsEnabled, setTtsEnabled] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("creatools_tts_config") || "{}").enabled === true; }
+    catch { return false; }
+  });
+  // Stable refs so WS handler (memoized) can always access latest handlers
+  const ttsHandleRef = useRef(ttsEngine.handleEvent);
+  ttsHandleRef.current = ttsEngine.handleEvent;
+  const soundHandleRef = useRef(soundEngine.handleEvent);
+  soundHandleRef.current = soundEngine.handleEvent;
+
   const mintJwt = useMintJwt();
   const roomInfo = useGetRoomInfo();
   const { data: giftCatalog } = useGetGiftCatalog({ query: { queryKey: getGetGiftCatalogQueryKey() } });
@@ -546,6 +562,17 @@ export default function Monitor() {
         }
 
         addEvent(ev);
+
+        // TTS + sound alerts
+        const userName = ev.user?.nickname || ev.user?.uniqueId || "alguém";
+        ttsHandleRef.current(ev.event, {
+          user: userName,
+          gift: ev.giftName || "gift",
+          count: String(ev.repeatCount || 1),
+          diamonds: String(ev.diamondCount || 0),
+          message: ev.comment || "",
+        });
+        soundHandleRef.current(ev.event, ev.diamondCount || 0);
       } catch {}
     };
 
@@ -569,6 +596,14 @@ export default function Monitor() {
       }
     );
   }, [mintJwt, connect, roomInfo]);
+
+  // Reload TTS & sound configs whenever monitor mounts (user may have updated settings)
+  useEffect(() => {
+    ttsEngine.reloadConfig();
+    soundEngine.reloadAlerts();
+    setTtsEnabled(ttsEngine.configRef.current.enabled);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (activeUsername) {
@@ -681,6 +716,28 @@ export default function Monitor() {
             {connStatus === "connected" && (
               <Button size="sm" variant="outline" onClick={disconnect}>Disconnect</Button>
             )}
+            {/* TTS quick toggle */}
+            <button
+              onClick={() => {
+                ttsEngine.reloadConfig();
+                const next = !ttsEngine.configRef.current.enabled;
+                const updated = { ...ttsEngine.configRef.current, enabled: next };
+                localStorage.setItem("creatools_tts_config", JSON.stringify(updated));
+                ttsEngine.reloadConfig();
+                setTtsEnabled(next);
+                if (!next) ttsEngine.stopAll();
+              }}
+              title={ttsEnabled ? "TTS ativo — clique para desativar" : "TTS desativado — clique para ativar"}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all"
+              style={{
+                background: ttsEnabled ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.05)",
+                color: ttsEnabled ? "#a78bfa" : "rgba(255,255,255,0.3)",
+                border: `1px solid ${ttsEnabled ? "rgba(124,58,237,0.3)" : "rgba(255,255,255,0.08)"}`,
+              }}
+            >
+              {ttsEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+              TTS
+            </button>
           </div>
         )}
       </div>
