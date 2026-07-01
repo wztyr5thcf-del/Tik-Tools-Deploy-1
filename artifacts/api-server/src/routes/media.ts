@@ -2,7 +2,9 @@ import { Router, type Request, type Response } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import sizeOf from "image-size";
 import { requireAuth } from "./auth";
+import { getUserById } from "../lib/users-store";
 
 const router = Router();
 
@@ -22,6 +24,8 @@ export interface MediaItem {
   category: string;
   size: number;
   mimeType: string;
+  width: number | null;
+  height: number | null;
   createdAt: string;
 }
 
@@ -48,7 +52,17 @@ function totalUsed(items: MediaItem[]): number {
   return items.reduce((sum, it) => sum + it.size, 0);
 }
 
-const storage = multer.diskStorage({
+function extractDimensions(filePath: string): { width: number | null; height: number | null } {
+  try {
+    const buf = fs.readFileSync(filePath);
+    const dims = sizeOf(buf);
+    return { width: dims.width ?? null, height: dims.height ?? null };
+  } catch {
+    return { width: null, height: null };
+  }
+}
+
+const diskStorage = multer.diskStorage({
   destination: (req, _file, cb) => {
     const userId = (req as Request & { userId: string }).userId;
     const dir = userDir(userId);
@@ -62,7 +76,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({
-  storage,
+  storage: diskStorage,
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (ALLOWED_TYPES.includes(file.mimetype)) {
@@ -81,59 +95,74 @@ router.get("/media", requireAuth, (req: Request, res: Response): void => {
   res.json({ items });
 });
 
-// GET /media/storage — storage usage
-router.get("/media/storage", requireAuth, (req: Request, res: Response): void => {
+// GET /media/storage — storage usage (plan fetched server-side)
+router.get("/media/storage", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = (req as Request & { userId: string }).userId;
   const items = readIndex(userId);
   const used = totalUsed(items);
-  const plan = (req.query.plan as string) ?? "free";
+
+  const user = await getUserById(userId);
+  const plan = user?.plan ?? "free";
   const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
-  res.json({ used, limit, count: items.length, categories: CATEGORIES });
+
+  res.json({ used, limit, plan, count: items.length, categories: CATEGORIES });
 });
 
-// POST /media/upload — upload a file
-router.post("/media/upload", requireAuth, (req: Request, res: Response): void => {
+// POST /media/upload — upload a file (plan enforced server-side)
+router.post("/media/upload", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = (req as Request & { userId: string }).userId;
 
-  const doUpload = upload.single("file");
-  doUpload(req, res, (err) => {
-    if (err) {
-      res.status(400).json({ error: (err as Error).message });
-      return;
-    }
-    if (!req.file) {
-      res.status(400).json({ error: "Nenhum arquivo enviado." });
-      return;
-    }
+  // 1. Fetch user plan server-side — do NOT trust client-supplied plan
+  const user = await getUserById(userId);
+  const plan = user?.plan ?? "free";
+  const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
 
-    const items = readIndex(userId);
-    const plan = (req.body.plan as string) ?? "free";
-    const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
-    const used = totalUsed(items);
-
-    if (used + req.file.size > limit) {
-      fs.unlinkSync(req.file.path);
-      res.status(413).json({ error: "Limite de armazenamento atingido. Faça upgrade do plano." });
-      return;
-    }
-
-    const category = CATEGORIES.includes(req.body.category) ? (req.body.category as string) : "Geral";
-
-    const item: MediaItem = {
-      id: crypto.randomUUID(),
-      filename: req.file.filename,
-      originalName: req.body.name?.trim() || req.file.originalname,
-      category,
-      size: req.file.size,
-      mimeType: req.file.mimetype,
-      createdAt: new Date().toISOString(),
-    };
-
-    items.unshift(item);
-    writeIndex(userId, items);
-
-    res.json({ item, url: `/api/media/files/${userId}/${item.filename}` });
+  // 2. Run multer (wrap callback in promise)
+  const multerErr = await new Promise<Error | null>((resolve) => {
+    upload.single("file")(req, res, (err) => resolve(err as Error | null));
   });
+
+  if (multerErr) {
+    res.status(400).json({ error: multerErr.message });
+    return;
+  }
+
+  if (!req.file) {
+    res.status(400).json({ error: "Nenhum arquivo enviado." });
+    return;
+  }
+
+  // 3. Check quota against server-side plan
+  const items = readIndex(userId);
+  const used = totalUsed(items);
+
+  if (used + req.file.size > limit) {
+    fs.unlinkSync(req.file.path);
+    res.status(413).json({ error: "Limite de armazenamento atingido. Faça upgrade do plano." });
+    return;
+  }
+
+  // 4. Extract image dimensions
+  const { width, height } = extractDimensions(req.file.path);
+
+  // 5. Build metadata entry
+  const category = CATEGORIES.includes(req.body.category) ? (req.body.category as string) : "Geral";
+  const item: MediaItem = {
+    id: crypto.randomUUID(),
+    filename: req.file.filename,
+    originalName: req.body.name?.trim() || req.file.originalname,
+    category,
+    size: req.file.size,
+    mimeType: req.file.mimetype,
+    width,
+    height,
+    createdAt: new Date().toISOString(),
+  };
+
+  items.unshift(item);
+  writeIndex(userId, items);
+
+  res.json({ item, url: `/api/media/files/${userId}/${item.filename}` });
 });
 
 // PATCH /media/:id — rename / change category

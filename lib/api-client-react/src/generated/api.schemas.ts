@@ -370,6 +370,59 @@ export interface EventRuleImportResponse {
   imported: number;
 }
 
+export type MediaPatchInputCategory = typeof MediaPatchInputCategory[keyof typeof MediaPatchInputCategory];
+
+
+export const MediaPatchInputCategory = {
+  Geral: 'Geral',
+  Banners: 'Banners',
+  Logos: 'Logos',
+  QR_Codes: 'QR Codes',
+  Thumbnails: 'Thumbnails',
+} as const;
+
+export interface MediaPatchInput {
+  name?: string;
+  category?: MediaPatchInputCategory;
+}
+
+export interface MediaItem {
+  id: string;
+  filename: string;
+  originalName: string;
+  category: string;
+  /** File size in bytes */
+  size: number;
+  mimeType: string;
+  /** Image width in pixels (null if not extractable) */
+  width: number | null;
+  /** Image height in pixels (null if not extractable) */
+  height: number | null;
+  createdAt: string;
+}
+
+export interface MediaListResponse {
+  items: MediaItem[];
+}
+
+export interface MediaUploadResponse {
+  item: MediaItem;
+  /** Public URL path for the uploaded file */
+  url: string;
+}
+
+export interface MediaStorageResponse {
+  /** Bytes used */
+  used: number;
+  /** Bytes allowed by the user plan */
+  limit: number;
+  /** User plan (free, basic, pro) */
+  plan: string;
+  /** Number of files stored */
+  count: number;
+  categories: string[];
+}
+
 export type GetLiveStatusParams = {
 /**
  * TikTok username (without @)
@@ -471,5 +524,13 @@ video_id: string;
 export type GetLiveAnalyticsUserInteractionsParams = {
 room_id: string;
 count?: number;
+};
+
+export type PatchMedia200 = {
+  item: MediaItem;
+};
+
+export type DeleteMedia200 = {
+  ok: boolean;
 };
 

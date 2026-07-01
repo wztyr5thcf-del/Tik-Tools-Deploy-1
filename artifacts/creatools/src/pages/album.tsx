@@ -23,6 +23,8 @@ interface MediaItem {
   category: string;
   size: number;
   mimeType: string;
+  width: number | null;
+  height: number | null;
   createdAt: string;
 }
 

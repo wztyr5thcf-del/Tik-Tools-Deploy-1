@@ -762,3 +762,72 @@ export const GetAdminMaintenanceResponse = zod.record(zod.string(), zod.unknown(
 export const GetAdminUiConfigResponse = zod.record(zod.string(), zod.unknown()).describe('Raw passthrough response from tik.tools API')
 
 
+/**
+ * @summary List user media items
+ */
+export const ListMediaResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "originalName": zod.string(),
+  "category": zod.string(),
+  "size": zod.number().describe('File size in bytes'),
+  "mimeType": zod.string(),
+  "width": zod.number().nullable().describe('Image width in pixels (null if not extractable)'),
+  "height": zod.number().nullable().describe('Image height in pixels (null if not extractable)'),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Get storage usage (plan limit enforced server-side)
+ */
+export const GetMediaStorageResponse = zod.object({
+  "used": zod.number().describe('Bytes used'),
+  "limit": zod.number().describe('Bytes allowed by the user plan'),
+  "plan": zod.string().describe('User plan (free, basic, pro)'),
+  "count": zod.number().describe('Number of files stored'),
+  "categories": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Rename or change category of a media item
+ */
+export const PatchMediaParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const PatchMediaBody = zod.object({
+  "name": zod.string().optional(),
+  "category": zod.enum(['Geral', 'Banners', 'Logos', 'QR Codes', 'Thumbnails']).optional()
+})
+
+export const PatchMediaResponse = zod.object({
+  "item": zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "originalName": zod.string(),
+  "category": zod.string(),
+  "size": zod.number().describe('File size in bytes'),
+  "mimeType": zod.string(),
+  "width": zod.number().nullable().describe('Image width in pixels (null if not extractable)'),
+  "height": zod.number().nullable().describe('Image height in pixels (null if not extractable)'),
+  "createdAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary Delete a media item and its file
+ */
+export const DeleteMediaParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteMediaResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+

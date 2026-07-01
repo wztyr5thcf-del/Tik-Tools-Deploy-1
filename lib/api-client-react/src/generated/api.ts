@@ -27,6 +27,7 @@ import type {
   CheckAliveParams,
   ConfigInput,
   CreateWebhookRequest,
+  DeleteMedia200,
   EventRule,
   EventRuleImportRequest,
   EventRuleImportResponse,
@@ -57,8 +58,12 @@ import type {
   LiveConnectParams,
   LiveCountsResponse,
   LiveStatus,
+  MediaListResponse,
+  MediaPatchInput,
+  MediaStorageResponse,
   OkResponse,
   PassthroughResponse,
+  PatchMedia200,
   RateLimits,
   RegionalRanklistRequest,
   RoomInfo,
@@ -3817,4 +3822,299 @@ export function useGetAdminUiConfig<TData = Awaited<ReturnType<typeof getAdminUi
 
 
 
+
+export const getListMediaUrl = () => {
+
+
+
+
+  return `/api/media`
+}
+
+/**
+ * @summary List user media items
+ */
+export const listMedia = async ( options?: RequestInit): Promise<MediaListResponse> => {
+
+  return customFetch<MediaListResponse>(getListMediaUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMediaQueryKey = () => {
+    return [
+    `/api/media`
+    ] as const;
+    }
+
+
+export const getListMediaQueryOptions = <TData = Awaited<ReturnType<typeof listMedia>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMedia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMediaQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMedia>>> = ({ signal }) => listMedia({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMedia>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMediaQueryResult = NonNullable<Awaited<ReturnType<typeof listMedia>>>
+export type ListMediaQueryError = ErrorType<void>
+
+
+/**
+ * @summary List user media items
+ */
+
+export function useListMedia<TData = Awaited<ReturnType<typeof listMedia>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMedia>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMediaQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMediaStorageUrl = () => {
+
+
+
+
+  return `/api/media/storage`
+}
+
+/**
+ * @summary Get storage usage (plan limit enforced server-side)
+ */
+export const getMediaStorage = async ( options?: RequestInit): Promise<MediaStorageResponse> => {
+
+  return customFetch<MediaStorageResponse>(getGetMediaStorageUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMediaStorageQueryKey = () => {
+    return [
+    `/api/media/storage`
+    ] as const;
+    }
+
+
+export const getGetMediaStorageQueryOptions = <TData = Awaited<ReturnType<typeof getMediaStorage>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMediaStorage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMediaStorageQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMediaStorage>>> = ({ signal }) => getMediaStorage({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMediaStorage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMediaStorageQueryResult = NonNullable<Awaited<ReturnType<typeof getMediaStorage>>>
+export type GetMediaStorageQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get storage usage (plan limit enforced server-side)
+ */
+
+export function useGetMediaStorage<TData = Awaited<ReturnType<typeof getMediaStorage>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMediaStorage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMediaStorageQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPatchMediaUrl = (id: string,) => {
+
+
+
+
+  return `/api/media/${id}`
+}
+
+/**
+ * @summary Rename or change category of a media item
+ */
+export const patchMedia = async (id: string,
+    mediaPatchInput: MediaPatchInput, options?: RequestInit): Promise<PatchMedia200> => {
+
+  return customFetch<PatchMedia200>(getPatchMediaUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(mediaPatchInput)
+  }
+);}
+
+
+
+
+export const getPatchMediaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchMedia>>, TError,{id: string;data: BodyType<MediaPatchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchMedia>>, TError,{id: string;data: BodyType<MediaPatchInput>}, TContext> => {
+
+const mutationKey = ['patchMedia'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchMedia>>, {id: string;data: BodyType<MediaPatchInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  patchMedia(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchMediaMutationResult = NonNullable<Awaited<ReturnType<typeof patchMedia>>>
+    export type PatchMediaMutationBody = BodyType<MediaPatchInput>
+    export type PatchMediaMutationError = ErrorType<void>
+
+    /**
+ * @summary Rename or change category of a media item
+ */
+export const usePatchMedia = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchMedia>>, TError,{id: string;data: BodyType<MediaPatchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof patchMedia>>,
+        TError,
+        {id: string;data: BodyType<MediaPatchInput>},
+        TContext
+      > => {
+      return useMutation(getPatchMediaMutationOptions(options));
+    }
+
+export const getDeleteMediaUrl = (id: string,) => {
+
+
+
+
+  return `/api/media/${id}`
+}
+
+/**
+ * @summary Delete a media item and its file
+ */
+export const deleteMedia = async (id: string, options?: RequestInit): Promise<DeleteMedia200> => {
+
+  return customFetch<DeleteMedia200>(getDeleteMediaUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteMediaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMedia>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMedia>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['deleteMedia'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMedia>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMedia(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMediaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMedia>>>
+
+    export type DeleteMediaMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete a media item and its file
+ */
+export const useDeleteMedia = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMedia>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMedia>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getDeleteMediaMutationOptions(options));
+    }
 
