@@ -18,7 +18,8 @@
       "plan": "pro",
       "isAdmin": true,
       "roleId": "role_aawmmmwp8ypmqzkkut2",
-      "lastLoginAt": "2026-07-01T00:29:02.847Z"
+      "lastLoginAt": "2026-07-01T00:29:02.847Z",
+      "tiktokUsername": "seupiva"
     },
     {
       "id": "9quluplzptmqzdlzgm",
@@ -47,6 +48,20 @@
       "createdAt": "2026-06-29T18:59:14.192Z",
       "plan": "free",
       "isAdmin": false
+    },
+    {
+      "id": "lh65qbyxt8mr1g7wer",
+      "email": "teste@4.com",
+      "name": "testando ap",
+      "passwordHash": "$2b$10$KkPC89pQrL.zlRWeBACrFuR4WYUB2.lTstrvQUxiamKC.Xo9WuBHW",
+      "createdAt": "2026-07-01T02:20:41.810Z",
+      "lastLoginAt": "2026-07-01T02:20:41.810Z",
+      "plan": "free",
+      "isAdmin": false,
+      "tiktokUsername": "tttttttslmlsds",
+      "tiktokVerified": true,
+      "tiktokLinkedAt": "2026-07-01T02:20:41.810Z",
+      "roleId": "role_aawmmmwp8ypmqzkkut2"
     }
   ]
 }

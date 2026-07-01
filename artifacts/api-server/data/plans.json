@@ -22,7 +22,10 @@
       ],
       "color": "gray",
       "order": 0,
-      "isActive": true
+      "isActive": true,
+      "maxLiveHoursPerMonth": -1,
+      "maxLiveAnalyses": -1,
+      "maxWebhooks": 0
     },
     {
       "id": "basic",
@@ -58,7 +61,10 @@
       ],
       "color": "cyan",
       "order": 1,
-      "isActive": true
+      "isActive": true,
+      "maxLiveHoursPerMonth": -1,
+      "maxLiveAnalyses": -1,
+      "maxWebhooks": 0
     },
     {
       "id": "pro",
@@ -95,7 +101,29 @@
       ],
       "color": "violet",
       "order": 2,
-      "isActive": true
+      "isActive": true,
+      "maxLiveHoursPerMonth": -1,
+      "maxLiveAnalyses": -1,
+      "maxWebhooks": 0
+    },
+    {
+      "id": "influ",
+      "name": "Influenciadores",
+      "description": "",
+      "price": 0,
+      "currency": "BRL",
+      "billingPeriod": "monthly",
+      "permissions": [],
+      "tiktokUsernameChangesPerWeek": 1,
+      "maxConcurrentWs": 1,
+      "maxApiCallsPerWindow": 50,
+      "maxLiveHoursPerMonth": 10,
+      "maxLiveAnalyses": 50,
+      "maxWebhooks": 0,
+      "features": [],
+      "color": "gray",
+      "order": 3,
+      "isActive": false
     }
   ]
 }

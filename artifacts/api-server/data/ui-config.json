@@ -1,7 +1,7 @@
 {
   "navType": "sidebar",
-  "primaryColor": "180 100% 50%",
-  "secondaryColor": "333 99% 52%",
+  "primaryColor": "48 97% 52%",
+  "secondaryColor": "142 71% 45%",
   "logoText": "Creatools",
   "logoUrl": "",
   "sidebarSections": [
@@ -242,5 +242,5 @@
       ]
     }
   ],
-  "updatedAt": "2026-07-01T00:37:39.290Z"
+  "updatedAt": "2026-07-01T02:40:29.372Z"
 }
