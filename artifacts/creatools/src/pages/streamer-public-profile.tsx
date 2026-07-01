@@ -16,6 +16,13 @@ interface SocialLinks {
   custom?: Array<{ label: string; url: string }>;
 }
 
+interface TopGifter {
+  username: string;
+  displayName: string;
+  avatar: string | null;
+  diamondCount: number;
+}
+
 interface PublicProfile {
   username: string;
   displayName: string;
@@ -27,6 +34,8 @@ interface PublicProfile {
   socialLinks: SocialLinks;
   isLive: boolean;
   viewerCount: number | null;
+  likeCount: number | null;
+  topGifters: TopGifter[];
 }
 
 function formatCount(n: number): string {
@@ -188,20 +197,30 @@ export default function StreamerPublicProfile() {
 
           {/* LIVE badge */}
           {profile.isLive && (
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30">
-              <div className="flex items-center gap-1.5">
-                <Radio className="w-4 h-4 text-red-400 animate-pulse" />
-                <span className="text-sm font-bold text-red-400 tracking-wide">AO VIVO</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30">
+                <div className="flex items-center gap-1.5">
+                  <Radio className="w-4 h-4 text-red-400 animate-pulse" />
+                  <span className="text-sm font-bold text-red-400 tracking-wide">AO VIVO AGORA</span>
+                </div>
+                {profile.viewerCount !== null && (
+                  <>
+                    <Separator orientation="vertical" className="h-4 bg-red-500/30" />
+                    <span className="text-xs text-red-300 flex items-center gap-1">
+                      <Eye className="w-3 h-3" />
+                      {formatCount(profile.viewerCount)} espectadores
+                    </span>
+                  </>
+                )}
+                {profile.likeCount !== null && (
+                  <>
+                    <Separator orientation="vertical" className="h-4 bg-red-500/30" />
+                    <span className="text-xs text-red-300 flex items-center gap-1">
+                      ♥ {formatCount(profile.likeCount)}
+                    </span>
+                  </>
+                )}
               </div>
-              {profile.viewerCount !== null && (
-                <>
-                  <Separator orientation="vertical" className="h-4 bg-red-500/30" />
-                  <span className="text-xs text-red-300 flex items-center gap-1">
-                    <Eye className="w-3 h-3" />
-                    {formatCount(profile.viewerCount)} espectadores
-                  </span>
-                </>
-              )}
             </div>
           )}
 
@@ -254,6 +273,50 @@ export default function StreamerPublicProfile() {
                   color="text-zinc-300 border-zinc-700 bg-zinc-800/50 hover:bg-zinc-700/50 hover:border-zinc-600"
                 />
               ))}
+            </div>
+          )}
+
+          {/* Follower stats */}
+          {profile.followerCount !== null && (
+            <div className="flex items-center gap-4 px-1">
+              <div className="text-center">
+                <p className="text-base font-bold text-white">{formatCount(profile.followerCount)}</p>
+                <p className="text-xs text-zinc-500">Seguidores</p>
+              </div>
+              {profile.isLive && profile.viewerCount !== null && (
+                <>
+                  <Separator orientation="vertical" className="h-8 bg-zinc-800" />
+                  <div className="text-center">
+                    <p className="text-base font-bold text-red-400">{formatCount(profile.viewerCount)}</p>
+                    <p className="text-xs text-zinc-500">Ao vivo agora</p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Top gifters (current session ranking) */}
+          {profile.topGifters.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-amber-400">💎</span> Top Gifters
+              </p>
+              <div className="space-y-1.5">
+                {profile.topGifters.map((g, i) => (
+                  <div key={g.username} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                    <span className="text-xs font-bold text-zinc-500 w-4 text-center">{i + 1}</span>
+                    {g.avatar ? (
+                      <img src={g.avatar} alt="" className="w-7 h-7 rounded-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs text-zinc-400">?</div>
+                    )}
+                    <span className="text-sm text-zinc-200 flex-1 truncate">{g.displayName || g.username}</span>
+                    <span className="text-xs text-amber-400 flex items-center gap-0.5">
+                      💎 {formatCount(g.diamondCount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

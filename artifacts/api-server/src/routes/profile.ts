@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from "express";
+import { Router, type Request, type Response as ExpressResponse } from "express";
 import fs from "fs";
 import path from "path";
 import { requireAuth } from "./auth";
@@ -28,13 +28,16 @@ export interface SocialLinks {
   custom?: Array<{ label: string; url: string }>;
 }
 
+export interface TopGifter {
+  username: string;
+  displayName: string;
+  avatar: string | null;
+  diamondCount: number;
+}
+
 function parseSocialLinks(raw: string | null | undefined): SocialLinks {
   if (!raw) return {};
   try { return JSON.parse(raw) as SocialLinks; } catch { return {}; }
-}
-
-function serializeSocialLinks(links: SocialLinks): string {
-  return JSON.stringify(links);
 }
 
 function publicProfileData(user: Awaited<ReturnType<typeof getUserById>>) {
@@ -47,8 +50,12 @@ function publicProfileData(user: Awaited<ReturnType<typeof getUserById>>) {
   };
 }
 
+async function fetchWithTimeout(url: string, opts?: RequestInit, ms = 5000): Promise<Response> {
+  return fetch(url, { ...opts, signal: AbortSignal.timeout(ms) });
+}
+
 // GET /profile — current user's public profile settings (auth required)
-router.get("/profile", requireAuth, async (req: Request, res: Response): Promise<void> => {
+router.get("/profile", requireAuth, async (req: Request, res: ExpressResponse): Promise<void> => {
   const userId = (req as Request & { userId: string }).userId;
   const user = await getUserById(userId);
   if (!user) { res.status(404).json({ error: "Usuário não encontrado" }); return; }
@@ -56,7 +63,7 @@ router.get("/profile", requireAuth, async (req: Request, res: Response): Promise
 });
 
 // PATCH /profile — update public profile settings (auth required)
-router.patch("/profile", requireAuth, async (req: Request, res: Response): Promise<void> => {
+router.patch("/profile", requireAuth, async (req: Request, res: ExpressResponse): Promise<void> => {
   const userId = (req as Request & { userId: string }).userId;
   const { publicProfileEnabled, profileBio, profileBanner, socialLinks } = req.body as {
     publicProfileEnabled?: boolean;
@@ -69,7 +76,7 @@ router.patch("/profile", requireAuth, async (req: Request, res: Response): Promi
   if (typeof publicProfileEnabled === "boolean") updates.publicProfileEnabled = publicProfileEnabled;
   if (typeof profileBio === "string") updates.profileBio = profileBio.trim().slice(0, 300) || null;
   if (typeof profileBanner === "string") updates.profileBanner = profileBanner.trim() || null;
-  if (socialLinks !== undefined) updates.socialLinks = serializeSocialLinks(socialLinks);
+  if (socialLinks !== undefined) updates.socialLinks = JSON.stringify(socialLinks);
 
   const updated = await updateUser(userId, updates);
   if (!updated) { res.status(404).json({ error: "Usuário não encontrado" }); return; }
@@ -78,7 +85,7 @@ router.patch("/profile", requireAuth, async (req: Request, res: Response): Promi
 });
 
 // GET /profile/public/:username — public, no auth required
-router.get("/profile/public/:username", async (req: Request, res: Response): Promise<void> => {
+router.get("/profile/public/:username", async (req: Request, res: ExpressResponse): Promise<void> => {
   const username = String(req.params.username);
 
   let user: Awaited<ReturnType<typeof getUserByTiktokUsername>>;
@@ -89,24 +96,73 @@ router.get("/profile/public/:username", async (req: Request, res: Response): Pro
     return;
   }
 
-  // Fetch live status — best-effort, never fails the request
-  let isLive = false;
-  let viewerCount: number | null = null;
   const apiKey = getApiKey();
+
+  // Parallel: live_status + top gifters (best-effort, no apiKey guard on gifters)
+  let isLive = false;
+  let roomId: string | null = null;
+  let viewerCount: number | null = null;
+  let likeCount: number | null = null;
+  let topGifters: TopGifter[] = [];
+
   if (apiKey) {
-    try {
-      const r = await fetch(
-        `${TIKTOOLS_API}/webcast/live_status?apiKey=${encodeURIComponent(apiKey)}&unique_id=${encodeURIComponent(username)}`,
-        { signal: AbortSignal.timeout(5000) }
-      );
-      if (r.ok) {
-        const d = await r.json() as {
-          data?: { is_live?: boolean; live_room?: { viewer_count?: number } };
+    const [liveRes, giftersRes] = await Promise.allSettled([
+      fetchWithTimeout(
+        `${TIKTOOLS_API}/webcast/live_status?apiKey=${encodeURIComponent(apiKey)}&unique_id=${encodeURIComponent(username)}`
+      ),
+      fetchWithTimeout(
+        `${TIKTOOLS_API}/api/gifters/top?apiKey=${encodeURIComponent(apiKey)}&creator=${encodeURIComponent(username)}&limit=5`
+      ),
+    ]);
+
+    // Parse live status
+    if (liveRes.status === "fulfilled" && liveRes.value.ok) {
+      try {
+        const d = await liveRes.value.json() as {
+          data?: { is_live?: boolean; room_id?: string };
         };
         isLive = d.data?.is_live ?? false;
-        viewerCount = isLive ? (d.data?.live_room?.viewer_count ?? null) : null;
-      }
-    } catch { /* ignore — live status is informational */ }
+        roomId = d.data?.room_id ?? null;
+      } catch { /* ignore */ }
+    }
+
+    // If live, fetch room_info for viewer + like count
+    if (isLive && roomId) {
+      try {
+        const roomRes = await fetchWithTimeout(`${TIKTOOLS_API}/webcast/room_info?apiKey=${encodeURIComponent(apiKey)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ room_id: roomId }),
+        });
+        if (roomRes.ok) {
+          const d = await roomRes.json() as {
+            data?: { user_count?: number; like_count?: number };
+          };
+          viewerCount = d.data?.user_count ?? null;
+          likeCount = d.data?.like_count ?? null;
+        }
+      } catch { /* ignore — live stats are informational */ }
+    }
+
+    // Parse top gifters
+    if (giftersRes.status === "fulfilled" && giftersRes.value.ok) {
+      try {
+        const d = await giftersRes.value.json() as {
+          data?: Array<{
+            username?: string;
+            nickname?: string;
+            avatar_thumb?: { url_list?: string[] };
+            diamond_count?: number;
+          }>;
+        };
+        topGifters = (d.data ?? []).slice(0, 5).map((g) => ({
+          username: g.username ?? "",
+          displayName: g.nickname ?? g.username ?? "",
+          avatar: g.avatar_thumb?.url_list?.[0] ?? null,
+          diamondCount: g.diamond_count ?? 0,
+        }));
+      } catch { /* ignore */ }
+    }
   }
 
   res.json({
@@ -120,6 +176,8 @@ router.get("/profile/public/:username", async (req: Request, res: Response): Pro
     socialLinks: parseSocialLinks(user.socialLinks),
     isLive,
     viewerCount,
+    likeCount,
+    topGifters,
   });
 });
 

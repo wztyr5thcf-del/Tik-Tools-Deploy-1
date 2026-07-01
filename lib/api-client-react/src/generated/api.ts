@@ -66,12 +66,15 @@ import type {
   OkResponse,
   PassthroughResponse,
   PatchMedia200,
+  PublicProfileSettings,
+  PublicProfileUpdate,
   RateLimits,
   RegionalRanklistRequest,
   RoomInfo,
   RoomInfoRequest,
   SignUrlRequest,
   SignedUrlData,
+  StreamerPublicProfile,
   UserProfile,
   WebcastFetchData,
   WebcastFetchRequest,
@@ -4197,4 +4200,228 @@ export const useDeleteMedia = <TError = ErrorType<void>,
       > => {
       return useMutation(getDeleteMediaMutationOptions(options));
     }
+
+export const getGetPublicProfileSettingsUrl = () => {
+
+
+
+
+  return `/api/profile`
+}
+
+/**
+ * @summary Get current user's public profile settings
+ */
+export const getPublicProfileSettings = async ( options?: RequestInit): Promise<PublicProfileSettings> => {
+
+  return customFetch<PublicProfileSettings>(getGetPublicProfileSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicProfileSettingsQueryKey = () => {
+    return [
+    `/api/profile`
+    ] as const;
+    }
+
+
+export const getGetPublicProfileSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getPublicProfileSettings>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicProfileSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicProfileSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicProfileSettings>>> = ({ signal }) => getPublicProfileSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicProfileSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicProfileSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicProfileSettings>>>
+export type GetPublicProfileSettingsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get current user's public profile settings
+ */
+
+export function useGetPublicProfileSettings<TData = Awaited<ReturnType<typeof getPublicProfileSettings>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicProfileSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicProfileSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdatePublicProfileSettingsUrl = () => {
+
+
+
+
+  return `/api/profile`
+}
+
+/**
+ * @summary Update current user's public profile settings
+ */
+export const updatePublicProfileSettings = async (publicProfileUpdate: PublicProfileUpdate, options?: RequestInit): Promise<PublicProfileSettings> => {
+
+  return customFetch<PublicProfileSettings>(getUpdatePublicProfileSettingsUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(publicProfileUpdate)
+  }
+);}
+
+
+
+
+export const getUpdatePublicProfileSettingsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePublicProfileSettings>>, TError,{data: BodyType<PublicProfileUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePublicProfileSettings>>, TError,{data: BodyType<PublicProfileUpdate>}, TContext> => {
+
+const mutationKey = ['updatePublicProfileSettings'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePublicProfileSettings>>, {data: BodyType<PublicProfileUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updatePublicProfileSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePublicProfileSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updatePublicProfileSettings>>>
+    export type UpdatePublicProfileSettingsMutationBody = BodyType<PublicProfileUpdate>
+    export type UpdatePublicProfileSettingsMutationError = ErrorType<void>
+
+    /**
+ * @summary Update current user's public profile settings
+ */
+export const useUpdatePublicProfileSettings = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePublicProfileSettings>>, TError,{data: BodyType<PublicProfileUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePublicProfileSettings>>,
+        TError,
+        {data: BodyType<PublicProfileUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdatePublicProfileSettingsMutationOptions(options));
+    }
+
+export const getGetStreamerPublicProfileUrl = (username: string,) => {
+
+
+
+
+  return `/api/profile/public/${username}`
+}
+
+/**
+ * @summary Get streamer public profile (no auth required)
+ */
+export const getStreamerPublicProfile = async (username: string, options?: RequestInit): Promise<StreamerPublicProfile> => {
+
+  return customFetch<StreamerPublicProfile>(getGetStreamerPublicProfileUrl(username),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStreamerPublicProfileQueryKey = (username: string,) => {
+    return [
+    `/api/profile/public/${username}`
+    ] as const;
+    }
+
+
+export const getGetStreamerPublicProfileQueryOptions = <TData = Awaited<ReturnType<typeof getStreamerPublicProfile>>, TError = ErrorType<void>>(username: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStreamerPublicProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStreamerPublicProfileQueryKey(username);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStreamerPublicProfile>>> = ({ signal }) => getStreamerPublicProfile(username, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: username !== null && username !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStreamerPublicProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStreamerPublicProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getStreamerPublicProfile>>>
+export type GetStreamerPublicProfileQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get streamer public profile (no auth required)
+ */
+
+export function useGetStreamerPublicProfile<TData = Awaited<ReturnType<typeof getStreamerPublicProfile>>, TError = ErrorType<void>>(
+ username: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStreamerPublicProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStreamerPublicProfileQueryOptions(username,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

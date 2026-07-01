@@ -858,3 +858,96 @@ export const DeleteMediaResponse = zod.object({
 })
 
 
+/**
+ * @summary Get current user's public profile settings
+ */
+export const GetPublicProfileSettingsResponse = zod.object({
+  "publicProfileEnabled": zod.boolean(),
+  "profileBio": zod.string().nullish(),
+  "profileBanner": zod.string().nullish(),
+  "socialLinks": zod.object({
+  "instagram": zod.string().optional(),
+  "youtube": zod.string().optional(),
+  "whatsapp": zod.string().optional(),
+  "discord": zod.string().optional(),
+  "custom": zod.array(zod.object({
+  "label": zod.string(),
+  "url": zod.string()
+})).optional()
+})
+})
+
+
+/**
+ * @summary Update current user's public profile settings
+ */
+export const UpdatePublicProfileSettingsBody = zod.object({
+  "publicProfileEnabled": zod.boolean().optional(),
+  "profileBio": zod.string().optional(),
+  "profileBanner": zod.string().optional(),
+  "socialLinks": zod.object({
+  "instagram": zod.string().optional(),
+  "youtube": zod.string().optional(),
+  "whatsapp": zod.string().optional(),
+  "discord": zod.string().optional(),
+  "custom": zod.array(zod.object({
+  "label": zod.string(),
+  "url": zod.string()
+})).optional()
+}).optional()
+})
+
+export const UpdatePublicProfileSettingsResponse = zod.object({
+  "publicProfileEnabled": zod.boolean(),
+  "profileBio": zod.string().nullish(),
+  "profileBanner": zod.string().nullish(),
+  "socialLinks": zod.object({
+  "instagram": zod.string().optional(),
+  "youtube": zod.string().optional(),
+  "whatsapp": zod.string().optional(),
+  "discord": zod.string().optional(),
+  "custom": zod.array(zod.object({
+  "label": zod.string(),
+  "url": zod.string()
+})).optional()
+})
+})
+
+
+/**
+ * @summary Get streamer public profile (no auth required)
+ */
+export const GetStreamerPublicProfileParams = zod.object({
+  "username": zod.coerce.string()
+})
+
+export const GetStreamerPublicProfileResponse = zod.object({
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "avatar": zod.string().nullish(),
+  "followerCount": zod.number().nullish(),
+  "verified": zod.boolean(),
+  "bio": zod.string().nullish(),
+  "banner": zod.string().nullish(),
+  "socialLinks": zod.object({
+  "instagram": zod.string().optional(),
+  "youtube": zod.string().optional(),
+  "whatsapp": zod.string().optional(),
+  "discord": zod.string().optional(),
+  "custom": zod.array(zod.object({
+  "label": zod.string(),
+  "url": zod.string()
+})).optional()
+}),
+  "isLive": zod.boolean(),
+  "viewerCount": zod.number().nullish(),
+  "likeCount": zod.number().nullish(),
+  "topGifters": zod.array(zod.object({
+  "username": zod.string(),
+  "displayName": zod.string(),
+  "avatar": zod.string().nullish(),
+  "diamondCount": zod.number()
+}))
+})
+
+

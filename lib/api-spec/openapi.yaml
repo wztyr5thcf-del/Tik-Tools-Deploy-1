@@ -1086,6 +1086,65 @@ paths:
         "404":
           description: Item not found
 
+  /profile:
+    get:
+      operationId: getPublicProfileSettings
+      tags: [profile]
+      summary: Get current user's public profile settings
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Public profile settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicProfileSettings"
+        "401":
+          description: Unauthorized
+    patch:
+      operationId: updatePublicProfileSettings
+      tags: [profile]
+      summary: Update current user's public profile settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublicProfileUpdate"
+      responses:
+        "200":
+          description: Updated public profile settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicProfileSettings"
+        "401":
+          description: Unauthorized
+
+  /profile/public/{username}:
+    get:
+      operationId: getStreamerPublicProfile
+      tags: [profile]
+      summary: Get streamer public profile (no auth required)
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public profile data with live status and top gifters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreamerPublicProfile"
+        "404":
+          description: Profile not found or not public
+
 components:
   schemas:
     HealthStatus:
@@ -1094,6 +1153,106 @@ components:
         status:
           type: string
       required: [status]
+
+    SocialLinks:
+      type: object
+      properties:
+        instagram:
+          type: string
+        youtube:
+          type: string
+        whatsapp:
+          type: string
+        discord:
+          type: string
+        custom:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              url:
+                type: string
+            required: [label, url]
+
+    PublicProfileSettings:
+      type: object
+      properties:
+        publicProfileEnabled:
+          type: boolean
+        profileBio:
+          type: string
+          nullable: true
+        profileBanner:
+          type: string
+          nullable: true
+        socialLinks:
+          $ref: "#/components/schemas/SocialLinks"
+      required: [publicProfileEnabled, socialLinks]
+
+    PublicProfileUpdate:
+      type: object
+      properties:
+        publicProfileEnabled:
+          type: boolean
+        profileBio:
+          type: string
+        profileBanner:
+          type: string
+        socialLinks:
+          $ref: "#/components/schemas/SocialLinks"
+
+    TopGifter:
+      type: object
+      properties:
+        username:
+          type: string
+        displayName:
+          type: string
+        avatar:
+          type: string
+          nullable: true
+        diamondCount:
+          type: number
+      required: [username, displayName, diamondCount]
+
+    StreamerPublicProfile:
+      type: object
+      properties:
+        username:
+          type: string
+        displayName:
+          type: string
+        avatar:
+          type: string
+          nullable: true
+        followerCount:
+          type: number
+          nullable: true
+        verified:
+          type: boolean
+        bio:
+          type: string
+          nullable: true
+        banner:
+          type: string
+          nullable: true
+        socialLinks:
+          $ref: "#/components/schemas/SocialLinks"
+        isLive:
+          type: boolean
+        viewerCount:
+          type: number
+          nullable: true
+        likeCount:
+          type: number
+          nullable: true
+        topGifters:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopGifter"
+      required: [username, displayName, verified, socialLinks, isLive, topGifters]
 
     LandingFeature:
       type: object

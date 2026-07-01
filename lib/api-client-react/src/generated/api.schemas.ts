@@ -9,6 +9,55 @@ export interface HealthStatus {
   status: string;
 }
 
+export type SocialLinksCustomItem = {
+  label: string;
+  url: string;
+};
+
+export interface SocialLinks {
+  instagram?: string;
+  youtube?: string;
+  whatsapp?: string;
+  discord?: string;
+  custom?: SocialLinksCustomItem[];
+}
+
+export interface PublicProfileSettings {
+  publicProfileEnabled: boolean;
+  profileBio?: string | null;
+  profileBanner?: string | null;
+  socialLinks: SocialLinks;
+}
+
+export interface PublicProfileUpdate {
+  publicProfileEnabled?: boolean;
+  profileBio?: string;
+  profileBanner?: string;
+  socialLinks?: SocialLinks;
+}
+
+export interface TopGifter {
+  username: string;
+  displayName: string;
+  avatar?: string | null;
+  diamondCount: number;
+}
+
+export interface StreamerPublicProfile {
+  username: string;
+  displayName: string;
+  avatar?: string | null;
+  followerCount?: number | null;
+  verified: boolean;
+  bio?: string | null;
+  banner?: string | null;
+  socialLinks: SocialLinks;
+  isLive: boolean;
+  viewerCount?: number | null;
+  likeCount?: number | null;
+  topGifters: TopGifter[];
+}
+
 export interface LandingFeature {
   id: string;
   title: string;

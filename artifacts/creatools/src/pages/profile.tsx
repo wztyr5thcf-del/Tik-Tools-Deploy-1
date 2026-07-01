@@ -691,9 +691,11 @@ function PublicProfileSection() {
   const [youtube, setYoutube]     = useState("");
   const [whatsapp, setWhatsapp]   = useState("");
   const [discord, setDiscord]     = useState("");
+  const [banner, setBanner]       = useState("");
   const [custom, setCustom]       = useState<Array<{ label: string; url: string }>>([]);
   const [saving, setSaving]       = useState(false);
   const [loaded, setLoaded]       = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [copied, setCopied]       = useState(false);
   const [showQr, setShowQr]       = useState(false);
 
@@ -712,6 +714,7 @@ function PublicProfileSection() {
         const p = d as PublicProfileSettings;
         setEnabled(p.publicProfileEnabled);
         setBio(p.profileBio ?? "");
+        setBanner(p.profileBanner ?? "");
         setInstagram(p.socialLinks.instagram ?? "");
         setYoutube(p.socialLinks.youtube ?? "");
         setWhatsapp(p.socialLinks.whatsapp ?? "");
@@ -730,6 +733,7 @@ function PublicProfileSection() {
         body: JSON.stringify({
           publicProfileEnabled: enabled,
           profileBio: bio,
+          profileBanner: banner,
           socialLinks: {
             instagram: instagram.trim() || undefined,
             youtube: youtube.trim() || undefined,
@@ -831,6 +835,26 @@ function PublicProfileSection() {
 
         <Separator />
 
+        {/* Banner */}
+        <div className="space-y-1.5">
+          <Label className="text-sm">Banner (URL da imagem)</Label>
+          <Input
+            placeholder="https://exemplo.com/banner.jpg"
+            value={banner}
+            onChange={(e) => setBanner(e.target.value)}
+            className="bg-background border-border text-sm"
+          />
+          <p className="text-xs text-muted-foreground">Aparece no topo do seu perfil público. Use uma imagem de 900×300px.</p>
+          {banner && (
+            <img
+              src={banner}
+              alt="Preview do banner"
+              className="w-full h-20 object-cover rounded-lg border border-border"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+          )}
+        </div>
+
         {/* Bio */}
         <div className="space-y-1.5">
           <div className="flex justify-between">
@@ -930,9 +954,63 @@ function PublicProfileSection() {
           )}
         </div>
 
-        <Button onClick={() => void handleSave()} disabled={saving}>
-          {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando…</> : <><Save className="w-4 h-4 mr-2" />Salvar perfil público</>}
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={() => void handleSave()} disabled={saving}>
+            {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando…</> : <><Save className="w-4 h-4 mr-2" />Salvar perfil público</>}
+          </Button>
+          {user?.tiktokUsername && (
+            <Button
+              variant="outline"
+              className="border-border text-muted-foreground"
+              onClick={() => setShowPreview((v) => !v)}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              {showPreview ? "Ocultar preview" : "Ver preview"}
+            </Button>
+          )}
+        </div>
+
+        {/* Preview card */}
+        {showPreview && user?.tiktokUsername && (
+          <div className="rounded-2xl border border-zinc-700 bg-[#13132a] p-4 space-y-3 text-sm">
+            {banner && (
+              <img
+                src={banner}
+                alt=""
+                className="w-full h-16 object-cover rounded-xl"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              />
+            )}
+            <div className="flex items-center gap-3">
+              {user.tiktokProfilePicture ? (
+                <img src={user.tiktokProfilePicture} alt="" className="w-12 h-12 rounded-full object-cover border border-violet-500/30" />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-violet-500/10 border border-violet-500/30 flex items-center justify-center">
+                  <SiTiktok className="w-5 h-5 text-violet-400" />
+                </div>
+              )}
+              <div>
+                <p className="font-semibold text-white">{user.tiktokDisplayName ?? user.tiktokUsername}</p>
+                <p className="text-xs text-zinc-400">@{user.tiktokUsername}</p>
+              </div>
+            </div>
+            {bio && <p className="text-zinc-300 text-xs leading-relaxed whitespace-pre-wrap">{bio}</p>}
+            {(instagram || youtube || whatsapp || discord) && (
+              <div className="flex flex-wrap gap-1.5">
+                {instagram && <span className="px-2 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-400 text-xs">Instagram</span>}
+                {youtube && <span className="px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs">YouTube</span>}
+                {whatsapp && <span className="px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-xs">WhatsApp</span>}
+                {discord && <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs">Discord</span>}
+                {custom.filter(c => c.label).map((c, i) => (
+                  <span key={i} className="px-2 py-0.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs">{c.label}</span>
+                ))}
+              </div>
+            )}
+            <div className="pt-1 border-t border-zinc-800">
+              <p className="text-xs text-violet-400 font-medium">+ botão "Monitorar no Creatools"</p>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
