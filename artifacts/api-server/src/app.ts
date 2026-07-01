@@ -38,4 +38,9 @@ import("./lib/plans-store").then(({ seedDefaultPlans }) => seedDefaultPlans()).c
   logger.error({ err }, "Failed to seed default plans");
 });
 
+// Migrate legacy disk media to Object Storage on first boot (non-blocking, idempotent)
+import("./routes/media").then(({ runLegacyMediaMigration }) => runLegacyMediaMigration()).catch((err) => {
+  logger.error({ err }, "Legacy media migration failed");
+});
+
 export default app;

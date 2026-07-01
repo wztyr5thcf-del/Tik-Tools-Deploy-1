@@ -1,5 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
+import fs from "fs";
+import path from "path";
 import sizeOf from "image-size";
 import { requireAuth } from "./auth";
 import { getUserById } from "../lib/users-store";
@@ -262,7 +264,15 @@ router.patch("/media/:id", requireAuth, async (req: Request, res: Response): Pro
   if (name?.trim()) updates.originalName = name.trim();
   if (category && CATEGORIES.includes(category)) updates.category = category;
 
-  if (Object.keys(updates).length === 0) { res.json({ item: existing }); return; }
+  if (Object.keys(updates).length === 0) {
+    const noOp: MediaItem = {
+      id: existing.id, filename: existing.filename, originalName: existing.originalName,
+      category: existing.category, size: existing.size, mimeType: existing.mimeType,
+      width: existing.width ?? null, height: existing.height ?? null,
+      createdAt: new Date(existing.createdAt).toISOString(),
+    };
+    res.json({ item: noOp }); return;
+  }
 
   const [updated] = await db
     .update(mediaItemsTable)
@@ -298,7 +308,83 @@ router.delete("/media/:id", requireAuth, async (req: Request, res: Response): Pr
   await deleteFromGCS(existing.objectPath);
   await db.delete(mediaItemsTable).where(and(eq(mediaItemsTable.id, id), eq(mediaItemsTable.userId, userId)));
 
-  res.status(204).end();
+  res.json({ ok: true });
 });
+
+// ── Legacy disk migration ─────────────────────────────────────────────────────
+// Runs once at startup if old data/media/ directory exists on disk.
+// Idempotent: skips items already present in DB.
+
+interface LegacyMediaItem {
+  id: string;
+  filename: string;
+  originalName: string;
+  category: string;
+  size: number;
+  mimeType: string;
+  width: number | null;
+  height: number | null;
+  createdAt: string;
+}
+
+export async function runLegacyMediaMigration(): Promise<void> {
+  const mediaDir = path.join(process.cwd(), "data", "media");
+  if (!fs.existsSync(mediaDir)) return;
+
+  let userDirs: string[];
+  try {
+    userDirs = fs.readdirSync(mediaDir).filter((f) =>
+      fs.statSync(path.join(mediaDir, f)).isDirectory()
+    );
+  } catch { return; }
+
+  let migrated = 0;
+  let skipped = 0;
+
+  for (const userId of userDirs) {
+    const indexFile = path.join(mediaDir, userId, "index.json");
+    if (!fs.existsSync(indexFile)) continue;
+
+    let items: LegacyMediaItem[];
+    try {
+      items = JSON.parse(fs.readFileSync(indexFile, "utf-8")) as LegacyMediaItem[];
+    } catch { continue; }
+
+    for (const item of items) {
+      const filePath = path.join(mediaDir, userId, item.filename);
+      if (!fs.existsSync(filePath)) { skipped++; continue; }
+
+      const existing = await db
+        .select({ id: mediaItemsTable.id })
+        .from(mediaItemsTable)
+        .where(eq(mediaItemsTable.id, item.id));
+      if (existing.length > 0) { skipped++; continue; }
+
+      try {
+        const buf = fs.readFileSync(filePath);
+        const objectPath = mediaObjectPath(userId, item.filename);
+        await uploadToGCS(buf, objectPath, item.mimeType);
+        await db.insert(mediaItemsTable).values({
+          id: item.id,
+          userId,
+          originalName: item.originalName,
+          filename: item.filename,
+          objectPath,
+          category: item.category,
+          size: item.size,
+          mimeType: item.mimeType,
+          width: item.width ?? null,
+          height: item.height ?? null,
+          createdAt: new Date(item.createdAt).getTime(),
+        });
+        migrated++;
+      } catch { skipped++; }
+    }
+  }
+
+  if (migrated > 0 || skipped > 0) {
+    console.log(`[media-migration] migrated=${migrated} skipped=${skipped}`);
+  }
+}
 
 export default router;
