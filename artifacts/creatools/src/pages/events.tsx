@@ -3,6 +3,22 @@ import {
   Zap, Plus, Trash2, ChevronDown, ChevronUp, Download, Upload,
   GripVertical, Edit2, X, Check, Copy, Settings2, Bell,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -295,46 +311,39 @@ function newRule(): Omit<EventRule, "id" | "userId" | "createdAt" | "updatedAt">
 
 function ActionCard({
   action,
-  index,
-  total,
   onChange,
   onDelete,
-  onMove,
 }: {
   action: RuleAction;
-  index: number;
-  total: number;
   onChange: (updated: RuleAction) => void;
   onDelete: () => void;
-  onMove: (dir: -1 | 1) => void;
 }) {
   const [open, setOpen] = useState(false);
   const def = ACTION_DEFS.find((a) => a.id === action.type);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: action.id });
 
   return (
     <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        border: isDragging ? "1px solid rgba(167,139,250,0.4)" : "1px solid rgba(255,255,255,0.08)",
+        background: isDragging ? "rgba(124,58,237,0.1)" : "rgba(255,255,255,0.02)",
+      }}
       className="rounded-lg overflow-hidden"
-      style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}
     >
       <div className="flex items-center gap-2 px-3 py-2.5">
-        <div className="flex flex-col gap-0.5">
-          <button
-            onClick={() => onMove(-1)}
-            disabled={index === 0}
-            className="p-0.5 rounded disabled:opacity-20 hover:bg-white/10"
-            style={{ color: "rgba(255,255,255,0.4)" }}
-          >
-            <ChevronUp className="w-3 h-3" />
-          </button>
-          <button
-            onClick={() => onMove(1)}
-            disabled={index === total - 1}
-            className="p-0.5 rounded disabled:opacity-20 hover:bg-white/10"
-            style={{ color: "rgba(255,255,255,0.4)" }}
-          >
-            <ChevronDown className="w-3 h-3" />
-          </button>
-        </div>
+        <button
+          {...attributes}
+          {...listeners}
+          className="p-1 rounded cursor-grab active:cursor-grabbing hover:bg-white/10 touch-none"
+          style={{ color: "rgba(255,255,255,0.3)" }}
+          title="Arrastar para reordenar"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
         <span className="text-base">{def?.icon}</span>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-white">{def?.label ?? action.type}</p>
@@ -486,13 +495,20 @@ function RuleEditor({
     setDraft((d) => ({ ...d, actions: (d.actions ?? []).filter((a) => a.id !== id) }));
   }
 
-  function moveAction(index: number, dir: -1 | 1) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
     setDraft((d) => {
-      const actions = [...(d.actions ?? [])];
-      const target = index + dir;
-      if (target < 0 || target >= actions.length) return d;
-      [actions[index], actions[target]] = [actions[target], actions[index]];
-      return { ...d, actions };
+      const actions = d.actions ?? [];
+      const oldIndex = actions.findIndex((a) => a.id === active.id);
+      const newIndex = actions.findIndex((a) => a.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return d;
+      return { ...d, actions: arrayMove(actions, oldIndex, newIndex) };
     });
   }
 
@@ -637,19 +653,20 @@ function RuleEditor({
               </div>
             )}
 
-            <div className="space-y-2">
-              {(draft.actions ?? []).map((action, index) => (
-                <ActionCard
-                  key={action.id}
-                  action={action}
-                  index={index}
-                  total={draft.actions?.length ?? 0}
-                  onChange={(updated) => updateAction(action.id, updated)}
-                  onDelete={() => deleteAction(action.id)}
-                  onMove={(dir) => moveAction(index, dir)}
-                />
-              ))}
-            </div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={(draft.actions ?? []).map((a) => a.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {(draft.actions ?? []).map((action) => (
+                    <ActionCard
+                      key={action.id}
+                      action={action}
+                      onChange={(updated) => updateAction(action.id, updated)}
+                      onDelete={() => deleteAction(action.id)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
 
             {/* Add action */}
             <div
