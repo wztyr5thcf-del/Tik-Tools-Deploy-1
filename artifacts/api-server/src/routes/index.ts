@@ -15,6 +15,7 @@ import announcementsRouter from "./announcements";
 import landingRouter from "./landing";
 import eventsRouter from "./events";
 import mediaRouter from "./media";
+import profileRouter from "./profile";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(announcementsRouter);
 router.use(landingRouter);
 router.use(eventsRouter);
 router.use(mediaRouter);
+router.use(profileRouter);
 
 export default router;

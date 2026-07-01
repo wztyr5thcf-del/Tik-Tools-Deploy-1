@@ -4,8 +4,10 @@ import {
   ExternalLink, Crown, Zap, Users,
   AlertCircle, XCircle, Search, MessageSquare, TicketCheck,
   ChevronDown, RefreshCw, Send, Clock, CheckCircle, X,
+  Globe, Copy, Check, Radio, Plus, Trash2, QrCode,
 } from "lucide-react";
-import { SiTiktok } from "react-icons/si";
+import { SiTiktok, SiInstagram, SiYoutube, SiWhatsapp, SiDiscord } from "react-icons/si";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -663,6 +665,279 @@ function TikTokSection() {
   );
 }
 
+// ── Public profile section ────────────────────────────────────────────────────
+interface SocialLinks {
+  instagram?: string;
+  youtube?: string;
+  whatsapp?: string;
+  discord?: string;
+  custom?: Array<{ label: string; url: string }>;
+}
+
+interface PublicProfileSettings {
+  publicProfileEnabled: boolean;
+  profileBio: string | null;
+  profileBanner: string | null;
+  socialLinks: SocialLinks;
+}
+
+function PublicProfileSection() {
+  const { user, token } = useAuth();
+  const { toast } = useToast();
+
+  const [enabled, setEnabled]     = useState(false);
+  const [bio, setBio]             = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [youtube, setYoutube]     = useState("");
+  const [whatsapp, setWhatsapp]   = useState("");
+  const [discord, setDiscord]     = useState("");
+  const [custom, setCustom]       = useState<Array<{ label: string; url: string }>>([]);
+  const [saving, setSaving]       = useState(false);
+  const [loaded, setLoaded]       = useState(false);
+  const [copied, setCopied]       = useState(false);
+  const [showQr, setShowQr]       = useState(false);
+
+  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const publicUrl = user?.tiktokUsername
+    ? window.location.origin + BASE + `/s/${user.tiktokUsername}`
+    : null;
+  const qrUrl = publicUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=ffffff&bgcolor=0d0d1a&data=${encodeURIComponent(publicUrl)}`
+    : null;
+
+  useEffect(() => {
+    if (!token || loaded) return;
+    authFetch("/profile", token)
+      .then((d) => {
+        const p = d as PublicProfileSettings;
+        setEnabled(p.publicProfileEnabled);
+        setBio(p.profileBio ?? "");
+        setInstagram(p.socialLinks.instagram ?? "");
+        setYoutube(p.socialLinks.youtube ?? "");
+        setWhatsapp(p.socialLinks.whatsapp ?? "");
+        setDiscord(p.socialLinks.discord ?? "");
+        setCustom(p.socialLinks.custom ?? []);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, [token, loaded]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await authFetch("/profile", token, {
+        method: "PATCH",
+        body: JSON.stringify({
+          publicProfileEnabled: enabled,
+          profileBio: bio,
+          socialLinks: {
+            instagram: instagram.trim() || undefined,
+            youtube: youtube.trim() || undefined,
+            whatsapp: whatsapp.trim() || undefined,
+            discord: discord.trim() || undefined,
+            custom: custom.filter((c) => c.label.trim() && c.url.trim()),
+          },
+        }),
+      });
+      toast({ title: "Perfil público salvo!", description: enabled ? "Seu perfil está visível em " + (publicUrl ?? "") : "Perfil público desativado." });
+    } catch (err) {
+      toast({ title: "Erro", description: err instanceof Error ? err.message : "Falha ao salvar", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function copyUrl() {
+    if (!publicUrl) return;
+    try { await navigator.clipboard.writeText(publicUrl); } catch { /* ignore */ }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function addCustomLink() {
+    if (custom.length >= 3) return;
+    setCustom((prev) => [...prev, { label: "", url: "" }]);
+  }
+
+  function removeCustom(i: number) {
+    setCustom((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  function updateCustom(i: number, field: "label" | "url", value: string) {
+    setCustom((prev) => prev.map((c, idx) => idx === i ? { ...c, [field]: value } : c));
+  }
+
+  if (!loaded) {
+    return (
+      <Card className="bg-card border-border">
+        <CardContent className="p-5 flex items-center gap-2 text-muted-foreground text-sm">
+          <Loader2 className="w-4 h-4 animate-spin" /> Carregando configurações…
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-primary" />
+            <CardTitle className="text-base">Perfil Público</CardTitle>
+          </div>
+          <div className="flex items-center gap-2.5">
+            {enabled && (
+              <Radio className="w-3.5 h-3.5 text-green-400 animate-pulse" />
+            )}
+            <Switch checked={enabled} onCheckedChange={setEnabled} />
+          </div>
+        </div>
+        <CardDescription>
+          Crie uma página pública com seus links e status ao vivo — ideal para colocar na bio do TikTok.
+          {user?.tiktokUsername ? null : (
+            <span className="text-amber-400"> Vincule seu @TikTok primeiro.</span>
+          )}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {/* Public URL */}
+        {user?.tiktokUsername && publicUrl && (
+          <div className="space-y-2">
+            <Label className="text-sm">Seu link público</Label>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs bg-background border border-border rounded-md px-3 py-2 text-primary truncate font-mono">
+                {publicUrl}
+              </code>
+              <Button size="icon" variant="outline" className="shrink-0 border-border" onClick={() => void copyUrl()}>
+                {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+              </Button>
+              <Button size="icon" variant="outline" className="shrink-0 border-border" onClick={() => setShowQr((v) => !v)}>
+                <QrCode className="w-4 h-4" />
+              </Button>
+              <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                <Button size="icon" variant="outline" className="shrink-0 border-border">
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              </a>
+            </div>
+            {showQr && qrUrl && (
+              <div className="flex flex-col items-center gap-2 pt-2">
+                <img src={qrUrl} alt="QR Code" className="w-40 h-40 rounded-lg border border-border" />
+                <p className="text-xs text-muted-foreground">QR Code do seu perfil público</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        <Separator />
+
+        {/* Bio */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between">
+            <Label className="text-sm">Bio / Apresentação</Label>
+            <span className="text-xs text-muted-foreground">{bio.length}/300</span>
+          </div>
+          <Textarea
+            placeholder="Conte um pouco sobre você e seu stream…"
+            value={bio}
+            onChange={(e) => setBio(e.target.value.slice(0, 300))}
+            rows={3}
+            className="bg-background border-border resize-none text-sm"
+          />
+        </div>
+
+        {/* Social Links */}
+        <div className="space-y-3">
+          <Label className="text-sm">Links sociais</Label>
+
+          <div className="relative">
+            <SiInstagram className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-pink-400" />
+            <Input
+              placeholder="@seuinstagram ou URL completa"
+              value={instagram}
+              onChange={(e) => setInstagram(e.target.value)}
+              className="bg-background border-border pl-9 text-sm"
+            />
+          </div>
+
+          <div className="relative">
+            <SiYoutube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400" />
+            <Input
+              placeholder="@seucanal ou URL do YouTube"
+              value={youtube}
+              onChange={(e) => setYoutube(e.target.value)}
+              className="bg-background border-border pl-9 text-sm"
+            />
+          </div>
+
+          <div className="relative">
+            <SiWhatsapp className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-400" />
+            <Input
+              placeholder="+55 11 91234-5678"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              className="bg-background border-border pl-9 text-sm"
+            />
+          </div>
+
+          <div className="relative">
+            <SiDiscord className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400" />
+            <Input
+              placeholder="discord.gg/seuservidor ou código do invite"
+              value={discord}
+              onChange={(e) => setDiscord(e.target.value)}
+              className="bg-background border-border pl-9 text-sm"
+            />
+          </div>
+
+          {/* Custom links */}
+          {custom.map((link, i) => (
+            <div key={i} className="flex gap-2">
+              <Globe className="w-4 h-4 text-muted-foreground mt-2.5 shrink-0" />
+              <Input
+                placeholder="Título do link"
+                value={link.label}
+                onChange={(e) => updateCustom(i, "label", e.target.value)}
+                className="bg-background border-border text-sm w-32 shrink-0"
+              />
+              <Input
+                placeholder="https://…"
+                value={link.url}
+                onChange={(e) => updateCustom(i, "url", e.target.value)}
+                className="bg-background border-border text-sm flex-1"
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                className="shrink-0 text-muted-foreground hover:text-destructive"
+                onClick={() => removeCustom(i)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+
+          {custom.length < 3 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-dashed border-border text-muted-foreground"
+              onClick={addCustomLink}
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              Adicionar link personalizado
+            </Button>
+          )}
+        </div>
+
+        <Button onClick={() => void handleSave()} disabled={saving}>
+          {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando…</> : <><Save className="w-4 h-4 mr-2" />Salvar perfil público</>}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ════════════════════════════════════════════════════════════════════════════════
 
 export default function Profile() {
@@ -787,6 +1062,9 @@ export default function Profile() {
 
       {/* TikTok account section */}
       <TikTokSection />
+
+      {/* Public profile */}
+      <PublicProfileSection />
 
       {/* Subscription / billing */}
       <Card className="bg-card border-border">

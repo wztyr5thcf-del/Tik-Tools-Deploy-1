@@ -22,6 +22,10 @@ export const usersTable = pgTable("users", {
   tiktokOAuthId:            text("tiktok_oauth_id"),
   tiktokOAuthAccessToken:   text("tiktok_oauth_access_token"),
   tiktokOAuthRefreshToken:  text("tiktok_oauth_refresh_token"),
+  publicProfileEnabled:     boolean("public_profile_enabled").notNull().default(false),
+  profileBio:               text("profile_bio"),
+  profileBanner:            text("profile_banner"),
+  socialLinks:              text("social_links"),
 });
 
 export type UserRow = typeof usersTable.$inferSelect;

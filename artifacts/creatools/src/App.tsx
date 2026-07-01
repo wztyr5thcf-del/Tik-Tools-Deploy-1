@@ -62,6 +62,7 @@ import EffectBattle from "./pages/effect-battle";
 import TrollGift from "./pages/troll-gift";
 import Integracoes from "./pages/integracoes";
 import Album from "./pages/album";
+import StreamerPublicProfile from "./pages/streamer-public-profile";
 import MinigamesRoleta from "./pages/minigames-roleta";
 import MinigamesWordBomb from "./pages/minigames-word-bomb";
 import MinigamesSentido from "./pages/minigames-sentido";
@@ -141,6 +142,8 @@ function Router() {
       <Route path="/landing" component={() => <LandingPage isPreview />} />
       {/* Overlays — no AppLayout, no auth required (runs inside OBS/TikTok Studio) */}
       {/* IMPORTANT: specific paths must come BEFORE :username wildcard */}
+      {/* Public streamer profile — standalone, no auth, no sidebar */}
+      <Route path="/s/:username" component={StreamerPublicProfile} />
       <Route path="/overlay/alerts/:username" component={OverlayAlerts} />
       <Route path="/overlay/top-gifters/:username" component={OverlayTopGifters} />
       <Route path="/overlay/stats/:username" component={OverlayStats} />

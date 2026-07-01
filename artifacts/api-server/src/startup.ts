@@ -42,6 +42,11 @@ if (dbUrl) {
       updated_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS event_rules_user_id_idx ON event_rules(user_id);
+    ALTER TABLE IF EXISTS users
+      ADD COLUMN IF NOT EXISTS public_profile_enabled boolean NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS profile_bio text,
+      ADD COLUMN IF NOT EXISTS profile_banner text,
+      ADD COLUMN IF NOT EXISTS social_links text;
   `).catch(() => { /* ignore — table may not exist yet on first boot */ })
     .finally(() => pool.end());
 }
