@@ -781,6 +781,33 @@ export const ListMediaResponse = zod.object({
 
 
 /**
+ * The 'file' field carries the binary image. MIME type and file type are verified server-side via magic bytes. Plan quota is enforced server-side.
+ * @summary Upload a media file via multipart/form-data (PNG, JPG, GIF, WebP, max 50 MB)
+ */
+export const uploadMediaBodyCategoryDefault = `Geral`;
+
+export const UploadMediaBody = zod.object({
+  "category": zod.enum(['Geral', 'Banners', 'Logos', 'QR Codes', 'Thumbnails']).default(uploadMediaBodyCategoryDefault),
+  "name": zod.string().optional().describe('Optional display name; defaults to original filename')
+}).describe('Multipart upload fields. The binary \'file\' field is sent as a separate form part and is not typed here to avoid browser-only File\/Blob types in server-side schemas.')
+
+export const UploadMediaResponse = zod.object({
+  "item": zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "originalName": zod.string(),
+  "category": zod.string(),
+  "size": zod.number().describe('File size in bytes'),
+  "mimeType": zod.string(),
+  "width": zod.number().nullable().describe('Image width in pixels (null if not extractable)'),
+  "height": zod.number().nullable().describe('Image height in pixels (null if not extractable)'),
+  "createdAt": zod.coerce.date()
+}),
+  "url": zod.string().describe('Public URL path for the uploaded file')
+})
+
+
+/**
  * @summary Get storage usage (plan limit enforced server-side)
  */
 export const GetMediaStorageResponse = zod.object({

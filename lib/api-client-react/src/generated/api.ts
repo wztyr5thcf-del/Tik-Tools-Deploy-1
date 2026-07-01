@@ -61,6 +61,8 @@ import type {
   MediaListResponse,
   MediaPatchInput,
   MediaStorageResponse,
+  MediaUploadInput,
+  MediaUploadResponse,
   OkResponse,
   PassthroughResponse,
   PatchMedia200,
@@ -3899,6 +3901,84 @@ export function useListMedia<TData = Awaited<ReturnType<typeof listMedia>>, TErr
 
 
 
+
+export const getUploadMediaUrl = () => {
+
+
+
+
+  return `/api/media/upload`
+}
+
+/**
+ * The 'file' field carries the binary image. MIME type and file type are verified server-side via magic bytes. Plan quota is enforced server-side.
+ * @summary Upload a media file via multipart/form-data (PNG, JPG, GIF, WebP, max 50 MB)
+ */
+export const uploadMedia = async (mediaUploadInput: MediaUploadInput, options?: RequestInit): Promise<MediaUploadResponse> => {
+    const formData = new FormData();
+if(mediaUploadInput.category !== undefined) {
+ formData.append(`category`, mediaUploadInput.category);
+ }
+if(mediaUploadInput.name !== undefined) {
+ formData.append(`name`, mediaUploadInput.name);
+ }
+
+  return customFetch<MediaUploadResponse>(getUploadMediaUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+export const getUploadMediaMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadMedia>>, TError,{data: BodyType<MediaUploadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadMedia>>, TError,{data: BodyType<MediaUploadInput>}, TContext> => {
+
+const mutationKey = ['uploadMedia'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadMedia>>, {data: BodyType<MediaUploadInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  uploadMedia(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadMediaMutationResult = NonNullable<Awaited<ReturnType<typeof uploadMedia>>>
+    export type UploadMediaMutationBody = BodyType<MediaUploadInput>
+    export type UploadMediaMutationError = ErrorType<void>
+
+    /**
+ * @summary Upload a media file via multipart/form-data (PNG, JPG, GIF, WebP, max 50 MB)
+ */
+export const useUploadMedia = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadMedia>>, TError,{data: BodyType<MediaUploadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadMedia>>,
+        TError,
+        {data: BodyType<MediaUploadInput>},
+        TContext
+      > => {
+      return useMutation(getUploadMediaMutationOptions(options));
+    }
 
 export const getGetMediaStorageUrl = () => {
 

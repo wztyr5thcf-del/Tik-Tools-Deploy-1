@@ -370,6 +370,26 @@ export interface EventRuleImportResponse {
   imported: number;
 }
 
+export type MediaUploadInputCategory = typeof MediaUploadInputCategory[keyof typeof MediaUploadInputCategory];
+
+
+export const MediaUploadInputCategory = {
+  Geral: 'Geral',
+  Banners: 'Banners',
+  Logos: 'Logos',
+  QR_Codes: 'QR Codes',
+  Thumbnails: 'Thumbnails',
+} as const;
+
+/**
+ * Multipart upload fields. The binary 'file' field is sent as a separate form part and is not typed here to avoid browser-only File/Blob types in server-side schemas.
+ */
+export interface MediaUploadInput {
+  category?: MediaUploadInputCategory;
+  /** Optional display name; defaults to original filename */
+  name?: string;
+}
+
 export type MediaPatchInputCategory = typeof MediaPatchInputCategory[keyof typeof MediaPatchInputCategory];
 
 

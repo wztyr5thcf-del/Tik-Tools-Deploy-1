@@ -570,7 +570,10 @@ function MediaCard({
           </p>
         )}
         <div className="flex items-center justify-between mt-1">
-          <span className="text-xs text-zinc-600">{formatBytes(item.size)}</span>
+          <span className="text-xs text-zinc-600">
+            {formatBytes(item.size)}
+            {item.width && item.height ? ` · ${item.width}×${item.height}` : ""}
+          </span>
           <Select value={item.category} onValueChange={onCategoryChange}>
             <SelectTrigger className="h-5 text-[10px] px-1.5 py-0 bg-zinc-800 border-zinc-700 w-auto gap-1 min-w-0 max-w-[90px]">
               <SelectValue />
@@ -630,7 +633,10 @@ function ListRow({
         ) : (
           <p className="text-sm text-zinc-200 truncate font-medium">{item.originalName}</p>
         )}
-        <p className="text-xs text-zinc-500">{formatDate(item.createdAt)} · {formatBytes(item.size)}</p>
+        <p className="text-xs text-zinc-500">
+          {formatDate(item.createdAt)} · {formatBytes(item.size)}
+          {item.width && item.height ? ` · ${item.width}×${item.height}` : ""}
+        </p>
       </div>
 
       {/* Category */}

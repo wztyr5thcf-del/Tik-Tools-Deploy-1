@@ -60,6 +60,8 @@ export * from './mediaListResponse';
 export * from './mediaPatchInput';
 export * from './mediaPatchInputCategory';
 export * from './mediaStorageResponse';
+export * from './mediaUploadInput';
+export * from './mediaUploadInputCategory';
 export * from './mediaUploadResponse';
 export * from './okResponse';
 export * from './passthroughResponse';

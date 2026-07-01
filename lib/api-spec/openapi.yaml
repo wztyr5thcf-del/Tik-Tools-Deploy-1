@@ -979,6 +979,34 @@ paths:
         "401":
           description: Unauthorized
 
+  /media/upload:
+    post:
+      operationId: uploadMedia
+      tags: [media]
+      summary: Upload a media file via multipart/form-data (PNG, JPG, GIF, WebP, max 50 MB)
+      description: "The 'file' field carries the binary image. MIME type and file type are verified server-side via magic bytes. Plan quota is enforced server-side."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/MediaUploadInput"
+      responses:
+        "200":
+          description: Uploaded item metadata and public URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaUploadResponse"
+        "400":
+          description: Invalid or missing file
+        "401":
+          description: Unauthorized
+        "413":
+          description: Storage quota exceeded for user plan
+
   /media/storage:
     get:
       operationId: getMediaStorage
@@ -1604,6 +1632,18 @@ components:
         imported:
           type: integer
       required: [imported]
+
+    MediaUploadInput:
+      type: object
+      description: "Multipart upload fields. The binary 'file' field is sent as a separate form part and is not typed here to avoid browser-only File/Blob types in server-side schemas."
+      properties:
+        category:
+          type: string
+          enum: [Geral, Banners, Logos, QR Codes, Thumbnails]
+          default: Geral
+        name:
+          type: string
+          description: Optional display name; defaults to original filename
 
     MediaPatchInput:
       type: object

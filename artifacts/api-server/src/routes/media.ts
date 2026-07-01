@@ -9,7 +9,15 @@ import { getUserById } from "../lib/users-store";
 const router = Router();
 
 const MEDIA_ROOT = path.join(process.cwd(), "data", "media");
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+
+// Allowed MIME types → safe file extension
+const SAFE_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/gif": ".gif",
+  "image/webp": ".webp",
+};
+
 const PLAN_LIMITS: Record<string, number> = {
   free: 50 * 1024 * 1024,
   basic: 200 * 1024 * 1024,
@@ -62,6 +70,44 @@ function extractDimensions(filePath: string): { width: number | null; height: nu
   }
 }
 
+/**
+ * Detect actual image MIME type from file magic bytes — independent of client-supplied headers.
+ * Returns undefined when the file does not match any allowed image signature.
+ */
+function detectImageMime(filePath: string): string | undefined {
+  try {
+    // Read only first 12 bytes — sufficient for all four signatures
+    const fd = fs.openSync(filePath, "r");
+    const buf = Buffer.alloc(12);
+    fs.readSync(fd, buf, 0, 12, 0);
+    fs.closeSync(fd);
+
+    // PNG: 89 50 4E 47 0D 0A 1A 0A
+    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+      return "image/png";
+    }
+    // JPEG: FF D8 FF
+    if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
+      return "image/jpeg";
+    }
+    // GIF: GIF87a or GIF89a
+    if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) {
+      return "image/gif";
+    }
+    // WebP: RIFF????WEBP  (bytes 0-3 = RIFF, bytes 8-11 = WEBP)
+    if (
+      buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+      buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
+    ) {
+      return "image/webp";
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Multer stores with .tmp extension — final extension assigned after magic-byte check
 const diskStorage = multer.diskStorage({
   destination: (req, _file, cb) => {
     const userId = (req as Request & { userId: string }).userId;
@@ -69,21 +115,20 @@ const diskStorage = multer.diskStorage({
     fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
-    cb(null, `${crypto.randomUUID()}${ext}`);
+  filename: (_req, _file, cb) => {
+    cb(null, `${crypto.randomUUID()}.tmp`);
   },
 });
 
 const upload = multer({
   storage: diskStorage,
   limits: { fileSize: 50 * 1024 * 1024 },
+  // Client MIME pre-filter — early guard only; not trusted for security
   fileFilter: (_req, file, cb) => {
-    if (ALLOWED_TYPES.includes(file.mimetype)) {
+    if (Object.keys(SAFE_EXTENSIONS).includes(file.mimetype)) {
       cb(null, true);
     } else {
-      const err = new Error("Tipo de arquivo não suportado. Use PNG, JPG, GIF ou WebP.");
-      cb(err);
+      cb(new Error("Tipo de arquivo não suportado. Use PNG, JPG, GIF ou WebP."));
     }
   },
 });
@@ -95,65 +140,74 @@ router.get("/media", requireAuth, (req: Request, res: Response): void => {
   res.json({ items });
 });
 
-// GET /media/storage — storage usage (plan fetched server-side)
+// GET /media/storage — storage usage (plan fetched server-side from DB)
 router.get("/media/storage", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = (req as Request & { userId: string }).userId;
   const items = readIndex(userId);
   const used = totalUsed(items);
-
   const user = await getUserById(userId);
   const plan = user?.plan ?? "free";
   const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
-
   res.json({ used, limit, plan, count: items.length, categories: CATEGORIES });
 });
 
-// POST /media/upload — upload a file (plan enforced server-side)
+// POST /media/upload — upload a file
 router.post("/media/upload", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = (req as Request & { userId: string }).userId;
 
-  // 1. Fetch user plan server-side — do NOT trust client-supplied plan
+  // 1. Fetch plan server-side — do NOT trust client-supplied value
   const user = await getUserById(userId);
   const plan = user?.plan ?? "free";
   const limit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
 
-  // 2. Run multer (wrap callback in promise)
+  // 2. Run multer
   const multerErr = await new Promise<Error | null>((resolve) => {
     upload.single("file")(req, res, (err) => resolve(err as Error | null));
   });
 
-  if (multerErr) {
-    res.status(400).json({ error: multerErr.message });
+  if (multerErr) { res.status(400).json({ error: multerErr.message }); return; }
+  if (!req.file) { res.status(400).json({ error: "Nenhum arquivo enviado." }); return; }
+
+  const tmpPath = req.file.path;
+
+  // 3. Magic-byte validation — detect ACTUAL file type from content, not from client headers
+  const detectedMime = detectImageMime(tmpPath);
+  const safeExt = detectedMime ? SAFE_EXTENSIONS[detectedMime] : undefined;
+
+  if (!safeExt) {
+    fs.unlinkSync(tmpPath);
+    res.status(400).json({
+      error: "Conteúdo do arquivo inválido. Apenas PNG, JPG, GIF e WebP são aceitos.",
+    });
     return;
   }
 
-  if (!req.file) {
-    res.status(400).json({ error: "Nenhum arquivo enviado." });
-    return;
-  }
+  // 4. Rename .tmp → verified safe extension (prevents serving .html or other active content)
+  const baseId = path.basename(tmpPath, ".tmp");
+  const safeFilename = `${baseId}${safeExt}`;
+  const safePath = path.join(userDir(userId), safeFilename);
+  fs.renameSync(tmpPath, safePath);
 
-  // 3. Check quota against server-side plan
+  // 5. Quota check against server-side plan
   const items = readIndex(userId);
-  const used = totalUsed(items);
-
-  if (used + req.file.size > limit) {
-    fs.unlinkSync(req.file.path);
+  if (totalUsed(items) + req.file.size > limit) {
+    fs.unlinkSync(safePath);
     res.status(413).json({ error: "Limite de armazenamento atingido. Faça upgrade do plano." });
     return;
   }
 
-  // 4. Extract image dimensions
-  const { width, height } = extractDimensions(req.file.path);
+  // 6. Extract image dimensions
+  const { width, height } = extractDimensions(safePath);
 
-  // 5. Build metadata entry
+  // 7. Build and persist metadata
   const category = CATEGORIES.includes(req.body.category) ? (req.body.category as string) : "Geral";
   const item: MediaItem = {
     id: crypto.randomUUID(),
-    filename: req.file.filename,
-    originalName: req.body.name?.trim() || req.file.originalname,
+    filename: safeFilename,
+    originalName: (req.body.name as string)?.trim() || req.file.originalname,
     category,
     size: req.file.size,
-    mimeType: req.file.mimetype,
+    mimeType: detectedMime as string,
     width,
     height,
     createdAt: new Date().toISOString(),
@@ -162,7 +216,7 @@ router.post("/media/upload", requireAuth, async (req: Request, res: Response): P
   items.unshift(item);
   writeIndex(userId, items);
 
-  res.json({ item, url: `/api/media/files/${userId}/${item.filename}` });
+  res.json({ item, url: `/api/media/files/${userId}/${safeFilename}` });
 });
 
 // PATCH /media/:id — rename / change category

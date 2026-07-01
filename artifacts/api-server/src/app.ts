@@ -24,9 +24,16 @@ app.use(
 
 app.use(cors());
 
-// Serve uploaded media files without auth — needed for overlay iframes
+// Serve uploaded media files without auth — needed for overlay iframes.
+// Only image types (.png/.jpg/.gif/.webp) are ever stored (magic-byte validated at upload).
+// X-Content-Type-Options prevents browsers sniffing beyond declared type.
 const mediaDir = path.join(process.cwd(), "data", "media");
-app.use("/api/media/files", express.static(mediaDir));
+app.use("/api/media/files", express.static(mediaDir, {
+  setHeaders(res) {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Disposition", "inline");
+  },
+}));
 
 // Stripe webhook MUST be registered before express.json() — needs raw body
 app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);
