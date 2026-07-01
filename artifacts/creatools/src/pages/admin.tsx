@@ -8,7 +8,8 @@ import {
   Cpu, HardDrive, Key, PlugZap, Megaphone, Pin, Info, Sparkles,
   BookOpen, Building2, Users, Bell, BarChart2, LayoutDashboard,
   AlertCircle, Wrench, ChevronRight, FileText, Image, ExternalLink, UserPlus, Pencil,
-  Database, RefreshCcw,
+  Database, RefreshCcw, Monitor, Trophy, Gamepad2, Heart, Tv2, Code2, Home, Link2,
+  Tag, Layers, Mic, Video, Wifi, Package, Award, Hash, GripVertical,
 } from "lucide-react";
 import { SiTiktok } from "react-icons/si";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -1595,35 +1596,6 @@ function CustomizacaoSection() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm">Itens do Menu Sidebar</CardTitle><CardDescription>Reordene e mostre/oculte itens do menu.</CardDescription></CardHeader>
-        <CardContent className="space-y-4">
-          {local.sidebarSections.map((section) => (
-            <div key={section.id} className="space-y-1.5">
-              {section.label && <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">{section.label}</p>}
-              <div className="space-y-1 border border-border rounded-lg overflow-hidden">
-                {section.items.map((item, itemIdx) => (
-                  <div key={item.id} className={`flex items-center gap-2 px-3 py-2 ${!item.visible ? "opacity-40" : ""} hover:bg-accent/30`}>
-                    <div className="flex flex-col gap-0.5 shrink-0">
-                      <button className="text-muted-foreground hover:text-foreground disabled:opacity-20" onClick={() => moveItem(section.id, itemIdx, -1)} disabled={itemIdx === 0}><ChevronUp className="w-3.5 h-3.5" /></button>
-                      <button className="text-muted-foreground hover:text-foreground disabled:opacity-20" onClick={() => moveItem(section.id, itemIdx, 1)} disabled={itemIdx === section.items.length - 1}><ChevronDown className="w-3.5 h-3.5" /></button>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Input value={item.label} onChange={(e) => updateItemLabel(section.id, itemIdx, e.target.value)} className="h-6 text-xs border-none bg-transparent focus-visible:ring-0 p-0" />
-                      <p className="text-[10px] text-muted-foreground/50 font-mono truncate">{item.href}</p>
-                    </div>
-                    {item.adminOnly && <Badge className="text-[10px] px-1 py-0 bg-destructive/10 text-destructive">Admin</Badge>}
-                    <button onClick={() => toggleItemVisible(section.id, itemIdx)} className={`shrink-0 transition-colors ${item.visible ? "text-primary" : "text-muted-foreground/30"}`}>
-                      {item.visible ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={doReset} disabled={resetting}><RotateCcw className="w-4 h-4 mr-2" />Resetar padrão</Button>
         <Button onClick={save} disabled={saving}><Save className="w-4 h-4 mr-2" />Salvar</Button>
@@ -2249,6 +2221,29 @@ function LandingPageTab({ allPlans }: { allPlans: Plan[] }) {
 // ════════════════════════════════════════════════════════════════════════════
 // PÁGINAS & MENU
 // ════════════════════════════════════════════════════════════════════════════
+const MENU_ICON_LIST = [
+  "LayoutDashboard","Activity","Users","Trophy","Monitor","Key","Star","Zap",
+  "Shield","Globe","BarChart2","Radio","Search","Bell","Heart","Tv2","Gamepad2",
+  "Code2","Home","Link2","Tag","Layers","Mic","Video","Wifi","Package","Award",
+  "Hash","ExternalLink","BookOpen","FileText","Image","Database","Cpu","Server",
+  "Sparkles","Crown","CreditCard","Palette","Lock","Users2","Settings2",
+];
+const MENU_ICON_MAP: Record<string, React.ComponentType<{className?: string}>> = {
+  LayoutDashboard, Activity, Users, Trophy, Monitor, Key, Star, Zap,
+  Shield, Globe, BarChart2, Radio, Search, Bell, Heart, Tv2, Gamepad2,
+  Code2, Home, Link2, Tag, Layers, Mic, Video, Wifi, Package, Award,
+  Hash, ExternalLink, BookOpen, FileText, Image, Database, Cpu, Server,
+  Sparkles, Crown, CreditCard, Palette, Lock, Users2, Settings2,
+};
+function MenuIcon({ name, className }: { name: string; className?: string }) {
+  const Ic = MENU_ICON_MAP[name] ?? Layout;
+  return <Ic className={className} />;
+}
+const BADGE_COLOR_PRESETS = ["#a78bfa","#22c55e","#f97316","#f87171","#22d3ee","#fbbf24","#60a5fa","#ffffff"];
+const ITEM_COLOR_PRESETS  = ["","#ffffff","#a78bfa","#22d3ee","#22c55e","#f97316","#f87171","#fbbf24"];
+const BADGE_PRESETS = ["Novo","PRO","APP","Beta","Hot","Free"];
+const EMPTY_ITEM_FORM = { label:"", href:"", icon:"Link2", color:"", badge:"", badgeColor:"#a78bfa", visible:true, external:false };
+
 interface PageEntry {
   id: string; path: string; label: string; category: string; icon: string;
   matchPrefix?: string; defaultBadge?: string; defaultBadgeColor?: string; adminOnly?: boolean;
@@ -2256,7 +2251,8 @@ interface PageEntry {
 interface MenuNavItem {
   id: string; label: string; href: string; icon: string; visible: boolean;
   adminOnly?: boolean; requiresPlan?: string; matchPrefix?: string;
-  badge?: string; badgeColor?: string; children?: MenuNavItem[];
+  badge?: string; badgeColor?: string; color?: string; external?: boolean; isCustom?: boolean;
+  children?: MenuNavItem[];
 }
 interface MenuSection { id: string; label?: string; items: MenuNavItem[]; }
 interface UICfgFull {
@@ -2305,251 +2301,461 @@ const ALL_APP_PAGES: PageEntry[] = [
   { id: "admin",               path: "/admin",                label: "Admin Panel",            category: "OUTROS",      icon: "Shield",      adminOnly: true },
 ];
 
+function ItemForm({
+  form, setForm, onSave, onCancel, isCustom = false, saving,
+}: {
+  form: typeof EMPTY_ITEM_FORM;
+  setForm: (f: typeof EMPTY_ITEM_FORM) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  isCustom?: boolean;
+  saving: boolean;
+}) {
+  return (
+    <div className="mt-2 rounded-xl p-3 space-y-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1 block">Nome no menu</Label>
+          <Input value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} placeholder="Ex: Dashboard" className="text-sm" />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1 block">URL / Link</Label>
+          <Input value={form.href} onChange={e => setForm({ ...form, href: e.target.value })} placeholder="/pagina" className="text-sm font-mono" readOnly={!isCustom && !!form.href && !form.href.startsWith("http")} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1 block">Ícone</Label>
+          <Select value={form.icon} onValueChange={v => setForm({ ...form, icon: v })}>
+            <SelectTrigger className="text-sm">
+              <div className="flex items-center gap-2"><MenuIcon name={form.icon} className="w-3.5 h-3.5 shrink-0" /><span>{form.icon}</span></div>
+            </SelectTrigger>
+            <SelectContent className="max-h-52">
+              {MENU_ICON_LIST.map(ic => (
+                <SelectItem key={ic} value={ic}>
+                  <div className="flex items-center gap-2"><MenuIcon name={ic} className="w-3.5 h-3.5 shrink-0" />{ic}</div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1 block">Cor do texto</Label>
+          <div className="flex items-center gap-1.5 flex-wrap mt-1">
+            {ITEM_COLOR_PRESETS.map(c => (
+              <button key={c || "default"} title={c || "Padrão"} onClick={() => setForm({ ...form, color: c })}
+                className={`w-5 h-5 rounded-full border-2 transition-all ${form.color === c ? "border-white scale-110" : "border-transparent opacity-70 hover:opacity-100"}`}
+                style={{ background: c || "rgba(255,255,255,0.2)" }} />
+            ))}
+            <input type="color" value={form.color || "#ffffff"} onChange={e => setForm({ ...form, color: e.target.value })}
+              className="w-5 h-5 rounded-full cursor-pointer border-0 bg-transparent" title="Cor personalizada" />
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1 block">Badge</Label>
+          <div className="flex gap-1 flex-wrap mb-1.5">
+            {["", ...BADGE_PRESETS].map(b => (
+              <button key={b || "none"} onClick={() => setForm({ ...form, badge: b })}
+                className={`text-[10px] px-1.5 py-0.5 rounded-full border transition-all ${form.badge === b ? "border-primary text-primary" : "border-white/10 text-muted-foreground hover:border-white/25"}`}>
+                {b || "Nenhum"}
+              </button>
+            ))}
+          </div>
+          <Input value={form.badge} onChange={e => setForm({ ...form, badge: e.target.value })} placeholder="Texto personalizado..." className="text-xs h-7" />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1 block">Cor do badge</Label>
+          <div className="flex items-center gap-1 flex-wrap mt-1">
+            {BADGE_COLOR_PRESETS.map(c => (
+              <button key={c} title={c} onClick={() => setForm({ ...form, badgeColor: c })}
+                className={`w-5 h-5 rounded-full border-2 transition-all ${form.badgeColor === c ? "border-white scale-110" : "border-transparent opacity-70 hover:opacity-100"}`}
+                style={{ background: c }} />
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch checked={form.visible} onCheckedChange={v => setForm({ ...form, visible: v })} />
+            <Label className="text-xs">Visível</Label>
+          </div>
+          {isCustom && (
+            <div className="flex items-center gap-2">
+              <Switch checked={form.external} onCheckedChange={v => setForm({ ...form, external: v })} />
+              <Label className="text-xs">Nova aba</Label>
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={onCancel}>Cancelar</Button>
+          <Button size="sm" onClick={onSave} disabled={saving}>
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+            Salvar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PaginasSection() {
   const { token } = useAuth();
   const { toast } = useToast();
   const [uiCfg, setUiCfg] = useState<UICfgFull | null>(null);
   const [cfgLoading, setCfgLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editLabel, setEditLabel] = useState("");
-  const [editBadge, setEditBadge] = useState("");
-  const [editBadgeColor, setEditBadgeColor] = useState("#f97316");
-  const [editVisible, setEditVisible] = useState(true);
-  const [addingId, setAddingId] = useState<string | null>(null);
-  const [addSection, setAddSection] = useState("");
+  const [activeTab, setActiveTab] = useState<"structure" | "pages">("structure");
   const [saving, setSaving] = useState(false);
 
-  const loadCfg = useCallback(async () => {
+  const [showAddSection, setShowAddSection] = useState(false);
+  const [newSecLabel, setNewSecLabel] = useState("");
+  const [renamingSec, setRenamingSec] = useState<{ id: string; label: string } | null>(null);
+
+  const [editingItem, setEditingItem] = useState<{ sectionId: string; itemId: string } | null>(null);
+  const [itemForm, setItemForm] = useState<typeof EMPTY_ITEM_FORM>({ ...EMPTY_ITEM_FORM });
+
+  const [addModeSec, setAddModeSec] = useState<{ sectionId: string; mode: "page" | "custom" } | null>(null);
+  const [customForm, setCustomForm] = useState<typeof EMPTY_ITEM_FORM>({ ...EMPTY_ITEM_FORM });
+  const [pageSearch, setPageSearch] = useState("");
+
+  const load = useCallback(async () => {
     setCfgLoading(true);
     try { setUiCfg(await authFetch("/admin/ui-config", token!) as UICfgFull); }
     catch { /* ignore */ }
     setCfgLoading(false);
   }, [token]);
-  useEffect(() => { void loadCfg(); }, [loadCfg]);
+  useEffect(() => { void load(); }, [load]);
 
-  const saveCfg = async (newCfg: UICfgFull, msg = "Menu atualizado!") => {
+  const saveCfg = async (cfg: UICfgFull, msg = "Menu atualizado!") => {
     setSaving(true);
     try {
-      await authFetch("/admin/ui-config", token!, { method: "PATCH", body: JSON.stringify(newCfg) });
-      setUiCfg(newCfg);
-      toast({ title: msg });
+      await authFetch("/admin/ui-config", token!, { method: "PATCH", body: JSON.stringify(cfg) });
+      setUiCfg(cfg);
+      if (msg) toast({ title: msg });
     } catch { toast({ title: "Erro ao salvar", variant: "destructive" }); }
     setSaving(false);
   };
 
-  function findInSidebar(page: PageEntry): { sectionId: string; sectionLabel: string; item: MenuNavItem } | null {
+  const addSection = () => {
+    if (!uiCfg || !newSecLabel.trim()) return;
+    void saveCfg({ ...uiCfg, sidebarSections: [...uiCfg.sidebarSections, { id: `sec_${Date.now()}`, label: newSecLabel.trim(), items: [] }] }, "Seção criada!");
+    setNewSecLabel(""); setShowAddSection(false);
+  };
+  const deleteSection = (id: string) => {
+    if (!uiCfg) return;
+    void saveCfg({ ...uiCfg, sidebarSections: uiCfg.sidebarSections.filter(s => s.id !== id) }, "Seção removida!");
+  };
+  const renameSection = () => {
+    if (!uiCfg || !renamingSec) return;
+    void saveCfg({ ...uiCfg, sidebarSections: uiCfg.sidebarSections.map(s => s.id === renamingSec.id ? { ...s, label: renamingSec.label } : s) }, "Seção renomeada!");
+    setRenamingSec(null);
+  };
+  const moveSection = (id: string, dir: -1 | 1) => {
+    if (!uiCfg) return;
+    const secs = [...uiCfg.sidebarSections];
+    const idx = secs.findIndex(s => s.id === id);
+    const ni = idx + dir;
+    if (ni < 0 || ni >= secs.length) return;
+    [secs[idx], secs[ni]] = [secs[ni], secs[idx]];
+    void saveCfg({ ...uiCfg, sidebarSections: secs }, "");
+  };
+
+  const deleteItem = (sectionId: string, itemId: string) => {
+    if (!uiCfg) return;
+    void saveCfg({ ...uiCfg, sidebarSections: uiCfg.sidebarSections.map(s => s.id === sectionId ? { ...s, items: s.items.filter(it => it.id !== itemId) } : s) }, "Item removido!");
+  };
+  const moveItem = (sectionId: string, idx: number, dir: -1 | 1) => {
+    if (!uiCfg) return;
+    const secs = uiCfg.sidebarSections.map(s => {
+      if (s.id !== sectionId) return s;
+      const items = [...s.items]; const ni = idx + dir;
+      if (ni < 0 || ni >= items.length) return s;
+      [items[idx], items[ni]] = [items[ni], items[idx]];
+      return { ...s, items };
+    });
+    void saveCfg({ ...uiCfg, sidebarSections: secs }, "");
+  };
+  const startEditItem = (sectionId: string, item: MenuNavItem) => {
+    setEditingItem({ sectionId, itemId: item.id });
+    setItemForm({ label: item.label, href: item.href, icon: item.icon || "Link2", color: item.color ?? "", badge: item.badge ?? "", badgeColor: item.badgeColor ?? "#a78bfa", visible: item.visible, external: item.external ?? false });
+    setAddModeSec(null);
+  };
+  const saveEditItem = () => {
+    if (!uiCfg || !editingItem) return;
+    const secs = uiCfg.sidebarSections.map(s => {
+      if (s.id !== editingItem.sectionId) return s;
+      return { ...s, items: s.items.map(it => it.id !== editingItem.itemId ? it : { ...it, label: itemForm.label || it.label, href: itemForm.href || it.href, icon: itemForm.icon, color: itemForm.color || undefined, badge: itemForm.badge || undefined, badgeColor: itemForm.badge ? (itemForm.badgeColor || undefined) : undefined, visible: itemForm.visible, external: itemForm.external || undefined }) };
+    });
+    void saveCfg({ ...uiCfg, sidebarSections: secs }, "Item salvo!");
+    setEditingItem(null);
+  };
+
+  const addPageToSection = (sectionId: string, page: PageEntry) => {
+    if (!uiCfg) return;
+    const newItem: MenuNavItem = { id: page.id, label: page.label, href: page.path, icon: page.icon, visible: true, matchPrefix: page.matchPrefix, badge: page.defaultBadge, badgeColor: page.defaultBadgeColor, adminOnly: page.adminOnly };
+    void saveCfg({ ...uiCfg, sidebarSections: uiCfg.sidebarSections.map(s => s.id === sectionId ? { ...s, items: [...s.items, newItem] } : s) }, `"${page.label}" adicionado!`);
+    setAddModeSec(null); setPageSearch("");
+  };
+  const addCustomItem = (sectionId: string) => {
+    if (!uiCfg || !customForm.label.trim() || !customForm.href.trim()) return;
+    const newItem: MenuNavItem = { id: `custom_${Date.now()}`, label: customForm.label.trim(), href: customForm.href.trim(), icon: customForm.icon, color: customForm.color || undefined, badge: customForm.badge || undefined, badgeColor: customForm.badge ? (customForm.badgeColor || undefined) : undefined, visible: true, external: customForm.external || undefined, isCustom: true };
+    void saveCfg({ ...uiCfg, sidebarSections: uiCfg.sidebarSections.map(s => s.id === sectionId ? { ...s, items: [...s.items, newItem] } : s) }, `"${newItem.label}" adicionado!`);
+    setCustomForm({ ...EMPTY_ITEM_FORM }); setAddModeSec(null);
+  };
+
+  function pageInMenu(page: PageEntry): { sectionLabel: string } | null {
     if (!uiCfg) return null;
     for (const sec of uiCfg.sidebarSections) {
-      const item = sec.items.find((it) =>
-        it.href === page.path || (page.matchPrefix && it.matchPrefix === page.matchPrefix) || it.id === page.id
-      );
-      if (item) return { sectionId: sec.id, sectionLabel: sec.label ?? sec.id, item };
+      if (sec.items.some(it => it.id === page.id || it.href === page.path)) return { sectionLabel: sec.label ?? sec.id };
     }
     return null;
   }
 
-  function toggleVisibility(page: PageEntry) {
-    if (!uiCfg) return;
-    const found = findInSidebar(page);
-    if (!found) return;
-    void saveCfg({
-      ...uiCfg,
-      sidebarSections: uiCfg.sidebarSections.map((sec) => ({
-        ...sec, items: sec.items.map((it) => it.id === found.item.id ? { ...it, visible: !it.visible } : it),
-      })),
-    }, found.item.visible ? "Item ocultado!" : "Item visível!");
-  }
+  const categories = [...new Set(ALL_APP_PAGES.map(p => p.category))];
 
-  function removeFromSidebar(page: PageEntry) {
-    if (!uiCfg) return;
-    void saveCfg({
-      ...uiCfg,
-      sidebarSections: uiCfg.sidebarSections.map((sec) => ({
-        ...sec, items: sec.items.filter((it) => it.id !== page.id && it.href !== page.path),
-      })),
-    }, "Removido do menu!");
-  }
-
-  function startEdit(page: PageEntry) {
-    const found = findInSidebar(page);
-    if (!found) return;
-    setEditingId(page.id);
-    setEditLabel(found.item.label);
-    setEditBadge(found.item.badge ?? "");
-    setEditBadgeColor(found.item.badgeColor ?? "#f97316");
-    setEditVisible(found.item.visible);
-  }
-
-  function saveEdit(page: PageEntry) {
-    if (!uiCfg) return;
-    const found = findInSidebar(page);
-    if (!found) return;
-    void saveCfg({
-      ...uiCfg,
-      sidebarSections: uiCfg.sidebarSections.map((sec) => ({
-        ...sec, items: sec.items.map((it) => it.id === found.item.id
-          ? { ...it, label: editLabel, badge: editBadge || undefined, badgeColor: editBadgeColor || undefined, visible: editVisible }
-          : it),
-      })),
-    });
-    setEditingId(null);
-  }
-
-  function addToSidebar(page: PageEntry, sectionId: string) {
-    if (!uiCfg) return;
-    const newItem: MenuNavItem = {
-      id: page.id, label: page.label, href: page.path, icon: page.icon, visible: true,
-      matchPrefix: page.matchPrefix, badge: page.defaultBadge, badgeColor: page.defaultBadgeColor,
-      adminOnly: page.adminOnly,
-    };
-    void saveCfg({
-      ...uiCfg,
-      sidebarSections: uiCfg.sidebarSections.map((sec) =>
-        sec.id === sectionId ? { ...sec, items: [...sec.items, newItem] } : sec
-      ),
-    }, `"${page.label}" adicionado ao menu!`);
-    setAddingId(null);
-  }
-
-  const categories = [...new Set(ALL_APP_PAGES.map((p) => p.category))];
-  const filtered = ALL_APP_PAGES.filter((p) =>
-    !search || p.label.toLowerCase().includes(search.toLowerCase()) || p.path.toLowerCase().includes(search.toLowerCase())
-  );
-  const inMenuCount = ALL_APP_PAGES.filter((p) => !!findInSidebar(p)).length;
+  if (cfgLoading) return <div className="py-10 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" /></div>;
+  if (!uiCfg) return <p className="text-sm text-muted-foreground py-6 text-center">Erro ao carregar configuração.</p>;
 
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-xl font-bold text-white mb-1">Páginas & Menu</h2>
-          <p className="text-sm text-muted-foreground">Gerencie todas as páginas. Adicione ou edite itens do menu lateral.</p>
+          <p className="text-sm text-muted-foreground">Gerencie seções, páginas e itens customizados do menu lateral.</p>
         </div>
-        <div className="text-right shrink-0">
-          <p className="text-2xl font-bold text-white">{ALL_APP_PAGES.length}</p>
-          <p className="text-xs text-muted-foreground">{inMenuCount} no menu</p>
+        <div className="flex gap-1 p-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <button onClick={() => setActiveTab("structure")}
+            className={`text-xs px-3 py-1.5 rounded-md transition-all font-medium ${activeTab === "structure" ? "bg-purple-600 text-white" : "text-muted-foreground hover:text-white"}`}>
+            <Layout className="w-3 h-3 inline mr-1.5" />Estrutura
+          </button>
+          <button onClick={() => setActiveTab("pages")}
+            className={`text-xs px-3 py-1.5 rounded-md transition-all font-medium ${activeTab === "pages" ? "bg-purple-600 text-white" : "text-muted-foreground hover:text-white"}`}>
+            <FileText className="w-3 h-3 inline mr-1.5" />Páginas
+          </button>
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar página..." className="pl-9" />
-      </div>
+      {/* ── ESTRUTURA TAB ─────────────────────────────────────── */}
+      {activeTab === "structure" && (
+        <div className="space-y-3">
+          {showAddSection ? (
+            <Card><CardContent className="p-3">
+              <div className="flex gap-2 items-center">
+                <Input value={newSecLabel} onChange={e => setNewSecLabel(e.target.value)} placeholder='Nome da seção (ex: FERRAMENTAS)' className="text-sm flex-1" autoFocus
+                  onKeyDown={e => { if (e.key === "Enter") addSection(); if (e.key === "Escape") { setShowAddSection(false); setNewSecLabel(""); } }} />
+                <Button size="sm" onClick={addSection} disabled={!newSecLabel.trim() || saving}><Plus className="w-3.5 h-3.5 mr-1" />Criar</Button>
+                <Button size="sm" variant="ghost" onClick={() => { setShowAddSection(false); setNewSecLabel(""); }}>Cancelar</Button>
+              </div>
+            </CardContent></Card>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setShowAddSection(true)}>
+              <Plus className="w-3.5 h-3.5 mr-1.5" />Nova Seção
+            </Button>
+          )}
 
-      {cfgLoading ? (
-        <div className="flex items-center justify-center py-10">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          {uiCfg.sidebarSections.length === 0 && (
+            <div className="text-center py-14 text-muted-foreground text-sm space-y-2">
+              <Layout className="w-9 h-9 mx-auto opacity-20" />
+              <p>Nenhuma seção criada. Crie uma seção para montar o menu lateral.</p>
+            </div>
+          )}
+
+          {uiCfg.sidebarSections.map((sec, secIdx) => {
+            const isRenaming = renamingSec?.id === sec.id;
+            return (
+              <Card key={sec.id} className="overflow-hidden">
+                {/* Section header */}
+                <div className="flex items-center gap-2 px-3 py-2.5 border-b border-white/5" style={{ background: "rgba(124,58,237,0.06)" }}>
+                  <GripVertical className="w-4 h-4 text-muted-foreground/30 shrink-0" />
+                  {isRenaming ? (
+                    <div className="flex gap-2 flex-1 items-center">
+                      <Input value={renamingSec.label} onChange={e => setRenamingSec({ ...renamingSec, label: e.target.value })}
+                        className="h-7 text-sm flex-1" autoFocus
+                        onKeyDown={e => { if (e.key === "Enter") renameSection(); if (e.key === "Escape") setRenamingSec(null); }} />
+                      <Button size="sm" className="h-7 px-2 text-xs" onClick={renameSection}>OK</Button>
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setRenamingSec(null)}>×</Button>
+                    </div>
+                  ) : (
+                    <button className="flex-1 text-left text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors"
+                      title="Clique para renomear" onClick={() => setRenamingSec({ id: sec.id, label: sec.label ?? "" })}>
+                      {sec.label || <span className="italic text-white/20 normal-case tracking-normal font-normal">Sem nome — clique para nomear</span>}
+                    </button>
+                  )}
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button className="p-1 rounded hover:bg-white/5 text-muted-foreground hover:text-white disabled:opacity-20 transition-colors"
+                      onClick={() => moveSection(sec.id, -1)} disabled={secIdx === 0}><ChevronUp className="w-3.5 h-3.5" /></button>
+                    <button className="p-1 rounded hover:bg-white/5 text-muted-foreground hover:text-white disabled:opacity-20 transition-colors"
+                      onClick={() => moveSection(sec.id, 1)} disabled={secIdx === uiCfg.sidebarSections.length - 1}><ChevronDown className="w-3.5 h-3.5" /></button>
+                    <button className="p-1 rounded hover:bg-red-500/10 text-muted-foreground/30 hover:text-red-400 transition-colors ml-1"
+                      onClick={() => deleteSection(sec.id)} title="Excluir seção"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+
+                {/* Items */}
+                <CardContent className="p-2 space-y-0.5">
+                  {sec.items.length === 0 && (
+                    <p className="text-xs text-muted-foreground/30 text-center py-4">Nenhum item — adicione abaixo.</p>
+                  )}
+                  {sec.items.map((item, itemIdx) => {
+                    const isEditingThis = editingItem?.sectionId === sec.id && editingItem?.itemId === item.id;
+                    return (
+                      <div key={item.id}>
+                        <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg group transition-all ${isEditingThis ? "bg-purple-500/8 border border-purple-500/20" : "hover:bg-white/3"}`}>
+                          <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.06)" }}>
+                            <MenuIcon name={item.icon} className="w-3 h-3 text-muted-foreground" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate flex items-center gap-1.5">
+                              <span style={{ color: item.color || undefined }}>{item.label}</span>
+                              {item.badge && (
+                                <span className="text-[9px] font-bold px-1 py-0.5 rounded-full shrink-0"
+                                  style={{ background: `${item.badgeColor ?? "#f97316"}20`, color: item.badgeColor ?? "#f97316" }}>{item.badge}</span>
+                              )}
+                              {item.isCustom && <span className="text-[9px] px-1 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 shrink-0">Custom</span>}
+                              {!item.visible && <span className="text-[9px] px-1 py-0.5 rounded-full bg-white/5 text-white/25 shrink-0">Oculto</span>}
+                            </p>
+                            <p className="text-[10px] font-mono text-muted-foreground/35 truncate">{item.href}</p>
+                          </div>
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button className="p-1 rounded hover:bg-white/5 text-muted-foreground disabled:opacity-20" onClick={() => moveItem(sec.id, itemIdx, -1)} disabled={itemIdx === 0}><ChevronUp className="w-3 h-3" /></button>
+                            <button className="p-1 rounded hover:bg-white/5 text-muted-foreground disabled:opacity-20" onClick={() => moveItem(sec.id, itemIdx, 1)} disabled={itemIdx === sec.items.length - 1}><ChevronDown className="w-3 h-3" /></button>
+                            <button className="p-1 rounded hover:bg-white/5 text-muted-foreground hover:text-white"
+                              onClick={() => isEditingThis ? setEditingItem(null) : startEditItem(sec.id, item)}>
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button className="p-1 rounded hover:bg-red-500/10 text-muted-foreground/30 hover:text-red-400" onClick={() => deleteItem(sec.id, item.id)}><Trash2 className="w-3 h-3" /></button>
+                          </div>
+                        </div>
+                        {isEditingThis && (
+                          <ItemForm form={itemForm} setForm={setItemForm} onSave={saveEditItem} onCancel={() => setEditingItem(null)} isCustom={!!(item.isCustom || item.external)} saving={saving} />
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Add item area */}
+                  {addModeSec?.sectionId === sec.id ? (
+                    <div className="mt-1 rounded-xl p-3 space-y-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      {addModeSec.mode === "custom" ? (
+                        <>
+                          <p className="text-xs font-semibold text-white/60">Novo item customizado</p>
+                          <ItemForm form={customForm} setForm={setCustomForm}
+                            onSave={() => addCustomItem(sec.id)}
+                            onCancel={() => { setAddModeSec(null); setCustomForm({ ...EMPTY_ITEM_FORM }); }}
+                            isCustom saving={saving} />
+                        </>
+                      ) : (
+                        <>
+                          <div className="relative">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                            <Input value={pageSearch} onChange={e => setPageSearch(e.target.value)} placeholder="Buscar página do sistema..." className="pl-8 text-sm h-8" autoFocus />
+                          </div>
+                          <div className="space-y-0.5 max-h-48 overflow-y-auto">
+                            {ALL_APP_PAGES.filter(p => {
+                              const alreadyIn = sec.items.some(it => it.id === p.id || it.href === p.path);
+                              if (alreadyIn) return false;
+                              if (!pageSearch) return true;
+                              return p.label.toLowerCase().includes(pageSearch.toLowerCase()) || p.path.toLowerCase().includes(pageSearch.toLowerCase());
+                            }).map(page => (
+                              <button key={page.id} onClick={() => addPageToSection(sec.id, page)}
+                                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 text-left transition-colors">
+                                <MenuIcon name={page.icon} className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm text-white">{page.label}</p>
+                                  <p className="text-[10px] font-mono text-muted-foreground/40 truncate">{page.path}</p>
+                                </div>
+                                {page.defaultBadge && (
+                                  <span className="text-[9px] font-bold px-1 py-0.5 rounded-full shrink-0"
+                                    style={{ background: `${page.defaultBadgeColor ?? "#f97316"}20`, color: page.defaultBadgeColor ?? "#f97316" }}>{page.defaultBadge}</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex justify-end">
+                            <Button size="sm" variant="ghost" className="text-xs" onClick={() => { setAddModeSec(null); setPageSearch(""); }}>Fechar</Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 pt-1 pl-1">
+                      <button className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors flex items-center gap-1"
+                        onClick={() => { setAddModeSec({ sectionId: sec.id, mode: "page" }); setEditingItem(null); setPageSearch(""); }}>
+                        <Plus className="w-3 h-3" />Página do sistema
+                      </button>
+                      <span className="text-muted-foreground/20">·</span>
+                      <button className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors flex items-center gap-1"
+                        onClick={() => { setAddModeSec({ sectionId: sec.id, mode: "custom" }); setEditingItem(null); setCustomForm({ ...EMPTY_ITEM_FORM }); }}>
+                        <Plus className="w-3 h-3" />Item customizado
+                      </button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
-      ) : (
-        categories.map((cat) => {
-          const pages = filtered.filter((p) => p.category === cat);
-          if (!pages.length) return null;
-          return (
-            <div key={cat}>
-              <h3 className="text-[10px] font-bold uppercase tracking-widest mb-2 px-1"
-                style={{ color: "rgba(255,255,255,0.25)" }}>{cat}</h3>
-              <div className="space-y-1.5">
-                {pages.map((page) => {
-                  const inSidebar = findInSidebar(page);
-                  const isEditing = editingId === page.id;
-                  const isAdding = addingId === page.id;
-                  return (
-                    <Card key={page.id} className={inSidebar ? "border-purple-500/20" : "border-white/5"}>
-                      <CardContent className="p-3">
-                        {isEditing ? (
-                          <div className="space-y-3">
-                            <p className="text-xs font-mono text-muted-foreground">{page.path}</p>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div><Label className="text-xs mb-1 block">Label no menu</Label>
-                                <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="text-sm" /></div>
-                              <div><Label className="text-xs mb-1 block">Badge (PRO, APP...)</Label>
-                                <Input value={editBadge} onChange={(e) => setEditBadge(e.target.value)} className="text-sm" placeholder="PRO" /></div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Switch checked={editVisible} onCheckedChange={setEditVisible} />
-                              <Label className="text-xs">Visível no menu</Label>
-                            </div>
-                            <div className="flex gap-2 justify-end">
-                              <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>Cancelar</Button>
-                              <Button size="sm" onClick={() => saveEdit(page)} disabled={saving}>
-                                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
-                                Salvar
-                              </Button>
-                            </div>
-                          </div>
-                        ) : isAdding ? (
-                          <div className="space-y-3">
-                            <p className="text-sm font-medium text-white">Adicionar "{page.label}" ao menu</p>
-                            <Select value={addSection} onValueChange={setAddSection}>
-                              <SelectTrigger className="text-sm"><SelectValue placeholder="Escolha a seção" /></SelectTrigger>
-                              <SelectContent>
-                                {uiCfg?.sidebarSections.map((sec) => (
-                                  <SelectItem key={sec.id} value={sec.id}>{sec.label ?? sec.id}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <div className="flex gap-2 justify-end">
-                              <Button size="sm" variant="outline" onClick={() => setAddingId(null)}>Cancelar</Button>
-                              <Button size="sm" onClick={() => addSection && addToSidebar(page, addSection)} disabled={saving || !addSection}>
-                                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5 mr-1.5" />}
-                                Adicionar
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
+      )}
+
+      {/* ── PÁGINAS TAB ───────────────────────────────────────── */}
+      {activeTab === "pages" && (
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input value={pageSearch} onChange={e => setPageSearch(e.target.value)} placeholder="Buscar página..." className="pl-9" />
+          </div>
+          {categories.map(cat => {
+            const pages = ALL_APP_PAGES.filter(p =>
+              p.category === cat && (!pageSearch || p.label.toLowerCase().includes(pageSearch.toLowerCase()) || p.path.toLowerCase().includes(pageSearch.toLowerCase()))
+            );
+            if (!pages.length) return null;
+            return (
+              <div key={cat}>
+                <h3 className="text-[10px] font-bold uppercase tracking-widest mb-2 px-1" style={{ color: "rgba(255,255,255,0.25)" }}>{cat}</h3>
+                <div className="space-y-1.5">
+                  {pages.map(page => {
+                    const inMenu = pageInMenu(page);
+                    return (
+                      <Card key={page.id} className={inMenu ? "border-purple-500/20" : "border-white/5"}>
+                        <CardContent className="p-3">
                           <div className="flex items-center gap-3">
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                              style={{ background: inSidebar ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.05)" }}>
-                              <Layout className="w-3.5 h-3.5" style={{ color: inSidebar ? "#a78bfa" : "rgba(255,255,255,0.2)" }} />
+                              style={{ background: inMenu ? "rgba(124,58,237,0.15)" : "rgba(255,255,255,0.05)" }}>
+                              <MenuIcon name={page.icon} className="w-3.5 h-3.5" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-white truncate">{page.label}</p>
                               <p className="text-[10px] font-mono truncate" style={{ color: "rgba(255,255,255,0.3)" }}>{page.path}</p>
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {inSidebar ? (
-                                <>
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                                    style={{ background: inSidebar.item.visible ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.05)", color: inSidebar.item.visible ? "#22c55e" : "rgba(255,255,255,0.25)" }}>
-                                    {inSidebar.item.visible ? "Visível" : "Oculto"}
-                                  </span>
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                                    style={{ background: "rgba(124,58,237,0.1)", color: "#a78bfa", maxWidth: 80, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", display: "inline-block" }}>
-                                    {inSidebar.sectionLabel}
-                                  </span>
-                                  <button onClick={() => toggleVisibility(page)}
-                                    className="p-1 rounded-lg hover:bg-white/5 transition-colors text-xs"
-                                    style={{ color: inSidebar.item.visible ? "rgba(255,255,255,0.4)" : "#22c55e" }}
-                                    title={inSidebar.item.visible ? "Ocultar" : "Exibir"}>
-                                    {inSidebar.item.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                                  </button>
-                                  <button onClick={() => startEdit(page)}
-                                    className="p-1 rounded-lg hover:bg-white/5 transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button onClick={() => removeFromSidebar(page)}
-                                    className="p-1 rounded-lg hover:bg-red-500/10 transition-colors" style={{ color: "rgba(239,68,68,0.5)" }}>
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {inMenu ? (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                  style={{ background: "rgba(124,58,237,0.12)", color: "#a78bfa" }}>{inMenu.sectionLabel}</span>
                               ) : (
-                                <Button size="sm" variant="outline" className="h-7 text-xs"
-                                  onClick={() => { setAddingId(page.id); setAddSection(uiCfg?.sidebarSections[0]?.id ?? ""); }}>
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  Add ao menu
-                                </Button>
+                                <Select onValueChange={sId => { if (sId) addPageToSection(sId, page); }}>
+                                  <SelectTrigger className="h-7 text-xs w-36">
+                                    <SelectValue placeholder="Add ao menu..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {uiCfg.sidebarSections.map(s => (
+                                      <SelectItem key={s.id} value={s.id}>{s.label ?? s.id}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               )}
                             </div>
                           </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          );
-        })
+            );
+          })}
+        </div>
       )}
     </div>
   );

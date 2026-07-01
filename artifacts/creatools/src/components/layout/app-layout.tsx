@@ -475,7 +475,7 @@ function NavLinks({
         }`}
         style={{
           background: isActive ? "rgba(124,58,237,0.15)" : "transparent",
-          color: isActive ? "#a78bfa" : isAdminItem ? "#f87171" : locked ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.55)",
+          color: isActive ? "#a78bfa" : isAdminItem ? "#f87171" : locked ? "rgba(255,255,255,0.2)" : (item.color || "rgba(255,255,255,0.55)"),
           borderLeft: isActive ? "2px solid #7c3aed" : "2px solid transparent",
         }}
       >

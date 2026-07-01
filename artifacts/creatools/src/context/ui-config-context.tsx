@@ -11,7 +11,9 @@ export interface NavItemConfig {
   visible: boolean;
   badge?: string;
   badgeColor?: string;
+  color?: string;
   external?: boolean;
+  isCustom?: boolean;
   children?: Omit<NavItemConfig, "children">[];
 }
 
