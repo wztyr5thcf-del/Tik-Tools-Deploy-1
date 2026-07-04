@@ -21,6 +21,14 @@ import layoutsRouter from "./layouts";
 
 const router: IRouter = Router();
 
+router.get("/", (_req, res) => {
+  res.json({
+    ok: true,
+    service: "tik-tools-api",
+    message: "API is running",
+  });
+});
+
 router.use(authRouter);
 router.use(healthRouter);
 router.use(tiktokRouter);

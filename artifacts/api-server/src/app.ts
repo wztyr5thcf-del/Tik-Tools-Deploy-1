@@ -23,6 +23,14 @@ app.use(
 
 app.use(cors());
 
+app.get("/", (_req, res) => {
+  res.json({
+    ok: true,
+    service: "tik-tools-api",
+    message: "API is running",
+  });
+});
+
 // Media files are now served via Object Storage (GCS) through the /api/media/files route in media.ts.
 
 // Stripe webhook MUST be registered before express.json() — needs raw body

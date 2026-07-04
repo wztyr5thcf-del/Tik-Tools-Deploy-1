@@ -1,10 +1,16 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
-import { setAuthTokenGetter } from "@workspace/api-client-react";
+import { setAuthTokenGetter, setBaseUrl } from "@workspace/api-client-react";
+import { getRuntimeConfig } from "./lib/runtime-config";
 
 // Wire up the auth token so every generated React Query hook
 // automatically sends Authorization: Bearer <token>
 setAuthTokenGetter(() => localStorage.getItem("creatools_token"));
+
+const runtimeConfig = getRuntimeConfig();
+if (runtimeConfig.apiBaseUrl) {
+  setBaseUrl(runtimeConfig.apiBaseUrl);
+}
 
 createRoot(document.getElementById("root")!).render(<App />);
